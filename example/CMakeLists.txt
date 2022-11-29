@@ -8,4 +8,5 @@ endif()
 
 add_executable(example ${sources})
 target_link_libraries(example glfw
+							  glm
                               glad_gl_core_46)

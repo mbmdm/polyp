@@ -19,3 +19,7 @@ endif()
 add_subdirectory(glad/cmake)
 set(GLAD_BUILD_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/gladsources)
 glad_add_library(glad_gl_core_46 STATIC LOCATION ${GLAD_BUILD_LOCATION} LANGUAGE C API gl:core=4.6)
+
+
+#GLM
+add_subdirectory(glm)
