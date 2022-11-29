@@ -9,5 +9,5 @@ endif()
 include_directories(${STB_LOCATION})
 add_executable(example ${sources})
 target_link_libraries(example glfw
-							  glm
+                              glm
                               glad_gl_core_46)
