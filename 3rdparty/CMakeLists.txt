@@ -23,3 +23,7 @@ glad_add_library(glad_gl_core_46 STATIC LOCATION ${GLAD_BUILD_LOCATION} LANGUAGE
 
 #GLM
 add_subdirectory(glm)
+
+
+#STB
+set(STB_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/stb CACHE PATH "Path to GLM headers")
