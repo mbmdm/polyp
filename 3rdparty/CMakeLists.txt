@@ -26,4 +26,4 @@ add_subdirectory(glm)
 
 
 #STB
-set(STB_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/stb CACHE PATH "Path to GLM headers")
+set(STB_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/stb CACHE PATH "Path to STB headers")
