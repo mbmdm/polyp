@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 
-set(sources 
-		${CMAKE_CURRENT_SOURCE_DIR}/camera.cpp
-	)
+set(sources ${CMAKE_CURRENT_SOURCE_DIR}/camera.cpp)
 
 set(includes ${CMAKE_CURRENT_SOURCE_DIR})
 	
