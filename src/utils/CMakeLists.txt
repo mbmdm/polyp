@@ -11,4 +11,4 @@ add_library(utils STATIC ${sources})
 target_include_directories(utils PUBLIC ${includes})
 
 target_link_libraries(utils glm
-							glad_gl_core_46)
+                            glad_gl_core_46)

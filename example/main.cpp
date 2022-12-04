@@ -172,7 +172,7 @@ int main(void)
         glDrawArrays(GL_TRIANGLES, 0, 36 );
 
         /* Swap front and back buffers */
-        glfwSwapBuffers(window); 
+        glfwSwapBuffers(window);
 
         /* Poll for and process events */
         glfwPollEvents();
