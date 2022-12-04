@@ -38,7 +38,6 @@ namespace utils
         glm::mat4 get_view_mtx();
 
     private:
-
         glm::vec3 mPosition;
         glm::vec3 mFront;
         glm::vec3 mUp;
