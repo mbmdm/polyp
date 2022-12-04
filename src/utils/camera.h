@@ -35,7 +35,6 @@ namespace utils
         void process_scroll(float yoffset);
         float get_zoom() { return mZoom; };
 
-
         glm::mat4 get_view_mtx();
 
     private:
