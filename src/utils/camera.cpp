@@ -17,7 +17,6 @@ namespace utils
         updateCameraVectors();
     }
 
-
     glm::mat4 Camera::get_view_mtx()
     {
         return glm::lookAt(mPosition, mPosition + mFront, mUp);
