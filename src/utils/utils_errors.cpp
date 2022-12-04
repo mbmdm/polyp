@@ -31,7 +31,7 @@ namespace {
     const GAPIErrosCategory theGAPIErrosCategory{};
 }
 
-std::error_code make_error_code(utils::GAPIErros e)
+std::error_code utils::make_error_code(GAPIErros e)
 {
     return { static_cast<int>(e), theGAPIErrosCategory };
 }

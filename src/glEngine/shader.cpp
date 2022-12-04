@@ -51,7 +51,6 @@ std::error_code glEngine::Shader::compile(Type type, const std::string& shader)
     glShaderSource(shaderProgram, 1, &pShader, NULL);
     glCompileShader(shaderProgram);
 
-    //auto code = make_error_code(utils::GAPIErros::ShaderLink);
+#error work here
     return utils::GAPIErros::ShaderLink;
-    //return code;
 }

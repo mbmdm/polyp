@@ -11,6 +11,8 @@ namespace utils {
         ShaderLink,
         ShaderCompile,
     };
+
+    std::error_code make_error_code(GAPIErros);
 }
 
 namespace std
@@ -18,7 +20,5 @@ namespace std
     template <>
     struct is_error_code_enum<utils::GAPIErros> : true_type {};
 }
-
-std::error_code make_error_code(utils::GAPIErros);
 
 #endif // UTILS_ERRORS_H
