@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 3.6)
 
-set(sources ${CMAKE_CURRENT_SOURCE_DIR}/camera.cpp)
+set(sources ${CMAKE_CURRENT_SOURCE_DIR}/camera.cpp
+            utils_errors.cpp)
 
 set(includes ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(headers camera.h
-            constants.h)
+            constants.h
+            utils_errors.h)
 
 set(sources ${sources} ${headers})
 

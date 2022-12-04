@@ -1,4 +1,6 @@
 #include <camera.h>
+#include <utils_errors.h>
+#include <shader.h>
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
