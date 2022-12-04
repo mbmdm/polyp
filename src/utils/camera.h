@@ -20,7 +20,7 @@ namespace utils
         UP,
         DOWN
     };
-
+    
     class Camera
     {
     public:
@@ -33,9 +33,15 @@ namespace utils
         void process_keyboard(Direction direction, float deltaTime);
         void process_mouse(float xoffset, float yoffset, GLboolean constrainPitch = true);
         void process_scroll(float yoffset);
-        float get_zoom() { return mZoom; };
+        float zoom() const { return mZoom; };
+        void zoom(float zoom) { mZoom = zoom; };
+        float sensitivity() const { return mSensitivity; };
+        void sensitivity(float sensitivity) { mSensitivity = sensitivity; };
+        float speed() const { return mSpeed; };
+        void speed(float speed) { mSpeed = speed; };
+        void reset(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f));
 
-        glm::mat4 get_view_mtx();
+        glm::mat4 view();
 
     private:
         glm::vec3 mPosition;
@@ -44,15 +50,14 @@ namespace utils
         glm::vec3 mRight;
         glm::vec3 mWorldUp;
 
-        // Euler Angles
-        float mYaw;
-        float mPitch;
+        float mYaw; // Euler Angle yaw
+        float mPitch; // Euler Angle pitch
 
-        float mMovementSpeed;
-        float mMouseSensitivity;
+        float mSpeed; // movement speed
+        float mSensitivity; // mouse sensitivity
         float mZoom;
 
-        void updateCameraVectors();
+        void update();
     };
 }
 #endif //CAMERA_H

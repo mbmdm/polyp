@@ -162,10 +162,10 @@ int main(void)
 
         glUseProgram(program);
 
-        glm::mat4 projection = glm::perspective(glm::radians(gCamera.get_zoom()), (float)kWidth / (float)kHeight, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(gCamera.zoom()), (float)kWidth / (float)kHeight, 0.1f, 100.0f);
         glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, &projection[0][0]);
 
-        glm::mat4 view = gCamera.get_view_mtx();
+        glm::mat4 view = gCamera.view();
         glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_FALSE, &view[0][0]);
 
         glBindVertexArray(vao);
@@ -189,6 +189,8 @@ void processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
+    static bool isShiftPressed = false;
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         gCamera.process_keyboard(Direction::FORWARD, gDeltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -201,6 +203,23 @@ void processInput(GLFWwindow* window)
         gCamera.process_keyboard(Direction::UP, gDeltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
         gCamera.process_keyboard(Direction::DOWN, gDeltaTime);
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && !isShiftPressed) {
+        auto speed = gCamera.speed();
+        gCamera.speed(speed * 3);
+        auto sens = gCamera.sensitivity();
+        gCamera.sensitivity(sens * 2);
+        isShiftPressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE && isShiftPressed ) {
+        auto speed = gCamera.speed();
+        gCamera.speed(speed / 3);
+        auto sens = gCamera.sensitivity();
+        gCamera.sensitivity(sens / 2);
+        isShiftPressed = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_END) == GLFW_PRESS) {
+          gCamera.reset();
+    }
 }
 
 void checkCompileErrors(GLuint shader, std::string type)
