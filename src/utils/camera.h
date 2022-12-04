@@ -55,4 +55,4 @@ namespace utils
         void updateCameraVectors();
     };
 }
-#endif
+#endif //CAMERA_H
