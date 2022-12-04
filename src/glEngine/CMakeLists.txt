@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.6)
+
+set(sources ${CMAKE_CURRENT_SOURCE_DIR}/shader.cpp)
+
+set(includes ${CMAKE_CURRENT_SOURCE_DIR})
+
+set(headers shader.h)
+
+set(sources ${sources} ${headers})
+
+add_library(glEngine STATIC ${sources})
+
+target_include_directories(glEngine PUBLIC ${includes})
+
+target_link_libraries(glEngine glm
+                               glad_gl_core_46)
