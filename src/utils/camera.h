@@ -3,7 +3,6 @@
 
 #include "constants.h"
 
-#include <glad/gl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -31,7 +30,7 @@ namespace utils
             float pitch = constants::camera::kPitch);
 
         void process_keyboard(Direction direction, float deltaTime);
-        void process_mouse(float xoffset, float yoffset, GLboolean constrainPitch = true);
+        void process_mouse(float xoffset, float yoffset, bool constrainPitch = true);
         void process_scroll(float yoffset);
         float zoom() const { return mZoom; };
         void zoom(float zoom) { mZoom = zoom; };

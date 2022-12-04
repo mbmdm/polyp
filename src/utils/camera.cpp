@@ -58,7 +58,7 @@ namespace utils
         }
     }
 
-    void Camera::process_mouse(float xoffset, float yoffset, GLboolean constrainPitch)
+    void Camera::process_mouse(float xoffset, float yoffset, bool constrainPitch)
     {
         xoffset *= mSensitivity;
         yoffset *= mSensitivity;
