@@ -1,7 +1,10 @@
 #ifndef SHADER_H
 #define SHADER_H
 
+#include "concepts.h"
 #include <utils_errors.h>
+
+#include <glad/gl.h>
 
 #include <string>
 #include <system_error>
@@ -28,19 +31,27 @@ namespace glEngine
         Shader& operator=(Shader&&) = delete;
 
         void use() const;
-        void load(Type type, const std::string& path) {};
+        std::error_code load(Type type, const std::string& path);
         std::error_code compile(Type type, const std::string& shader);
         std::error_code link();
-        template<typename T, size_t dim>
-        void set(const std::string& name, const T& value) const {};
+
+        template<GLSLType T>
+        void set(const std::string& name, const T& value) const
+        {
+            if constexpr (std::is_same_v<T, int>)
+                glUniform1i(glGetUniformLocation(mProgramId, name.c_str()), value);
+            else if constexpr (std::is_same_v<T, glm::mat4>)
+                glUniformMatrix4fv(glGetUniformLocation(mProgramId, name.c_str()), 1, GL_FALSE, &value[0][0]);
+            else 
+                throw utils::CommonErrors::ToDo;
+        };
 
     private:
-        int compile_status() { return 1; };
-
         uint32_t mProgramId;
         std::unordered_map<Type, uint32_t> mShaders;
-
     };
+
+    std::string to_string(Shader::Type);
 }
 
 #endif // SHADER_H

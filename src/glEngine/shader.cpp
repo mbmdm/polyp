@@ -2,14 +2,14 @@
 
 #include <glad/gl.h>
 
+#include <algorithm>
+#include <fstream>
+#include <sstream>
 #include <type_traits>
 
-glEngine::Shader::Shader() : mProgramId{0} 
-{
-    mShaders[Type::Vertex] = 0;
-    mShaders[Type::Geometry] = 0;
-    mShaders[Type::Fragment] = 0;
-}
+
+glEngine::Shader::Shader() : mProgramId{0}
+{ }
 
 glEngine::Shader::~Shader()
 {
@@ -23,34 +23,120 @@ void glEngine::Shader::use() const
         glUseProgram(mProgramId);
 }
 
-std::error_code glEngine::Shader::link()
+std::error_code glEngine::Shader::load(Type type, const std::string& path)
 {
-    return std::error_code();
+    std::string code;
+    std::ifstream file;
+    file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    try 
+    {
+        file.open(path);
+        std::stringstream ss;
+        ss << file.rdbuf();
+        file.close();
+        code = ss.str();
+    }
+    catch (std::ifstream::failure& ex)
+    {
+        printf("ERROR: input/output file operation error\n");
+        return utils::CommonErrors::IO;
+    }
+
+    return compile(type, code);
 }
 
-std::error_code glEngine::Shader::compile(Type type, const std::string& shader)
+std::error_code glEngine::Shader::link()
 {
-    decltype(glCreateShader(GL_VERTEX_SHADER)) shaderProgram = 0;
+    if (mProgramId)
+    {
+        printf("ERROR: shader has already be linked\n");
+        return utils::GAPIErros::ShaderLink;
+    }
+    
+    if (!mShaders.contains(Type::Vertex) || 
+        !mShaders.contains(Type::Fragment)) 
+    {
+        printf("ERROR: at least vertex and fragment shaders should be proveided befor linkage\n");
+        return utils::GAPIErros::ShaderLink;
+    }
 
+    mProgramId = glCreateProgram();
+
+    std::for_each(mShaders.begin(), mShaders.end(), [this](const auto& data) {
+        glAttachShader(mProgramId, data.second);
+        });
+
+    glLinkProgram(mProgramId);
+
+    GLint status;
+    GLchar buffer[BUFSIZ];
+
+    glGetProgramiv(mProgramId, GL_LINK_STATUS, &status);
+
+    if (!status) 
+    {
+        glGetProgramInfoLog(mProgramId, BUFSIZ, NULL, buffer);
+        printf("ERROR: shader linkage error\n");
+        printf("ERROR: message: %s\n", buffer);
+        return utils::GAPIErros::ShaderLink;
+    }
+
+    std::for_each(mShaders.begin(), mShaders.end(), [this](const auto& data) {
+        glDeleteShader(data.second);
+        });
+    mShaders.clear();
+
+    return utils::GAPIErros::Success;
+}
+
+std::error_code glEngine::Shader::compile(Type type, const std::string& in_shader)
+{
     switch (type)
     {
     case glEngine::Shader::Type::Vertex:
-        shaderProgram = glCreateShader(GL_VERTEX_SHADER);
+        mShaders[type] = glCreateShader(GL_VERTEX_SHADER);
         break;
     case glEngine::Shader::Type::Geometry:
-        shaderProgram = glCreateShader(GL_GEOMETRY_SHADER);
+        mShaders[type] = glCreateShader(GL_GEOMETRY_SHADER);
         break;
     case glEngine::Shader::Type::Fragment:
-        shaderProgram = glCreateShader(GL_FRAGMENT_SHADER);
+        mShaders[type] = glCreateShader(GL_FRAGMENT_SHADER);
         break;
     default:
-        break;
+        return utils::GAPIErros::FunctionArgument;
     }
 
-    auto pShader = shader.data();
-    glShaderSource(shaderProgram, 1, &pShader, NULL);
-    glCompileShader(shaderProgram);
+    auto pShader = in_shader.c_str();
+    glShaderSource(mShaders[type], 1, &pShader, NULL);
+    glCompileShader(mShaders[type]);
 
-#error work here
-    return utils::GAPIErros::ShaderLink;
+    GLint status;
+    GLchar buffer[BUFSIZ];
+
+    glGetShaderiv(mShaders[type], GL_COMPILE_STATUS, &status);
+
+    if (!status) 
+    {
+        glGetShaderInfoLog(mShaders[type] , BUFSIZ, NULL, buffer);
+        printf("ERROR: shader compilation error of type %s\n", to_string(type).c_str());
+        printf("ERROR: message: %s\n", buffer);
+        return utils::GAPIErros::ShaderCompile;
+    }
+
+    return utils::GAPIErros::Success;
+}
+
+std::string glEngine::to_string(glEngine::Shader::Type type)
+{
+    switch (type)
+    {
+    case glEngine::Shader::Type::Vertex:
+        return "vertex";
+    case glEngine::Shader::Type::Geometry:
+        return "geometry";
+    case glEngine::Shader::Type::Fragment:
+        return "fragment";
+    default:
+        return "unrecognized";
+    }
 }

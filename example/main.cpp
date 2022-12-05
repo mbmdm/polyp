@@ -33,10 +33,6 @@ const char* fragmentShaderSource =
 
 void processInput(GLFWwindow* window);
 
-GLuint compile_shader(const std::string& vs, const std::string& fs);
-
-void checkCompileErrors(GLuint shader, std::string type);
-
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
@@ -54,6 +50,8 @@ namespace
 
 int main(void)
 {
+    using namespace glEngine;
+
     GLFWwindow* window;
 
     if (!glfwInit())
@@ -145,10 +143,14 @@ int main(void)
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    auto program = compile_shader(vertexShaderSource, fragmentShaderSource);
+    Shader program;
+    std::error_code result;
+    result = program.compile(Shader::Type::Vertex, vertexShaderSource);
+    result = program.compile(Shader::Type::Fragment, fragmentShaderSource);
+    result = program.link();
 
     /* Make the window's context current */
-    glfwMakeContextCurrent(window);
+     glfwMakeContextCurrent(window);
     glClearColor( 0.4f, 0.3f, 0.4f, 0.0f );
 
     /* Loop until the user closes the window */
@@ -162,13 +164,13 @@ int main(void)
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(program);
+        program.use();
 
         glm::mat4 projection = glm::perspective(glm::radians(gCamera.zoom()), (float)kWidth / (float)kHeight, 0.1f, 100.0f);
-        glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, &projection[0][0]);
+        program.set<glm::mat4>("projection", projection);
 
         glm::mat4 view = gCamera.view();
-        glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_FALSE, &view[0][0]);
+        program.set<glm::mat4>("view", view);
 
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLES, 0, 36 );
@@ -222,55 +224,6 @@ void processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_END) == GLFW_PRESS) {
           gCamera.reset();
     }
-}
-
-void checkCompileErrors(GLuint shader, std::string type)
-{
-    GLint success;
-    GLchar infoLog[1024];
-    if (type != "PROGRAM")
-    {
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-        if (!success)
-        {
-            glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-            std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
-        }
-    }
-    else
-    {
-        glGetProgramiv(shader, GL_LINK_STATUS, &success);
-        if (!success)
-        {
-            glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-            std::cout << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
-        }
-    }
-}
-
-GLuint compile_shader(const std::string& vs, const std::string& fs)
-{
-    unsigned int vertex, fragment;
-    const char* pvs = vs.data();
-    const char* pfs = fs.data();
-
-    vertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex, 1, &pvs, NULL);
-    glCompileShader(vertex);
-    checkCompileErrors(vertex, "VERTEX");
-
-    fragment = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment, 1, &pfs, NULL);
-    glCompileShader(fragment);
-    checkCompileErrors(fragment, "FRAGMENT");
-
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertex);
-    glAttachShader(program, fragment);
-    glLinkProgram(program);
-    checkCompileErrors(program, "PROGRAM");
-
-    return program;
 }
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)

@@ -4,7 +4,8 @@ set(sources ${CMAKE_CURRENT_SOURCE_DIR}/shader.cpp)
 
 set(includes ${CMAKE_CURRENT_SOURCE_DIR})
 
-set(headers shader.h)
+set(headers shader.h
+            concepts.h)
 
 set(sources ${sources} ${headers})
 
