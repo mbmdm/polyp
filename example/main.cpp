@@ -12,25 +12,6 @@
 #include <iostream>
 
 
-const char* vertexShaderSource = 
-"#version 330 core\n"
-"layout (location = 0) in vec3 aPos;\n"
-"uniform mat4 view;\n"
-"uniform mat4 projection;\n"
-"void main()\n"
-"{\n"
-"   gl_Position = projection * view * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-"}\n\0";
-
-const char* fragmentShaderSource = 
-"#version 330 core\n"
-"out vec4 FragColor;\n"
-"void main()\n"
-"{\n"
-"   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-"}\n\0";
-
-
 void processInput(GLFWwindow* window);
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
@@ -144,10 +125,18 @@ int main(void)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     Shader program;
-    std::error_code result;
-    result = program.compile(Shader::Type::Vertex, vertexShaderSource);
-    result = program.compile(Shader::Type::Fragment, fragmentShaderSource);
-    result = program.link();
+    if (auto result = program.load(Shader::Type::Vertex, "shaders/example.vs"); result) {
+        std::cout << result << std::endl;
+        return result.value();
+    }
+    if (auto result = program.load(Shader::Type::Fragment, "shaders/example.fs"); result) {
+        std::cout << result << std::endl;
+        return result.value();
+    }
+    if (auto result = program.link(); result) {
+        std::cout << result << std::endl;
+        return result.value();
+    }
 
     /* Make the window's context current */
      glfwMakeContextCurrent(window);
