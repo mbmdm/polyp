@@ -19,7 +19,7 @@ namespace utils
         UP,
         DOWN
     };
-    
+
     class Camera
     {
     public:
