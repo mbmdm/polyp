@@ -4,27 +4,35 @@
 
 namespace utils 
 {    
-    Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) : 
-        mFront(glm::vec3(0.0f, 0.0f, -1.0f)), 
-        mMovementSpeed(constants::camera::kSpeed), 
-        mMouseSensitivity(constants::camera::kSensitivity), 
+    Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) :
+        mPosition(position),
+        mWorldUp(glm::normalize(up)),
+        mYaw(yaw),
+        mPitch(pitch),
+        mSpeed(constants::camera::kSpeed), 
+        mSensitivity(constants::camera::kSensitivity), 
         mZoom(constants::camera::kZoom)
     {
-        mPosition = position;
-        mWorldUp = up;
-        mYaw = yaw;
-        mPitch = pitch;
-        updateCameraVectors();
+        update();
     }
 
-    glm::mat4 Camera::get_view_mtx()
+    void Camera::reset(glm::vec3 position)
+    {
+        mPosition = position;
+        mWorldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+        mSensitivity = constants::camera::kSensitivity;
+        mSpeed = constants::camera::kSpeed;
+        update();
+    }
+
+    glm::mat4 Camera::view()
     {
         return glm::lookAt(mPosition, mPosition + mFront, mUp);
     }
 
     void Camera::process_keyboard(Direction direction, float deltaTime)
     {
-        float velocity = mMovementSpeed * deltaTime;
+        float velocity = mSpeed * deltaTime;
         switch (direction)
         {
         case utils::Direction::FORWARD:
@@ -50,10 +58,10 @@ namespace utils
         }
     }
 
-    void Camera::process_mouse(float xoffset, float yoffset, GLboolean constrainPitch)
+    void Camera::process_mouse(float xoffset, float yoffset, bool constrainPitch)
     {
-        xoffset *= mMouseSensitivity;
-        yoffset *= mMouseSensitivity;
+        xoffset *= mSensitivity;
+        yoffset *= mSensitivity;
 
         mYaw += xoffset;
         mPitch += yoffset;
@@ -65,8 +73,7 @@ namespace utils
             else if (mPitch < -89.0f)
                 mPitch = -89.0f;
         }
-
-        updateCameraVectors();
+        update();
     }
 
     void Camera::process_scroll(float yoffset)
@@ -78,7 +85,7 @@ namespace utils
             mZoom = 45.0f;
     }
 
-    void Camera::updateCameraVectors()
+    void Camera::update()
     {
         glm::vec3 front;
 

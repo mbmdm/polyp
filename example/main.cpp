@@ -1,4 +1,6 @@
 #include <camera.h>
+#include <utils_errors.h>
+#include <shader.h>
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -10,30 +12,7 @@
 #include <iostream>
 
 
-const char* vertexShaderSource = 
-"#version 330 core\n"
-"layout (location = 0) in vec3 aPos;\n"
-"uniform mat4 view;\n"
-"uniform mat4 projection;\n"
-"void main()\n"
-"{\n"
-"   gl_Position = projection * view * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-"}\n\0";
-
-const char* fragmentShaderSource = 
-"#version 330 core\n"
-"out vec4 FragColor;\n"
-"void main()\n"
-"{\n"
-"   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-"}\n\0";
-
-
 void processInput(GLFWwindow* window);
-
-GLuint compile_shader(const std::string& vs, const std::string& fs);
-
-void checkCompileErrors(GLuint shader, std::string type);
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 
@@ -52,6 +31,8 @@ namespace
 
 int main(void)
 {
+    using namespace glEngine;
+
     GLFWwindow* window;
 
     if (!glfwInit())
@@ -143,7 +124,19 @@ int main(void)
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    auto program = compile_shader(vertexShaderSource, fragmentShaderSource);
+    Shader program;
+    if (auto result = program.load(Shader::Type::Vertex, "shaders/example.vs"); result) {
+        std::cout << result << std::endl;
+        return result.value();
+    }
+    if (auto result = program.load(Shader::Type::Fragment, "shaders/example.fs"); result) {
+        std::cout << result << std::endl;
+        return result.value();
+    }
+    if (auto result = program.link(); result) {
+        std::cout << result << std::endl;
+        return result.value();
+    }
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
@@ -160,13 +153,13 @@ int main(void)
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(program);
+        program.use();
 
-        glm::mat4 projection = glm::perspective(glm::radians(gCamera.get_zoom()), (float)kWidth / (float)kHeight, 0.1f, 100.0f);
-        glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, &projection[0][0]);
+        glm::mat4 projection = glm::perspective(glm::radians(gCamera.zoom()), (float)kWidth / (float)kHeight, 0.1f, 100.0f);
+        program.set<glm::mat4>("projection", projection);
 
-        glm::mat4 view = gCamera.get_view_mtx();
-        glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_FALSE, &view[0][0]);
+        glm::mat4 view = gCamera.view();
+        program.set<glm::mat4>("view", view);
 
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLES, 0, 36 );
@@ -189,6 +182,8 @@ void processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
+    static bool isShiftPressed = false;
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         gCamera.process_keyboard(Direction::FORWARD, gDeltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -201,55 +196,23 @@ void processInput(GLFWwindow* window)
         gCamera.process_keyboard(Direction::UP, gDeltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
         gCamera.process_keyboard(Direction::DOWN, gDeltaTime);
-}
-
-void checkCompileErrors(GLuint shader, std::string type)
-{
-    GLint success;
-    GLchar infoLog[1024];
-    if (type != "PROGRAM")
-    {
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-        if (!success)
-        {
-            glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-            std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
-        }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && !isShiftPressed) {
+        auto speed = gCamera.speed();
+        gCamera.speed(speed * 3);
+        auto sens = gCamera.sensitivity();
+        gCamera.sensitivity(sens * 2);
+        isShiftPressed = true;
     }
-    else
-    {
-        glGetProgramiv(shader, GL_LINK_STATUS, &success);
-        if (!success)
-        {
-            glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-            std::cout << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
-        }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE && isShiftPressed ) {
+        auto speed = gCamera.speed();
+        gCamera.speed(speed / 3);
+        auto sens = gCamera.sensitivity();
+        gCamera.sensitivity(sens / 2);
+        isShiftPressed = false;
     }
-}
-
-GLuint compile_shader(const std::string& vs, const std::string& fs)
-{
-    unsigned int vertex, fragment;
-    const char* pvs = vs.data();
-    const char* pfs = fs.data();
-
-    vertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex, 1, &pvs, NULL);
-    glCompileShader(vertex);
-    checkCompileErrors(vertex, "VERTEX");
-
-    fragment = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment, 1, &pfs, NULL);
-    glCompileShader(fragment);
-    checkCompileErrors(fragment, "FRAGMENT");
-
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertex);
-    glAttachShader(program, fragment);
-    glLinkProgram(program);
-    checkCompileErrors(program, "PROGRAM");
-
-    return program;
+    if (glfwGetKey(window, GLFW_KEY_END) == GLFW_PRESS) {
+          gCamera.reset();
+    }
 }
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
