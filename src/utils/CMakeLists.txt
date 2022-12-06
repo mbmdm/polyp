@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.20)
 
 set(sources ${CMAKE_CURRENT_SOURCE_DIR}/camera.cpp
             utils_errors.cpp)
@@ -16,3 +16,5 @@ add_library(utils STATIC ${sources})
 target_include_directories(utils PUBLIC ${includes})
 
 target_link_libraries(utils glm)
+
+set_target_properties(utils PROPERTIES FOLDER "src")
