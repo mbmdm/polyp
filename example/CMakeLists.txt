@@ -3,8 +3,9 @@ cmake_minimum_required(VERSION 3.20)
 set(sources main.cpp)
 
 set(includes ${STB_LOCATION}
-             /utils
-             /glEngine)
+             utils
+             glEngine
+             vkEngine)
 
 set(shaders shaders/example.fs
             shaders/example.vs)
@@ -27,4 +28,5 @@ target_link_libraries(example glfw
                               glm
                               utils
                               glEngine
+                              vkEngine
                               glad_gl_core_46)
