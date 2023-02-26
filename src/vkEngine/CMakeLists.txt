@@ -21,3 +21,5 @@ target_include_directories(vkEngine PUBLIC ${includes})
 
 target_link_libraries(vkEngine utils
                                glm)
+
+set_target_properties(vkEngine PROPERTIES FOLDER "src")

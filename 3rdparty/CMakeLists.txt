@@ -5,6 +5,9 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(glfw)
+set_target_properties(glfw PROPERTIES FOLDER "3rdParty/glfw")
+set_target_properties(uninstall PROPERTIES FOLDER "3rdParty/glfw")
+set_target_properties(update_mappings PROPERTIES FOLDER "3rdParty/glfw")
 
 #Building GLAD
 find_package(Python3 COMPONENTS Interpreter)
@@ -17,6 +20,7 @@ endif()
 add_subdirectory(glad/cmake)
 set(GLAD_BUILD_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/gladsources)
 glad_add_library(glad_gl_core_46 STATIC LOCATION ${GLAD_BUILD_LOCATION} LANGUAGE C API gl:core=4.6)
+set_target_properties(glad_gl_core_46 PROPERTIES FOLDER "3rdParty/glad")
 
 #GLM
 add_subdirectory(glm)
