@@ -1,7 +1,7 @@
 #ifndef VK_DESTROYER_H
 #define VK_DESTROYER_H
 
-#include "common_targets.h"
+#include "common.h"
 
 #include <functional>
 
