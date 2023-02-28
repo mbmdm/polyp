@@ -1,5 +1,5 @@
-#ifndef COMMON_TARGETS_H
-#define COMMON_TARGETS_H
+#ifndef COMMON_H
+#define COMMON_H
 
 #include <Windows.h>
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -20,4 +20,4 @@ printf("Failed with result = %lu\n", temp);    \
 exit(1);}                                      \
 }
 
-#endif // COMMON_TARGETS_H
+#endif // COMMON_H

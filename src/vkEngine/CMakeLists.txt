@@ -9,7 +9,7 @@ set(includes ${CMAKE_CURRENT_SOURCE_DIR}
 set(headers device.h
             instance.h
             vk_destroyer.h
-            common_targets.h
+            common.h
             dispatch_table.h)
 
 set(sources ${sources}
@@ -21,3 +21,5 @@ target_include_directories(vkEngine PUBLIC ${includes})
 
 target_link_libraries(vkEngine utils
                                glm)
+
+set_target_properties(vkEngine PROPERTIES FOLDER "src")

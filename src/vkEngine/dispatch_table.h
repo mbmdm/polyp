@@ -1,7 +1,7 @@
 #ifndef DISPATCH_TABLE_H
 #define DISPATCH_TABLE_H
 
-#include "common_targets.h"
+#include "common.h"
 
 namespace polyp {
 namespace engine {

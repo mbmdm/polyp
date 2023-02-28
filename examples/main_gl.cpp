@@ -1,8 +1,6 @@
 #include <camera.h>
 #include <utils_errors.h>
 #include <shader.h>
-#include <device.h> //to tests
-#include <instance.h> //to tests
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -32,11 +30,6 @@ namespace
 
 int main(void)
 {
-    {
-        polyp::engine::Instance inst;
-        inst.init();
-    }
-
     using namespace glEngine;
 
     GLFWwindow* window;
