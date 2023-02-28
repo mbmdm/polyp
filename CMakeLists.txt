@@ -11,5 +11,5 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 add_compile_options("$<$<CONFIG:DEBUG>:-DDEBUG>")
 
 add_subdirectory(3rdparty)
-add_subdirectory(example)
+add_subdirectory(examples)
 add_subdirectory(src)
