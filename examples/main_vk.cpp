@@ -4,7 +4,24 @@
 #include <device.h>
 #include <instance.h>
 
+#include <assert.h>
+
 int main(void) {
-    polyp::engine::Instance inst;
-    inst.init();
+    using namespace polyp::engine;
+    {
+        Instance::Ptr inst = Instance::create("asdf");
+
+        auto deviceCount = inst->getAvailableGpuCount();
+
+        if (deviceCount == 0) {
+            return 0;
+        }
+
+        auto deviceInfo = inst->getGpuInfo(0);
+        auto physDevice = inst->getGpu(0);
+
+        Device device{ inst, physDevice };
+        device.init();
+
+    }
 }

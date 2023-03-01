@@ -3,8 +3,6 @@
 
 #include "common.h"
 
-#include <functional>
-
 namespace polyp {
 namespace engine {
 
@@ -21,7 +19,7 @@ struct VkLibraryWrapper {
 // Destroy funcs
 
 template<typename PFN_Destroy, typename VkTypeWrapper, typename... Args>
-inline void DestroyVulkanObject(PFN_Destroy pFun, VkTypeWrapper object, Args... args) {
+inline void destroyVulkanObject(PFN_Destroy pFun, VkTypeWrapper object, Args... args) {
     pFun(object.mHandle, args...);
 }
 
@@ -47,6 +45,10 @@ public:
 
     ~VkDestroyer() {
         if (mDestroyFunc && mObject.mHandle) {
+            //TODO: need special macro for this perpos in common.h (like RDCDEBUG/RDCINFO...)
+            printf("Desctoying object %s %lu\n",
+                typeid(decltype(mObject.mHandle)).name(),
+                mObject);
             mDestroyFunc(mObject);
         }
     }
@@ -102,17 +104,17 @@ private:
 
 // VkDestroyer macro to simplify class member declaration
 
-#define VkDestroyer( VkType ) VkDestroyer<VkType##Wrapper>
+#define DECLARE_VKDESTROYER( VkType ) VkDestroyer<VkType##Wrapper>
 
 // Init vk destroyers
 
 template<typename PFN_VK_TYPE, typename VkTypeWrapper, typename... Args>
-inline void InitVkDestroyer(PFN_VK_TYPE pfnDestroy, VkDestroyer<VkTypeWrapper>& wrapped, Args... args) {
+inline void initVkDestroyer(PFN_VK_TYPE pfnDestroy, VkDestroyer<VkTypeWrapper>& wrapped, Args... args) {
 
     using namespace std::placeholders;
     VkTypeWrapper object;
     memcpy(&object, &wrapped, sizeof(VkTypeWrapper));
-    auto destroyFunc = std::bind(DestroyVulkanObject<PFN_VK_TYPE, VkTypeWrapper, Args...>, pfnDestroy, _1, args...);
+    auto destroyFunc = std::bind(destroyVulkanObject<PFN_VK_TYPE, VkTypeWrapper, Args...>, pfnDestroy, _1, args...);
     wrapped = VkDestroyer<VkTypeWrapper>(object, destroyFunc);
 }
 
