@@ -37,8 +37,7 @@ namespace {
 }
 
 /// Returns available vulkan instance extensions.
- [[nodiscard]] auto getInstanceExtensions(PFN_vkEnumerateInstanceExtensionProperties pFun) {
-
+[[nodiscard]] auto getInstanceExtensions(PFN_vkEnumerateInstanceExtensionProperties pFun) {
     std::vector<VkExtensionProperties> output{};
     uint32_t count = {};
     CHECKRET(pFun(nullptr, &count, nullptr));
@@ -106,12 +105,30 @@ namespace {
      return true;
 }
 
+/// Returns all available physical devices.
+[[nodiscard]] auto getPhysicalDevices(PFN_vkEnumeratePhysicalDevices pFun, VkInstance instance) {
+    std::vector<VkPhysicalDevice> devices;
+    uint32_t count = 0;
+    CHECKRET(pFun(instance, &count, nullptr));
+    devices.resize(count);
+    CHECKRET(pFun(instance, &count, devices.data()));
+    return devices;
+}
+
+/// Returns physical device properties
+[[nodiscard]] auto getPhysicalDeviceInfo(PFN_vkGetPhysicalDeviceProperties pFun,
+    VkInstance instance, VkPhysicalDevice device) {
+    VkPhysicalDeviceProperties output;
+    pFun(device, &output);
+    return output;
+}
+
 } // anonymous namespace
 
-Instance::Instance() : 
-    mAppicationName{ "Polyp application (default)" },
+Instance::Instance() :
     mMajorVersion{ 99 }, mMinorVersion{ 99 }, mPatchVersion{99},
-    mDispTable{}, mHandle{ VK_NULL_HANDLE }
+    mAppicationName{ "Polyp application (default)" }, mLibrary{NULL},
+    mHandle{ VK_NULL_HANDLE }, mDispTable{}
 {
     mExtensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
     mExtensions.emplace_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
@@ -148,7 +165,25 @@ DispatchTable Instance::getDispatchTable() const {
     return mDispTable;
 }
 
+uint32_t Instance::getAvailableGpuCount() const {
+    return mAvailableDevices.size();
+}
+
+VkPhysicalDeviceProperties Instance::getGpuInfo(size_t index) const {
+    auto device = mAvailableDevices.at(index);
+    return getPhysicalDeviceInfo(mDispTable.GetPhysicalDeviceProperties, *mHandle, device);
+}
+
+VkPhysicalDevice Instance::getGpu(size_t index) const {
+    return mAvailableDevices.at(index);
+}
+
 bool Instance::init() {
+
+    if (mAppicationName.empty() || mLibrary || mDispTable.GetInstanceProcAddr) {
+        printf("Something went wrong. Only single init() call can be invoked.\n");
+        return false;
+    }
 
     constexpr auto vulkan_lib_name = "vulkan-1.dll";
     *mLibrary = LoadLibraryA(vulkan_lib_name);
@@ -158,7 +193,7 @@ bool Instance::init() {
         return false;
     }
 
-    InitVkDestroyer(FreeLibrary, mLibrary);
+    initVkDestroyer(FreeLibrary, mLibrary);
 
     if (!loadVkExported(*mLibrary, mDispTable) || !loadVkGlobal(mDispTable)) {
         return false;
@@ -173,17 +208,8 @@ bool Instance::init() {
     };
     std::sort(mExtensions.begin(), mExtensions.end(), comparer);
     std::sort(availableExt.begin(), availableExt.end(), comparer);
-        
-    bool flag = false;
-    for (size_t i = 0, j = 0; i < mExtensions.size() && j < availableExt.size() && !flag; j++) {
-        auto& lhv = mExtensions[i];
-        auto& rhv = availableExt[j].extensionName;
-        if (strcmp(lhv, rhv) == 0) {
-            flag = i + 1 == mExtensions.size();
-            i++;
-        }
-    }
-    if (!flag) {
+
+    if (!checkSupportedExt(availableExt)) {
         printf("Required vulkan instance extensions aren't supported\n");
         return false;
     }
@@ -193,9 +219,28 @@ bool Instance::init() {
 
     loadVkInstance(*mHandle, mDispTable);
 
-    InitVkDestroyer(mDispTable.DestroyInstance, mHandle, nullptr);
+    initVkDestroyer(mDispTable.DestroyInstance, mHandle, nullptr);
+
+    mAvailableDevices = getPhysicalDevices(mDispTable.EnumeratePhysicalDevices, *mHandle);
 
     return true;
+}
+
+bool Instance::checkSupportedExt(const std::vector<VkExtensionProperties>& availableExt) const {
+    bool flag = false;
+    for (size_t i = 0, j = 0; i < mExtensions.size() && j < availableExt.size() && !flag; j++) {
+        auto& lhv = mExtensions[i];
+        auto& rhv = availableExt[j].extensionName;
+        if (strcmp(lhv, rhv) == 0) {
+            flag = i + 1 == mExtensions.size();
+            i++;
+        }
+    }
+    return flag;
+}
+
+VkInstance const& Instance::operator*() const {
+    return *mHandle;
 }
 
 } // engine

@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <string>
 #include <iostream>
+#include <functional>
+#include <memory>
 
 #define CHECKRET(expr)                         \
 {                                              \
