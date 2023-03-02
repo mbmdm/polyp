@@ -8,22 +8,7 @@
 namespace polyp {
 namespace engine {
 
-
 /// Vulkan engin instance.
-///
-/// \Constructors:
-///     Instance() - default
-///     Instance(const char* appName)
-///     Instance(const char* appName, 
-///              uint32_t major, uint32_t minor, uint32_t patch)
-///     Instance(const char* appName, 
-///              uint32_t major, uint32_t minor, uint32_t patch, 
-///              const std::vector<const char*>& desiredExt)
-///
-/// \param appName is an application name.
-/// \param [major,minor,patch] - sets up an application version.
-/// \param desiredExt - sets up desired vulkan instance extensions.
-///
 class Instance final {
 private:
     Instance();
@@ -46,15 +31,28 @@ public:
     std::vector<const char*> getExtensions() const;
     DispatchTable getDispatchTable() const;
     uint32_t getAvailableGpuCount() const;
+    
     /// Returns physical Gpu device information
     /// \param index - physical device index
     /// \returns VkPhysicalDeviceProperties or throws an exeptioin when index is out of range.
     VkPhysicalDeviceProperties getGpuInfo(size_t index) const;
+    
     /// Returns physical GPU device handle
     /// \param index - physical device index
     /// \returns VkPhysicalDevice or throws an exeptioin when index is out of range.
     VkPhysicalDevice getGpu(size_t index) const;
 
+    /// Creates instance
+    /// 
+    /// Typical usage:
+    /// \code
+    ///   create(const char* appName, uint32_t major, uint32_t minor, uint32_t patch, 
+    ///   const std::vector<const char*>& desiredExt);
+    /// \endcode
+    ///
+    /// \param appName is an application name.
+    /// \param [major,minor,patch] - sets up an application version.
+    /// \param desiredExt - sets up desired vulkan instance extensions.
     template<typename ...Args>
     static Ptr create(Args... args) {
         std::shared_ptr<Instance> output(new Instance(args...));
@@ -67,8 +65,8 @@ public:
     VkInstance const& operator*() const;
 
 private:
-
     [[nodiscard]] bool init();
+    [[nodiscard]] bool checkSupportedExt(const std::vector<VkExtensionProperties>& available) const;
 
     uint32_t mMajorVersion;
     uint32_t mMinorVersion;

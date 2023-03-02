@@ -208,17 +208,8 @@ bool Instance::init() {
     };
     std::sort(mExtensions.begin(), mExtensions.end(), comparer);
     std::sort(availableExt.begin(), availableExt.end(), comparer);
-        
-    bool flag = false;
-    for (size_t i = 0, j = 0; i < mExtensions.size() && j < availableExt.size() && !flag; j++) {
-        auto& lhv = mExtensions[i];
-        auto& rhv = availableExt[j].extensionName;
-        if (strcmp(lhv, rhv) == 0) {
-            flag = i + 1 == mExtensions.size();
-            i++;
-        }
-    }
-    if (!flag) {
+
+    if (!checkSupportedExt(availableExt)) {
         printf("Required vulkan instance extensions aren't supported\n");
         return false;
     }
@@ -233,6 +224,19 @@ bool Instance::init() {
     mAvailableDevices = getPhysicalDevices(mDispTable.EnumeratePhysicalDevices, *mHandle);
 
     return true;
+}
+
+bool Instance::checkSupportedExt(const std::vector<VkExtensionProperties>& availableExt) const {
+    bool flag = false;
+    for (size_t i = 0, j = 0; i < mExtensions.size() && j < availableExt.size() && !flag; j++) {
+        auto& lhv = mExtensions[i];
+        auto& rhv = availableExt[j].extensionName;
+        if (strcmp(lhv, rhv) == 0) {
+            flag = i + 1 == mExtensions.size();
+            i++;
+        }
+    }
+    return flag;
 }
 
 VkInstance const& Instance::operator*() const {

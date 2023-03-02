@@ -8,13 +8,12 @@ namespace engine {
 
 // Wrappers block
 
-struct VkInstanceWrapper {
-    VkInstance mHandle;
-};
+#define DECLARE_VKDESCTOYER_WRAPPED( VkType, HandleType ) \
+struct VkType##Wrapper { HandleType mHandle; };
 
-struct VkLibraryWrapper {
-    HMODULE mHandle;
-};
+DECLARE_VKDESCTOYER_WRAPPED(VkInstance, VkInstance);
+DECLARE_VKDESCTOYER_WRAPPED(VkLibrary, HMODULE);
+DECLARE_VKDESCTOYER_WRAPPED(VkDevice, VkDevice);
 
 // Destroy funcs
 

@@ -1,8 +1,6 @@
 #include "device.h"
 
 #include <exception>
-//TODO: need some special macro for assertion and put it in the common.h (like RDCASSERT)
-#include <assert.h>
 
 namespace polyp {
 namespace engine {
@@ -49,8 +47,8 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
 }
 
 [[nodiscard]] auto createDevice(PFN_vkCreateDevice pFun, VkPhysicalDevice device, 
-                                std::vector<char const*> const& extensions, uint32_t queueIndex, 
-                                const std::vector<float> queuePriorities, const VkPhysicalDeviceFeatures& features) {
+                                const std::vector<char const*>& extensions, uint32_t queueIndex,
+                                const std::vector<float>& queuePriorities, const VkPhysicalDeviceFeatures* features) {
     VkDevice output = VK_NULL_HANDLE;
 
     VkDeviceQueueCreateInfo queCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
@@ -66,24 +64,55 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
     deviceCreateInfo.enabledLayerCount = 0;
     deviceCreateInfo.enabledExtensionCount = extensions.size();
     deviceCreateInfo.ppEnabledExtensionNames = extensions.data();
-    deviceCreateInfo.pEnabledFeatures = &features;
+    deviceCreateInfo.pEnabledFeatures = features;
 
     CHECKRET(pFun(device, &deviceCreateInfo, nullptr, &output));
 
     return output;
 }
 
+/// Loads vulkan device functions and stores them in the dispatch table.
+[[nodiscard]] auto loadVkDevice(VkDevice device, DispatchTable& table,
+                                const std::vector<VkExtensionProperties>& availableExt) {
+
+#define DEVICE_LEVEL_VULKAN_FUNCTION( name )                                 \
+    table.name = (PFN_vk##name)table.GetDeviceProcAddr( device, "vk"#name ); \
+    if( table.name  == nullptr ) {                                           \
+      std::cout << "Could not load Vulkan function named: "                  \
+        "vk"#name << std::endl;                                              \
+      return false;                                                          \
+    }
+
+#define DEVICE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION( name, extension )               \
+    for (auto& ext : availableExt) {                                                 \
+        if (strcmp(ext.extensionName, extension) == 0) {                             \
+            table.name = (PFN_vk##name)table.GetDeviceProcAddr( device, "vk"#name ); \
+            if( table.name == nullptr ) {                                            \
+                std::cout << "Could not load Vulkan function named: "                \
+                "vk"#name << std::endl;                                              \
+            }                                                                        \
+         }                                                                           \
+     }
+
+#include "dispatch_table.inl"
+
+    return true;
+}
+
 } // anonymous namespace
 
 Device::Device(Instance::Ptr instance, VkPhysicalDevice device) : 
-               mInstance{ instance }, mDispTable{}, mPhysicalDevice{ device }  {
+               mInstance{ instance }, mDispTable{}, 
+               mPhysicalDevice{ device }, mHandle{ VK_NULL_HANDLE } 
+{
     mDispTable = mInstance->getDispatchTable();
     mExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     mQueueCapabilities = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT;
 }
 
 Device::Device(Instance::Ptr instance, VkPhysicalDevice device, 
-               const std::vector<const char*>& desiredExt) : Device(instance, device) {
+               const std::vector<const char*>& desiredExt) : Device(instance, device) 
+{
     mExtensions = desiredExt;
 }
 
@@ -97,10 +126,6 @@ bool Device::init() {
     if (deviceExts.empty()) {
         return false;
     }
-
-    //TODO: maybe need some logic based on checking features and properties
-    auto features = getPhysicalDeviceFeatures(mDispTable.GetPhysicalDeviceFeatures, mPhysicalDevice);
-    auto properties = getPhysicalDeviceProperties(mDispTable.GetPhysicalDeviceProperties, mPhysicalDevice);
 
     if (!checkSupportedExt(deviceExts)) {
         return false;
@@ -121,13 +146,18 @@ bool Device::init() {
 
     std::vector<float> quePriorities(kQueueCount, kQueueDefaultPriority);
 
-    //TODO: turn off unused fatures
-    auto logicalDevice = createDevice(mDispTable.CreateDevice, mPhysicalDevice, 
-                                      mExtensions, queFamilyIndex, quePriorities, features);
+    *mHandle = createDevice(mDispTable.CreateDevice, mPhysicalDevice, mExtensions, 
+                            queFamilyIndex, quePriorities, nullptr);
 
-    assert(!"Need to make logical device desctroible");
+    if (!loadVkDevice(*mHandle, mDispTable, deviceExts)) {
+        return false;
+    }
 
-    return true;
+    initVkDestroyer(mDispTable.DestroyDevice, mHandle, nullptr);
+
+    mInstance.reset(); //clear instance due to we dont neet it any more here
+
+    return *mHandle != VK_NULL_HANDLE;
 }
 
 bool Device::checkSupportedExt(const std::vector<VkExtensionProperties>& available) const {
@@ -142,6 +172,10 @@ bool Device::checkSupportedExt(const std::vector<VkExtensionProperties>& availab
     }
 
     return desiredItr == mExtensions.end();
+}
+
+VkDevice const& Device::operator*() const {
+    return *mHandle;
 }
 
 } // engine
