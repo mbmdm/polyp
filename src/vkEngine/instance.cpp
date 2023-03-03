@@ -105,16 +105,6 @@ namespace {
      return true;
 }
 
-/// Returns all available physical devices.
-[[nodiscard]] auto getPhysicalDevices(PFN_vkEnumeratePhysicalDevices pFun, VkInstance instance) {
-    std::vector<VkPhysicalDevice> devices;
-    uint32_t count = 0;
-    CHECKRET(pFun(instance, &count, nullptr));
-    devices.resize(count);
-    CHECKRET(pFun(instance, &count, devices.data()));
-    return devices;
-}
-
 /// Returns physical device properties
 [[nodiscard]] auto getPhysicalDeviceInfo(PFN_vkGetPhysicalDeviceProperties pFun,
     VkInstance instance, VkPhysicalDevice device) {
@@ -165,19 +155,6 @@ DispatchTable Instance::getDispatchTable() const {
     return mDispTable;
 }
 
-uint32_t Instance::getAvailableGpuCount() const {
-    return mAvailableDevices.size();
-}
-
-VkPhysicalDeviceProperties Instance::getGpuInfo(size_t index) const {
-    auto device = mAvailableDevices.at(index);
-    return getPhysicalDeviceInfo(mDispTable.GetPhysicalDeviceProperties, *mHandle, device);
-}
-
-VkPhysicalDevice Instance::getGpu(size_t index) const {
-    return mAvailableDevices.at(index);
-}
-
 bool Instance::init() {
 
     if (mAppicationName.empty() || mLibrary || mDispTable.GetInstanceProcAddr) {
@@ -220,8 +197,6 @@ bool Instance::init() {
     loadVkInstance(*mHandle, mDispTable);
 
     initVkDestroyer(mDispTable.DestroyInstance, mHandle, nullptr);
-
-    mAvailableDevices = getPhysicalDevices(mDispTable.EnumeratePhysicalDevices, *mHandle);
 
     return true;
 }

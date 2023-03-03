@@ -1,7 +1,10 @@
 #ifndef DISPATCH_TABLE_H
 #define DISPATCH_TABLE_H
 
-#include "common.h"
+#include <Windows.h>
+#define VK_USE_PLATFORM_WIN32_KHR
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
 
 namespace polyp {
 namespace engine {

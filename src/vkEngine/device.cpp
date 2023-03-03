@@ -1,7 +1,5 @@
 #include "device.h"
 
-#include <exception>
-
 namespace polyp {
 namespace engine {
 
@@ -116,6 +114,10 @@ Device::Device(Instance::Ptr instance, VkPhysicalDevice device,
     mExtensions = desiredExt;
 }
 
+DispatchTable Device::getDispatchTable() const {
+    return mDispTable;
+}
+
 bool Device::init() {
     
     if (!mPhysicalDevice) {
@@ -154,8 +156,6 @@ bool Device::init() {
     }
 
     initVkDestroyer(mDispTable.DestroyDevice, mHandle, nullptr);
-
-    mInstance.reset(); //clear instance due to we dont neet it any more here
 
     return *mHandle != VK_NULL_HANDLE;
 }

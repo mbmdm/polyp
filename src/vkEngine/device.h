@@ -1,8 +1,8 @@
 #ifndef DEVICE_H
 #define DEVICE_H
 
-#include "dispatch_table.h"
-#include "vk_destroyer.h"
+#include "common.h"
+#include "destroyer.h"
 #include "instance.h"
 
 namespace polyp {
@@ -23,6 +23,8 @@ public:
     Device(Device&&) = delete;
     Device& operator=(Device&&) = delete;
     ~Device() = default;
+
+    DispatchTable getDispatchTable() const;
 
     /// Creates device
     /// 

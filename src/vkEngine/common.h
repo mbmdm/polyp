@@ -1,10 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <Windows.h>
-#define VK_USE_PLATFORM_WIN32_KHR
-#define VK_NO_PROTOTYPES
-#include <vulkan/vulkan.h>
+#include "dispatch_table.h"
 
 #include <vector>
 #include <algorithm>
@@ -12,6 +9,7 @@
 #include <iostream>
 #include <functional>
 #include <memory>
+#include <tuple>
 
 #define CHECKRET(expr)                         \
 {                                              \
