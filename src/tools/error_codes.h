@@ -1,5 +1,5 @@
-#ifndef UTILS_ERRORS_H
-#define UTILS_ERRORS_H
+#ifndef ERROR_CODES_H
+#define ERROR_CODES_H
 
 #include <system_error>
 
@@ -35,4 +35,4 @@ struct is_error_code_enum<tools::CommonErrors> : std::true_type {};
 
 } // namespace std
 
-#endif // UTILS_ERRORS_H
+#endif // ERROR_CODES_H

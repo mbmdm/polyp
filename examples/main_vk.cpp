@@ -1,5 +1,5 @@
 #include <camera.h>
-#include <utils_errors.h>
+#include <error_codes.h>
 #include <device.h>
 #include <instance.h>
 #include <utils.h>

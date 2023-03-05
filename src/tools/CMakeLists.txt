@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.6)
 
 set(sources camera.cpp
-            utils_errors.cpp
+            error_codes.cpp
             window_surface.cpp)
 
 set(includes ${CMAKE_CURRENT_SOURCE_DIR}
@@ -9,7 +9,7 @@ set(includes ${CMAKE_CURRENT_SOURCE_DIR}
 
 set(headers camera.h
             constants.h
-            utils_errors.h
+            error_codes.h
             window_surface.h
             platforms.h
             interfaces/renderer.h)
