@@ -11,7 +11,7 @@ namespace info {
 
 using GpuInfo = std::tuple<VkPhysicalDevice, VkPhysicalDeviceProperties, VkPhysicalDeviceMemoryProperties>;
 
-/// Returns VkPhysicalDevice and its VkPhysicalDeviceProperties by given device number.
+/// Returns VkPhysicalDevice and its properties by given device number.
 /// Typical usage: start loop to get all the gpu devices until VkPhysicalDevice == VK_NULL_HANDLE
 /// 
 /// \param instance - polyp::engine::Instance::Ptr.

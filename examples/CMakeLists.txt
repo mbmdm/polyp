@@ -30,11 +30,11 @@ endforeach(shader)
 
 target_link_libraries(example_vk glfw
                                  glm
-                                 utils
+                                 tools
                                  vkEngine)
 target_link_libraries(example_gl glfw
                                  glm
-                                 utils
+                                 tools
                                  glEngine
                                  glad_gl_core_46)
 

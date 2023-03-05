@@ -3,7 +3,6 @@
 
 #include <system_error>
 
-
 namespace utils {
 
     enum class GAPIErros // https://habr.com/ru/post/340604/

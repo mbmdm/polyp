@@ -3,10 +3,12 @@
 #include <device.h>
 #include <instance.h>
 #include <utils.h>
+#include <window_surface.h>
 
-int main(void) {
+int main() {
 
     using namespace polyp::engine;
+    using namespace polyp::tools;
     {
         Instance::Ptr instance = Instance::create("asdf");
         auto [gpu, info, memInfo] = info::getPhysicalGPU(instance, 0);
@@ -26,5 +28,9 @@ int main(void) {
             }
             printf("ANISLOG: found gpu: %s with mem %lu\n", info_.deviceName, mem / (1024 * 1024 * 1024));
         }
+
+        WindowSurface surface{ "123123123 hello",0,0, 800, 800, nullptr };
+        surface.run();
+
     }
 }

@@ -45,6 +45,8 @@ uint32_t getPhysicalGPUCount(const Instance::Ptr& instance) {
     return count;
 }
 
+
+
 } // info
 } // engine
 } // polyp

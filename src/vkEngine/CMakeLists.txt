@@ -21,7 +21,7 @@ add_library(vkEngine STATIC ${sources})
 
 target_include_directories(vkEngine PUBLIC ${includes})
 
-target_link_libraries(vkEngine utils
+target_link_libraries(vkEngine tools
                                glm)
 
 set_target_properties(vkEngine PROPERTIES FOLDER "src")
