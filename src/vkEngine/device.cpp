@@ -5,9 +5,6 @@ namespace engine {
 
 namespace {
 
-constexpr uint32_t kQueueCount = 1;
-constexpr float kQueueDefaultPriority = 1.;
-
 /// Returns supported device extensions in a sorted order
 auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhysicalDevice device) {
     std::vector<VkExtensionProperties> exts;
@@ -45,23 +42,25 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
 }
 
 [[nodiscard]] auto createDevice(PFN_vkCreateDevice pFun, VkPhysicalDevice device, 
-                                const std::vector<char const*>& extensions, uint32_t queueIndex,
-                                const std::vector<float>& queuePriorities, const VkPhysicalDeviceFeatures* features) {
+                                const DeviceCreateInfo& info, const VkPhysicalDeviceFeatures* features) {
     VkDevice output = VK_NULL_HANDLE;
 
-    VkDeviceQueueCreateInfo queCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
-    queCreateInfo.flags = 0;
-    queCreateInfo.queueFamilyIndex = queueIndex;
-    queCreateInfo.queueCount = queuePriorities.size();
-    queCreateInfo.pQueuePriorities = queuePriorities.data();
+    std::vector<VkDeviceQueueCreateInfo> queInfos(info.mQueueInfo.size());
+    for (size_t i = 0; i < queInfos.size(); i++) {
+        queInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queInfos[i].flags = 0;
+        queInfos[i].queueFamilyIndex = info.mQueueInfo[i].mFamilyIndex;
+        queInfos[i].queueCount = info.mQueueInfo[i].mPriorities.size();
+        queInfos[i].pQueuePriorities = info.mQueueInfo[i].mPriorities.data();
+    }
 
     VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
     deviceCreateInfo.flags = 0;
-    deviceCreateInfo.queueCreateInfoCount = 1;
-    deviceCreateInfo.pQueueCreateInfos = &queCreateInfo;
+    deviceCreateInfo.queueCreateInfoCount = queInfos.size();
+    deviceCreateInfo.pQueueCreateInfos = queInfos.data();
     deviceCreateInfo.enabledLayerCount = 0;
-    deviceCreateInfo.enabledExtensionCount = extensions.size();
-    deviceCreateInfo.ppEnabledExtensionNames = extensions.data();
+    deviceCreateInfo.enabledExtensionCount = info.mDesiredExtensions.size();
+    deviceCreateInfo.ppEnabledExtensionNames = info.mDesiredExtensions.data();
     deviceCreateInfo.pEnabledFeatures = features;
 
     CHECKRET(pFun(device, &deviceCreateInfo, nullptr, &output));
@@ -99,19 +98,17 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
 
 } // anonymous namespace
 
-Device::Device(Instance::Ptr instance, VkPhysicalDevice device) : 
-               mInstance{ instance }, mDispTable{}, 
-               mPhysicalDevice{ device }, mHandle{ VK_NULL_HANDLE } 
+Device::Device(Instance::Ptr instance, VkPhysicalDevice device) :
+               mInfo{}, mDispTable{}, mInstance{ instance }, 
+               mPhysicalDevice{ device }, mHandle{ VK_NULL_HANDLE }
 {
     mDispTable = mInstance->getDispatchTable();
-    mExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    mQueueCapabilities = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT;
 }
 
-Device::Device(Instance::Ptr instance, VkPhysicalDevice device, 
-               const std::vector<const char*>& desiredExt) : Device(instance, device) 
+Device::Device(Instance::Ptr instance, VkPhysicalDevice device, const DeviceCreateInfo& info) : 
+    Device(instance, device)
 {
-    mExtensions = desiredExt;
+    mInfo = info;
 }
 
 DispatchTable Device::getDispatchTable() const {
@@ -120,36 +117,21 @@ DispatchTable Device::getDispatchTable() const {
 
 bool Device::init() {
     
-    if (!mPhysicalDevice) {
+    if (!mPhysicalDevice || !mInstance) {
         return false;
     }
 
     auto deviceExts = getPhysicalDeviceExts(mDispTable.EnumerateDeviceExtensionProperties, mPhysicalDevice);
-    if (deviceExts.empty()) {
-        return false;
-    }
-
-    if (!checkSupportedExt(deviceExts)) {
+    if (deviceExts.empty() || !checkSupportedExt(deviceExts)) {
         return false;
     }
 
     auto queFamiliesProperties = getQueueFamiliesProperties(mDispTable.GetPhysicalDeviceQueueFamilyProperties, mPhysicalDevice);
-    auto queFamilyIndex = UINT32_MAX;
-    for (uint32_t index = 0; index < static_cast<uint32_t>(queFamiliesProperties.size()); ++index) {
-        if ((queFamiliesProperties[index].queueCount > 0) &&
-            (queFamiliesProperties[index].queueFlags & mQueueCapabilities)) {
-            queFamilyIndex = index;
-            break;
-        }
-    }
-    if (queFamilyIndex == UINT32_MAX) {
+    if (queFamiliesProperties.empty() || !checkSupportedQueue(queFamiliesProperties)) {
         return false;
     }
 
-    std::vector<float> quePriorities(kQueueCount, kQueueDefaultPriority);
-
-    *mHandle = createDevice(mDispTable.CreateDevice, mPhysicalDevice, mExtensions, 
-                            queFamilyIndex, quePriorities, nullptr);
+    *mHandle = createDevice(mDispTable.CreateDevice, mPhysicalDevice, mInfo, nullptr);
 
     if (!loadVkDevice(*mHandle, mDispTable, deviceExts)) {
         return false;
@@ -162,19 +144,64 @@ bool Device::init() {
 
 bool Device::checkSupportedExt(const std::vector<VkExtensionProperties>& available) const {
     auto availableItr = available.begin();
-    auto desiredItr = mExtensions.begin();
+    auto desiredItr = mInfo.mDesiredExtensions.begin();
 
-    while (availableItr != available.end() && desiredItr != mExtensions.end()) {
+    while (availableItr != available.end() && desiredItr != mInfo.mDesiredExtensions.end()) {
         if (strcmp(availableItr->extensionName, *desiredItr) == 0) {
             desiredItr++;
         }
         availableItr++;
     }
 
-    return desiredItr == mExtensions.end();
+    return desiredItr == mInfo.mDesiredExtensions.end();
+}
+
+bool Device::checkSupportedQueue(const std::vector<VkQueueFamilyProperties>& available) {
+
+    if (mInfo.mQueueInfo.empty()) {
+        return false;
+    }
+
+    // Fill QueueCreateInfom.FamilyIndex where its value is UINT32_MAX
+    for (size_t i = 0; i < mInfo.mQueueInfo.size(); i++) {
+        if (mInfo.mQueueInfo[i].mFamilyIndex != UINT32_MAX) {
+            continue;
+        }
+        QueueCreateInfo& queInfo = mInfo.mQueueInfo[i];
+        for (uint32_t index = 0; index < available.size(); ++index) {
+            if ((available[index].queueCount > 0) &&
+                (available[index].queueFlags & queInfo.mQueueType)) {
+                queInfo.mFamilyIndex = index;
+                break;
+            }
+        }
+    }
+
+    std::vector<uint32_t> requestedQueSizes(available.size(), 0);
+
+    // Checks:
+    // - there are no queues with family index UINT32_MAX;
+    // - requested queue family index is correct;
+    for (size_t i = 0; i < mInfo.mQueueInfo.size(); i++) {
+        if (mInfo.mQueueInfo[i].mFamilyIndex == UINT32_MAX ||
+            mInfo.mQueueInfo[i].mFamilyIndex >= available.size()) {
+            return false;
+        }
+        requestedQueSizes[mInfo.mQueueInfo[i].mFamilyIndex] += mInfo.mQueueInfo[i].mPriorities.size();
+    }
+
+    // Check that queue family count isn't exceeded
+    for (size_t i = 0; i < available.size(); i++) {
+        if (requestedQueSizes[i] > available[i].queueCount) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 VkDevice const& Device::operator*() const {
+
     return *mHandle;
 }
 

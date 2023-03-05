@@ -4,7 +4,7 @@ namespace polyp {
 namespace engine {
 namespace info {
 
-GpuInfo getPhysicalGPU(const Instance::Ptr& instance, int num) {
+GpuInfo getPhysicalGPU(Instance::Ptr instance, int num) {
 
     GpuInfo output;
     std::get<0>(output) = VK_NULL_HANDLE;
@@ -36,7 +36,7 @@ GpuInfo getPhysicalGPU(const Instance::Ptr& instance, int num) {
     return output;
 }
 
-uint32_t getPhysicalGPUCount(const Instance::Ptr& instance) {
+uint32_t getPhysicalGPUCount(Instance::Ptr instance) {
     static uint32_t count = UINT32_MAX;
 
     if (count == UINT32_MAX) {

@@ -18,8 +18,8 @@ inline constexpr float kZoom = 45.0f;
 
 namespace window {
 
-    // Default window surface values
-    inline constexpr const char* kWindowClassName = "PolypWindow";
+// Default window surface values
+inline constexpr const char* kWindowClassName = "PolypWindow";
 
 } // namespace window
 

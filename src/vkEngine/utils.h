@@ -16,11 +16,11 @@ using GpuInfo = std::tuple<VkPhysicalDevice, VkPhysicalDeviceProperties, VkPhysi
 /// 
 /// \param instance - polyp::engine::Instance::Ptr.
 /// \param num - device index.
-[[nodiscard]] GpuInfo getPhysicalGPU(const Instance::Ptr& instance, int num);
+[[nodiscard]] GpuInfo getPhysicalGPU(Instance::Ptr instance, int num);
 
 
 /// Returns GPU count in the system
-[[nodiscard]] uint32_t getPhysicalGPUCount(const Instance::Ptr& instance);
+[[nodiscard]] uint32_t getPhysicalGPUCount(Instance::Ptr instance);
 
 } // info
 } // engine

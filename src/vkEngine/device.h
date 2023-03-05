@@ -8,21 +8,40 @@
 namespace polyp {
 namespace engine {
 
+struct QueueCreateInfo {
+    QueueCreateInfo() :
+        mFamilyIndex{ UINT32_MAX },
+        mQueueType{ VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT },
+        mPriorities { {1.} }
+    {}
+    uint32_t           mFamilyIndex;
+    VkQueueFlags       mQueueType;
+    std::vector<float> mPriorities;
+};
+
+struct DeviceCreateInfo {
+    DeviceCreateInfo() :
+        mQueueInfo{ {} },
+        mDesiredExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME }
+    {}
+    std::vector<QueueCreateInfo> mQueueInfo;
+    std::vector<const char*> mDesiredExtensions;
+};
+
 /// Vulkan engin device.
 class Device final {
 private:
     Device(Instance::Ptr instance, VkPhysicalDevice device);
-    Device(Instance::Ptr instance, VkPhysicalDevice device,
-           const std::vector<const char*>& desiredExt);
+    Device(Instance::Ptr instance, VkPhysicalDevice device, const DeviceCreateInfo& info);
 
 public:
     using Ptr = std::shared_ptr<Device>;
 
-    Device(const Device&) = delete;
+    Device(const Device&)            = delete;
     Device& operator=(const Device&) = delete;
-    Device(Device&&) = delete;
-    Device& operator=(Device&&) = delete;
-    ~Device() = default;
+    Device(Device&&)                 = delete;
+    Device& operator=(Device&&)      = delete;
+    ~Device()                        = default;
 
     DispatchTable getDispatchTable() const;
 
@@ -30,12 +49,12 @@ public:
     /// 
     /// Typical usage:
     /// \code
-    ///   create(Instance::Ptr instance, VkPhysicalDevice device, const std::vector<const char*>& desiredExt);
+    ///   create(Instance::Ptr instance, VkPhysicalDevice device, const DeviceCreateInfo& info);
     /// \endcode
     /// 
-    /// \param instance - polyp::engine::Instance::Ptr.
-    /// \param device - Vulkan physical device.
-    /// \param desiredExt - desired extension list to create logical device.
+    /// \param instance - polyp::engine::Instance::Ptr;
+    /// \param device   - vulkan physical device;
+    /// \param info     - additional device creation info;
     template<typename ...Args>
     static Ptr create(Args... args) {
         std::shared_ptr<Device> output(new Device(args...));
@@ -50,15 +69,13 @@ public:
 private:
     [[nodiscard]] bool init();
     [[nodiscard]] bool checkSupportedExt(const std::vector<VkExtensionProperties>& available) const;
+    [[nodiscard]] bool checkSupportedQueue(const std::vector<VkQueueFamilyProperties>& available);
 
-    Instance::Ptr mInstance;
-    VkPhysicalDevice mPhysicalDevice;
-    std::vector<const char*> mExtensions;
-    VkQueueFlags mQueueCapabilities;
-
+    DeviceCreateInfo              mInfo;
+    DispatchTable                 mDispTable;
+    Instance::Ptr                 mInstance;
+    VkPhysicalDevice              mPhysicalDevice;
     DECLARE_VKDESTROYER(VkDevice) mHandle;
-
-    DispatchTable mDispTable;
 };
 
 } // engine
