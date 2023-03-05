@@ -3,34 +3,36 @@
 
 #include <system_error>
 
-namespace utils {
+namespace tools {
 
-    enum class GAPIErros // https://habr.com/ru/post/340604/
-    {
-        Success = 0,
-        ShaderLink,
-        ShaderCompile,
-        FunctionArgument,
-    };
+/// https://habr.com/ru/post/340604/
+enum class GAPIErros {
+    Success = 0,
+    ShaderLink,
+    ShaderCompile,
+    FunctionArgument,
+};
 
-    enum class CommonErrors // https://habr.com/ru/post/340604/
-    {
-        IO = 1,
-        ToDo = std::numeric_limits<CommonErrors>::max(),
-    };
+/// https://habr.com/ru/post/340604/
+enum class CommonErrors {
+    IO = 1,
+    ToDo = std::numeric_limits<CommonErrors>::max(),
+};
 
-    std::error_code make_error_code(GAPIErros);
+std::error_code make_error_code(GAPIErros);
 
-    std::error_code make_error_code(CommonErrors);
-}
+std::error_code make_error_code(CommonErrors);
 
-namespace std
-{
-    template <>
-    struct is_error_code_enum<utils::GAPIErros> : true_type {};
+} // namespace utils
 
-    template <>
-    struct is_error_code_enum<utils::CommonErrors> : true_type {};
-}
+namespace std {
+
+template <>
+struct is_error_code_enum<tools::GAPIErros> : std::true_type {};
+
+template <>
+struct is_error_code_enum<tools::CommonErrors> : std::true_type {};
+
+} // namespace std
 
 #endif // UTILS_ERRORS_H

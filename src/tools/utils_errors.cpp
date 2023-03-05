@@ -2,69 +2,61 @@
 
 namespace {
 
-    struct GAPIErrosCategory : std::error_category
-    {
+    struct GAPIErrosCategory : std::error_category {
         const char* name() const noexcept override;
         std::string message(int ev) const override;
     };
 
-    const char* GAPIErrosCategory::name() const noexcept
-    {
+    struct CommonErrorsCategory : std::error_category {
+        const char* name() const noexcept override;
+        std::string message(int ev) const override;
+    };
+
+    const GAPIErrosCategory theGAPIErrosCategory{};
+    const CommonErrorsCategory theCommonErrorsCategory{};
+
+    const char* GAPIErrosCategory::name() const noexcept {
         return "GraphicsApi";
     }
 
-    std::string GAPIErrosCategory::message(int ev) const
-    {
-        switch (static_cast<utils::GAPIErros>(ev))
+    std::string GAPIErrosCategory::message(int ev) const {
+        switch (static_cast<tools::GAPIErros>(ev))
         {
-        case utils::GAPIErros::Success:
+        case tools::GAPIErros::Success:
             return "not an error";
-        case utils::GAPIErros::ShaderCompile:
+        case tools::GAPIErros::ShaderCompile:
             return "shader compilation failed";
-        case utils::GAPIErros::ShaderLink:
+        case tools::GAPIErros::ShaderLink:
             return "shader linkage failed";
-        case utils::GAPIErros::FunctionArgument:
+        case tools::GAPIErros::FunctionArgument:
             return "wrong argument provided";
         default:
             return "unrecognized error";
         }
     }
 
-    const GAPIErrosCategory theGAPIErrosCategory{};
-
-    struct CommonErrorsCategory : std::error_category
-    {
-        const char* name() const noexcept override;
-        std::string message(int ev) const override;
-    };
-
-    const char* CommonErrorsCategory::name() const noexcept
-    {
+    const char* CommonErrorsCategory::name() const noexcept {
         return "GraphicsApi";
     }
 
-    std::string CommonErrorsCategory::message(int ev) const
-    {
-        switch (static_cast<utils::CommonErrors>(ev))
+    std::string CommonErrorsCategory::message(int ev) const {
+        switch (static_cast<tools::CommonErrors>(ev))
         {
-        case utils::CommonErrors::IO:
+        case tools::CommonErrors::IO:
             return "input/output error";
-        case utils::CommonErrors::ToDo:
+        case tools::CommonErrors::ToDo:
             return "not implemented yet";
         default:
             return "unrecognized error";
         }
     }
 
-    const CommonErrorsCategory theCommonErrorsCategory{};
-}
+} // anonymous namespace
 
-std::error_code utils::make_error_code(GAPIErros e)
-{
+std::error_code tools::make_error_code(GAPIErros e) {
     return { static_cast<int>(e), theGAPIErrosCategory };
 }
 
-std::error_code utils::make_error_code(CommonErrors e)
-{
+std::error_code tools::make_error_code(CommonErrors e) {
     return { static_cast<int>(e), theCommonErrorsCategory };
 }

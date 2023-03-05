@@ -178,7 +178,7 @@ int main(void)
 
 void processInput(GLFWwindow* window)
 {
-    using namespace utils;
+    using namespace tools;
     
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
