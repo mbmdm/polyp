@@ -7,14 +7,26 @@
 namespace polyp {
 namespace engine {
 
+struct InstanceCreateInfo {
+    InstanceCreateInfo() :
+        mVersion{ 99, 99, 99 },
+        mDesiredExtentions{ VK_KHR_SURFACE_EXTENSION_NAME, 
+                            VK_KHR_WIN32_SURFACE_EXTENSION_NAME }
+    {}
+    struct {
+        uint32_t major;
+        uint32_t minor;
+        uint32_t patch;
+    } mVersion;
+    std::vector<const char*> mDesiredExtentions;
+};
+
 /// Vulkan engin instance.
 class Instance final {
 private:
     Instance();
     Instance(const char* appName);
-    Instance(const char* appName, uint32_t major, uint32_t minor, uint32_t patch);
-    Instance(const char* appName, uint32_t major, uint32_t minor, uint32_t patch,
-             const std::vector<const char*>& desiredExt);
+    Instance(const char* appName, const InstanceCreateInfo& info);
 
 public:
     using Ptr = std::shared_ptr<Instance>;
@@ -56,11 +68,8 @@ private:
     [[nodiscard]] bool init();
     [[nodiscard]] bool checkSupportedExt(const std::vector<VkExtensionProperties>& available) const;
 
-    uint32_t                        mMajorVersion;
-    uint32_t                        mMinorVersion;
-    uint32_t                        mPatchVersion;
     std::string                     mAppicationName;
-    std::vector<const char*>        mExtensions;
+    InstanceCreateInfo              mInfo;
     DECLARE_VKDESTROYER(VkLibrary)  mLibrary;
     DECLARE_VKDESTROYER(VkInstance) mHandle;
     DispatchTable                   mDispTable;

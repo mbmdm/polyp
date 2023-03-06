@@ -22,10 +22,10 @@ struct QueueCreateInfo {
 struct DeviceCreateInfo {
     DeviceCreateInfo() :
         mQueueInfo{ {} },
-        mDesiredExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME }
+        mDesiredExtentions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME }
     {}
     std::vector<QueueCreateInfo> mQueueInfo;
-    std::vector<const char*> mDesiredExtensions;
+    std::vector<const char*> mDesiredExtentions;
 };
 
 /// Vulkan engin device.

@@ -59,8 +59,8 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
     deviceCreateInfo.queueCreateInfoCount = queInfos.size();
     deviceCreateInfo.pQueueCreateInfos = queInfos.data();
     deviceCreateInfo.enabledLayerCount = 0;
-    deviceCreateInfo.enabledExtensionCount = info.mDesiredExtensions.size();
-    deviceCreateInfo.ppEnabledExtensionNames = info.mDesiredExtensions.data();
+    deviceCreateInfo.enabledExtensionCount = info.mDesiredExtentions.size();
+    deviceCreateInfo.ppEnabledExtensionNames = info.mDesiredExtentions.data();
     deviceCreateInfo.pEnabledFeatures = features;
 
     CHECKRET(pFun(device, &deviceCreateInfo, nullptr, &output));
@@ -144,16 +144,16 @@ bool Device::init() {
 
 bool Device::checkSupportedExt(const std::vector<VkExtensionProperties>& available) const {
     auto availableItr = available.begin();
-    auto desiredItr = mInfo.mDesiredExtensions.begin();
+    auto desiredItr = mInfo.mDesiredExtentions.begin();
 
-    while (availableItr != available.end() && desiredItr != mInfo.mDesiredExtensions.end()) {
+    while (availableItr != available.end() && desiredItr != mInfo.mDesiredExtentions.end()) {
         if (strcmp(availableItr->extensionName, *desiredItr) == 0) {
             desiredItr++;
         }
         availableItr++;
     }
 
-    return desiredItr == mInfo.mDesiredExtensions.end();
+    return desiredItr == mInfo.mDesiredExtentions.end();
 }
 
 bool Device::checkSupportedQueue(const std::vector<VkQueueFamilyProperties>& available) {

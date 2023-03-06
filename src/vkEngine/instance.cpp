@@ -116,27 +116,16 @@ namespace {
 } // anonymous namespace
 
 Instance::Instance() :
-    mMajorVersion{ 99 }, mMinorVersion{ 99 }, mPatchVersion{99},
-    mAppicationName{ "Polyp application (default)" }, mLibrary{NULL},
-    mHandle{ VK_NULL_HANDLE }, mDispTable{}
-{
-    mExtensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
-    mExtensions.emplace_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-}
+    mAppicationName{ "Polyp application (default)" }, 
+    mInfo{}, mLibrary{ NULL }, mHandle{ VK_NULL_HANDLE }, mDispTable{}
+{}
 
 Instance::Instance(const char* appName) : Instance() {
     mAppicationName = appName;
 }
 
-Instance::Instance(const char* appName, uint32_t major, uint32_t minor, uint32_t patch) : Instance(appName) {
-    mMajorVersion = major;
-    mMinorVersion = minor;
-    mPatchVersion = patch;
-}
-
-Instance::Instance(const char* appName, uint32_t major, uint32_t minor, uint32_t patch, 
-    const std::vector<const char*>& desiredExt) : Instance(appName, major, minor, patch) {
-    mExtensions = desiredExt;
+Instance::Instance(const char* appName, const InstanceCreateInfo& info) : Instance(appName) {
+    mInfo = info;
 }
 
 std::string Instance::getAppName() const {
@@ -144,11 +133,11 @@ std::string Instance::getAppName() const {
 }
 
 std::tuple<uint32_t, uint32_t, uint32_t> Instance::getAppVersion() const {
-    return std::make_tuple(mMajorVersion, mMinorVersion, mPatchVersion);
+    return std::make_tuple(mInfo.mVersion.major, mInfo.mVersion.minor, mInfo.mVersion.patch);
 }
 
 std::vector<const char*> Instance::getExtensions() const {
-    return mExtensions;
+    return mInfo.mDesiredExtentions;
 }
 
 DispatchTable Instance::getDispatchTable() const {
@@ -183,7 +172,7 @@ bool Instance::init() {
         else
             return strcmp(lhv, rhv) < 0;
     };
-    std::sort(mExtensions.begin(), mExtensions.end(), comparer);
+    std::sort(mInfo.mDesiredExtentions.begin(), mInfo.mDesiredExtentions.end(), comparer);
     std::sort(availableExt.begin(), availableExt.end(), comparer);
 
     if (!checkSupportedExt(availableExt)) {
@@ -192,7 +181,7 @@ bool Instance::init() {
     }
 
     *mHandle = createInstance(
-        mAppicationName.c_str(), mDispTable.CreateInstance, mExtensions, std::make_tuple(mMajorVersion, mMinorVersion, mPatchVersion));
+        mAppicationName.c_str(), mDispTable.CreateInstance, mInfo.mDesiredExtentions, getAppVersion());
 
     loadVkInstance(*mHandle, mDispTable);
 
@@ -203,11 +192,12 @@ bool Instance::init() {
 
 bool Instance::checkSupportedExt(const std::vector<VkExtensionProperties>& availableExt) const {
     bool flag = false;
-    for (size_t i = 0, j = 0; i < mExtensions.size() && j < availableExt.size() && !flag; j++) {
-        auto& lhv = mExtensions[i];
+    auto& extentions = mInfo.mDesiredExtentions; // alias
+    for (size_t i = 0, j = 0; i < extentions.size() && j < availableExt.size() && !flag; j++) {
+        auto& lhv = extentions[i];
         auto& rhv = availableExt[j].extensionName;
         if (strcmp(lhv, rhv) == 0) {
-            flag = i + 1 == mExtensions.size();
+            flag = i + 1 == extentions.size();
             i++;
         }
     }
