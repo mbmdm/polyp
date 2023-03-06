@@ -177,6 +177,26 @@ bool Device::checkSupportedQueue(const std::vector<VkQueueFamilyProperties>& ava
         }
     }
 
+    // Squash queue infos with the same family index
+    std::sort(mInfo.mQueueInfo.begin(), mInfo.mQueueInfo.end(), [](auto& lhv, auto& rhv) {
+        return lhv.mFamilyIndex < rhv.mFamilyIndex;
+        });
+    auto queuePrevItr = mInfo.mQueueInfo.begin();
+    auto queueCurrItr = mInfo.mQueueInfo.begin() + 1;
+    while (queueCurrItr != mInfo.mQueueInfo.end()) {
+        if (queueCurrItr->mFamilyIndex == queuePrevItr->mFamilyIndex) {
+            queuePrevItr->mQueueType |= queueCurrItr->mQueueType;
+            std::copy(queueCurrItr->mPriorities.begin(), queueCurrItr->mPriorities.end(), 
+                      std::back_inserter(queuePrevItr->mPriorities));
+            queueCurrItr = mInfo.mQueueInfo.erase(queueCurrItr);
+            queuePrevItr = queueCurrItr - 1;
+        }
+        else{
+            queuePrevItr++;
+            queueCurrItr++;
+        }
+    }
+
     std::vector<uint32_t> requestedQueSizes(available.size(), 0);
 
     // Checks:

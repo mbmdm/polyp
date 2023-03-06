@@ -50,9 +50,8 @@ public:
     ///   const std::vector<const char*>& desiredExt);
     /// \endcode
     ///
-    /// \param appName             -  an application name.
-    /// \param [major,minor,patch] - sets up an application version.
-    /// \param desiredExt          - sets up desired vulkan instance extensions.
+    /// \param appName -  an application name;
+    /// \param info    - additional instance creation info;
     template<typename ...Args>
     static Ptr create(Args... args) {
         std::shared_ptr<Instance> output(new Instance(args...));

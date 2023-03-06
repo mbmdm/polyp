@@ -10,9 +10,17 @@ int main() {
     using namespace polyp::engine;
     using namespace polyp::tools;
     {
-        Instance::Ptr instance = Instance::create("asdf");
+        InstanceCreateInfo instanceInfo;
+        instanceInfo.mVersion.major = 1;
+        Instance::Ptr instance = Instance::create("asdf", instanceInfo);
+
         auto [gpu, info, memInfo] = info::getPhysicalGPU(instance, 0);
-        Device::Ptr device = Device::create(instance, gpu);
+
+        DeviceCreateInfo deviceInfo;
+        QueueCreateInfo queInfo;
+        queInfo.mFamilyIndex = 0;
+        deviceInfo.mQueueInfo = { queInfo };
+        Device::Ptr device = Device::create(instance, gpu, deviceInfo);
         
         auto vk = device->getDispatchTable();
 
@@ -31,6 +39,5 @@ int main() {
 
         WindowSurface surface{ "123123123 hello",0,0, 800, 800, nullptr };
         surface.run();
-
     }
 }

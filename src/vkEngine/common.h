@@ -10,6 +10,7 @@
 #include <functional>
 #include <memory>
 #include <tuple>
+#include <iterator>
 
 #define CHECKRET(expr)                         \
 {                                              \
