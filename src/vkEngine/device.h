@@ -21,18 +21,18 @@ struct QueueCreateInfo {
 
 struct DeviceCreateInfo {
     DeviceCreateInfo() :
-        mQueueInfo{ {} },
+        mQueueInfo{ },
         mDesiredExtentions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME }
     {}
-    std::vector<QueueCreateInfo> mQueueInfo;
-    std::vector<const char*> mDesiredExtentions;
+    std::vector<QueueCreateInfo>  mQueueInfo;
+    std::vector<const char*>      mDesiredExtentions;
 };
 
 /// Vulkan engin device.
 class Device final {
 private:
-    Device(Instance::Ptr instance, VkPhysicalDevice device);
-    Device(Instance::Ptr instance, VkPhysicalDevice device, const DeviceCreateInfo& info);
+    Device(Instance::Ptr instance, GpuInfo device);
+    Device(Instance::Ptr instance, GpuInfo device, const DeviceCreateInfo& info);
 
 public:
     using Ptr = std::shared_ptr<Device>;
@@ -56,7 +56,7 @@ public:
     /// \param device   - vulkan physical device;
     /// \param info     - additional device creation info;
     template<typename ...Args>
-    static Ptr create(Args... args) {
+    [[nodiscard]] static Ptr create(Args... args) {
         std::shared_ptr<Device> output(new Device(args...));
         if (!output->init()) {
             output.reset();
@@ -69,12 +69,12 @@ public:
 private:
     [[nodiscard]] bool init();
     [[nodiscard]] bool checkSupportedExt(const std::vector<VkExtensionProperties>& available) const;
-    [[nodiscard]] bool checkSupportedQueue(const std::vector<VkQueueFamilyProperties>& available);
+    [[nodiscard]] bool checkSupportedQueue();
 
     DeviceCreateInfo              mInfo;
     DispatchTable                 mDispTable;
     Instance::Ptr                 mInstance;
-    VkPhysicalDevice              mPhysicalDevice;
+    GpuInfo                       mGpuInfo;
     DECLARE_VKDESTROYER(VkDevice) mHandle;
 };
 

@@ -12,6 +12,7 @@ set(headers camera.h
             error_codes.h
             window_surface.h
             platforms.h
+            polyp_logs.h
             interfaces/renderer.h)
 
 set(sources ${sources} ${headers})

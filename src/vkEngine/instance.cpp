@@ -105,11 +105,35 @@ namespace {
      return true;
 }
 
-/// Returns physical device properties
-[[nodiscard]] auto getPhysicalDeviceInfo(PFN_vkGetPhysicalDeviceProperties pFun,
-    VkInstance instance, VkPhysicalDevice device) {
-    VkPhysicalDeviceProperties output;
-    pFun(device, &output);
+/// Returns info about all the GPUs in system
+[[nodiscard]] auto getGpuInfos(Instance::Ptr instance) {
+    
+    uint32_t count = {};
+    CHECKRET(instance->getDispatchTable().EnumeratePhysicalDevices(**instance, &count, nullptr));
+
+    using ReturnT = std::tuple<VkPhysicalDevice, 
+                               VkPhysicalDeviceProperties, 
+                               VkPhysicalDeviceMemoryProperties,
+                               std::vector<VkQueueFamilyProperties>>;
+
+    std::vector<ReturnT>          output(count);
+    std::vector<VkPhysicalDevice> devices(count);
+
+    CHECKRET(instance->getDispatchTable().EnumeratePhysicalDevices(**instance, &count, devices.data()));
+
+    for (size_t i = 0; i < count; i++) {
+        std::get<0>(output[i]) = devices[i];
+        VkPhysicalDeviceProperties       properties;
+        VkPhysicalDeviceMemoryProperties memProperties;
+
+        instance->getDispatchTable().GetPhysicalDeviceProperties(devices[i],       &std::get<1>(output[i]));
+        instance->getDispatchTable().GetPhysicalDeviceMemoryProperties(devices[i], &std::get<2>(output[i]));
+        uint32_t queueFamiliesCount = 0;
+        instance->getDispatchTable().GetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamiliesCount, nullptr);
+        std::get<3>(output[i]).resize(queueFamiliesCount);
+        instance->getDispatchTable().GetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamiliesCount, std::get<3>(output[i]).data());
+    }
+
     return output;
 }
 
@@ -142,6 +166,14 @@ std::vector<const char*> Instance::getExtensions() const {
 
 DispatchTable Instance::getDispatchTable() const {
     return mDispTable;
+}
+
+uint32_t Instance::getSystemGpuCount() const {
+    return mGpuInfos.size();
+}
+
+GpuInfo Instance::getSystemGpuInfo(int id) const {
+    return mGpuInfos.at(id);
 }
 
 bool Instance::init() {
@@ -187,6 +219,16 @@ bool Instance::init() {
 
     initVkDestroyer(mDispTable.DestroyInstance, mHandle, nullptr);
 
+    auto gpus = getGpuInfos(shared_from_this());
+    for (size_t i = 0; i < gpus.size(); ++i) {
+        GpuInfo gpuInfo;
+        gpuInfo.mDevice        = std::get<0>(gpus[i]);
+        gpuInfo.mProperties    = std::get<1>(gpus[i]);
+        gpuInfo.mMemProperties = std::get<2>(gpus[i]);
+        gpuInfo.mQueProperties = std::get<3>(gpus[i]);
+        mGpuInfos.push_back(gpuInfo);
+    }
+
     return true;
 }
 
@@ -206,6 +248,75 @@ bool Instance::checkSupportedExt(const std::vector<VkExtensionProperties>& avail
 
 VkInstance const& Instance::operator*() const {
     return *mHandle;
+}
+
+VkDeviceSize GpuInfo::memory() {
+    
+    VkDeviceSize output = 0;
+    std::vector<size_t> targetHeapsIdx;
+    for (size_t heapTypeIdx = 0; heapTypeIdx < mMemProperties.memoryTypeCount; ++heapTypeIdx) {
+        if (mMemProperties.memoryTypes[heapTypeIdx].propertyFlags &
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+            targetHeapsIdx.push_back(mMemProperties.memoryTypes[heapTypeIdx].heapIndex);
+        }
+    }
+
+    if (targetHeapsIdx.empty()) {
+        return output;
+    }
+
+    //remove the same indexes if exist
+    std::sort(targetHeapsIdx.begin(), targetHeapsIdx.end(), std::less<size_t>());
+    auto currItr = targetHeapsIdx.begin() + 1;
+    while (currItr != targetHeapsIdx.end()) {
+        if (*currItr == *(currItr - 1)) {
+            currItr = targetHeapsIdx.erase(currItr);
+        }
+        else {
+            currItr++;
+        }
+    }
+
+    for (size_t i = 0; i < targetHeapsIdx.size(); i++) {
+        output += mMemProperties.memoryHeaps[targetHeapsIdx[i]].size;
+    }
+
+    return output;
+}
+
+bool GpuInfo::isDiscrete() {
+    return mProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+}
+
+std::string GpuInfo::name() {
+    return mProperties.deviceName;
+}
+
+uint32_t GpuInfo::queueFamilyCount() {
+    return mQueProperties.size();
+}
+
+std::vector<bool> GpuInfo::checkSupport(VkQueueFlags flags, uint32_t count) {
+    std::vector<bool> output(mQueProperties.size(), false);
+    for (size_t i = 0; i < output.size(); i++) {
+        if (mQueProperties[i].queueFlags & flags &&
+            mQueProperties[i].queueCount >= count) {
+            output[i] = true;
+        }
+    }
+    return output;
+}
+
+uint32_t GpuInfo::queueCount(int queueIndex) {
+    return mQueProperties[queueIndex].queueCount;
+}
+
+bool GpuInfo::queueHasFlags(int queueIndex, VkFlags flags) {
+    return mQueProperties[queueIndex].queueFlags & flags;
+}
+
+VkPhysicalDevice GpuInfo::operator*() {
+    return mDevice;
 }
 
 } // engine

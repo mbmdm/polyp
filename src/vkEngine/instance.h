@@ -7,6 +7,36 @@
 namespace polyp {
 namespace engine {
 
+extern class Instance;
+
+/// Presents system GPU handle and info
+class GpuInfo final {
+public:
+    friend class Instance;
+
+    /// Returns device own memory in bytes
+    VkDeviceSize      memory();
+    bool              isDiscrete();
+    /// Returns device name
+    std::string       name();
+    /// Returns count of available device queue families
+    uint32_t          queueFamilyCount();
+    /// Loops over all gpu queue families and returns true if supported
+    std::vector<bool> checkSupport(VkQueueFlags flags, uint32_t count);
+    /// Returns queue count by specified family index. Throws std::out_of_range
+    uint32_t          queueCount(int queueIndex);
+    /// Returns true if queue family has specified flag. Throws std::out_of_range
+    bool              queueHasFlags(int queueIndex, VkFlags flags);
+
+    VkPhysicalDevice operator*();
+
+private:
+    VkPhysicalDevice                     mDevice{};
+    VkPhysicalDeviceProperties           mProperties{};
+    VkPhysicalDeviceMemoryProperties     mMemProperties{};
+    std::vector<VkQueueFamilyProperties> mQueProperties{};
+};
+
 struct InstanceCreateInfo {
     InstanceCreateInfo() :
         mVersion{ 99, 99, 99 },
@@ -22,7 +52,7 @@ struct InstanceCreateInfo {
 };
 
 /// Vulkan engin instance.
-class Instance final {
+class Instance final : public std::enable_shared_from_this<Instance> {
 private:
     Instance();
     Instance(const char* appName);
@@ -41,6 +71,10 @@ public:
     std::tuple<uint32_t, uint32_t, uint32_t> getAppVersion() const;
     std::vector<const char*> getExtensions()                 const;
     DispatchTable getDispatchTable()                         const;
+    /// Returns GPUs count which presented in the system
+    uint32_t getSystemGpuCount()                             const;
+    /// Returns GPU info by its id. Throws std::out_of_range
+    GpuInfo getSystemGpuInfo(int id)                         const;
 
     /// Creates instance
     /// 
@@ -53,7 +87,7 @@ public:
     /// \param appName -  an application name;
     /// \param info    - additional instance creation info;
     template<typename ...Args>
-    static Ptr create(Args... args) {
+    [[nodiscard]] static Ptr create(Args... args) {
         std::shared_ptr<Instance> output(new Instance(args...));
         if (!output->init()) {
             output.reset();
@@ -72,6 +106,7 @@ private:
     DECLARE_VKDESTROYER(VkLibrary)  mLibrary;
     DECLARE_VKDESTROYER(VkInstance) mHandle;
     DispatchTable                   mDispTable;
+    std::vector<GpuInfo>            mGpuInfos;
 };
 
 } // engine

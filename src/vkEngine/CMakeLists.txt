@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.6)
 
 set(sources ${CMAKE_CURRENT_SOURCE_DIR}/device.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/instance.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/surface.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp)
 
 set(includes ${CMAKE_CURRENT_SOURCE_DIR}
@@ -9,9 +10,11 @@ set(includes ${CMAKE_CURRENT_SOURCE_DIR}
 
 set(headers device.h
             instance.h
+            surface.h
             destroyer.h
             common.h
             utils.h
+            concepts.h
             dispatch_table.h)
 
 set(sources ${sources}

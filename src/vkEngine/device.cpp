@@ -98,15 +98,15 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
 
 } // anonymous namespace
 
-Device::Device(Instance::Ptr instance, VkPhysicalDevice device) :
+Device::Device(Instance::Ptr instance, GpuInfo device) :
                mInfo{}, mDispTable{}, mInstance{ instance }, 
-               mPhysicalDevice{ device }, mHandle{ VK_NULL_HANDLE }
+               mGpuInfo{ device }, mHandle{ VK_NULL_HANDLE }
 {
     mDispTable = mInstance->getDispatchTable();
 }
 
-Device::Device(Instance::Ptr instance, VkPhysicalDevice device, const DeviceCreateInfo& info) : 
-    Device(instance, device)
+Device::Device(Instance::Ptr instance, GpuInfo device, const DeviceCreateInfo& info) :
+               Device(instance, device)
 {
     mInfo = info;
 }
@@ -117,21 +117,20 @@ DispatchTable Device::getDispatchTable() const {
 
 bool Device::init() {
     
-    if (!mPhysicalDevice || !mInstance) {
+    if (*mGpuInfo == VK_NULL_HANDLE || !mInstance) {
         return false;
     }
 
-    auto deviceExts = getPhysicalDeviceExts(mDispTable.EnumerateDeviceExtensionProperties, mPhysicalDevice);
+    auto deviceExts = getPhysicalDeviceExts(mDispTable.EnumerateDeviceExtensionProperties, *mGpuInfo);
     if (deviceExts.empty() || !checkSupportedExt(deviceExts)) {
         return false;
     }
 
-    auto queFamiliesProperties = getQueueFamiliesProperties(mDispTable.GetPhysicalDeviceQueueFamilyProperties, mPhysicalDevice);
-    if (queFamiliesProperties.empty() || !checkSupportedQueue(queFamiliesProperties)) {
+    if (!checkSupportedQueue()) {
         return false;
     }
 
-    *mHandle = createDevice(mDispTable.CreateDevice, mPhysicalDevice, mInfo, nullptr);
+    *mHandle = createDevice(mDispTable.CreateDevice, *mGpuInfo, mInfo, nullptr);
 
     if (!loadVkDevice(*mHandle, mDispTable, deviceExts)) {
         return false;
@@ -156,7 +155,7 @@ bool Device::checkSupportedExt(const std::vector<VkExtensionProperties>& availab
     return desiredItr == mInfo.mDesiredExtentions.end();
 }
 
-bool Device::checkSupportedQueue(const std::vector<VkQueueFamilyProperties>& available) {
+bool Device::checkSupportedQueue() {
 
     if (mInfo.mQueueInfo.empty()) {
         return false;
@@ -168,9 +167,9 @@ bool Device::checkSupportedQueue(const std::vector<VkQueueFamilyProperties>& ava
             continue;
         }
         QueueCreateInfo& queInfo = mInfo.mQueueInfo[i];
-        for (uint32_t index = 0; index < available.size(); ++index) {
-            if ((available[index].queueCount > 0) &&
-                (available[index].queueFlags & queInfo.mQueueType)) {
+        for (uint32_t index = 0; index < mGpuInfo.queueFamilyCount(); ++index) {
+            if ((mGpuInfo.queueCount(index) > queInfo.mPriorities.size()) &&
+                 mGpuInfo.queueHasFlags(index, queInfo.mQueueType)) {
                 queInfo.mFamilyIndex = index;
                 break;
             }
@@ -197,22 +196,22 @@ bool Device::checkSupportedQueue(const std::vector<VkQueueFamilyProperties>& ava
         }
     }
 
-    std::vector<uint32_t> requestedQueSizes(available.size(), 0);
+    std::vector<uint32_t> requestedQueSizes(mGpuInfo.queueFamilyCount(), 0);
 
     // Checks:
     // - there are no queues with family index UINT32_MAX;
     // - requested queue family index is correct;
     for (size_t i = 0; i < mInfo.mQueueInfo.size(); i++) {
         if (mInfo.mQueueInfo[i].mFamilyIndex == UINT32_MAX ||
-            mInfo.mQueueInfo[i].mFamilyIndex >= available.size()) {
+            mInfo.mQueueInfo[i].mFamilyIndex >= mGpuInfo.queueCount(i)) {
             return false;
         }
         requestedQueSizes[mInfo.mQueueInfo[i].mFamilyIndex] += mInfo.mQueueInfo[i].mPriorities.size();
     }
-
+ 
     // Check that queue family count isn't exceeded
-    for (size_t i = 0; i < available.size(); i++) {
-        if (requestedQueSizes[i] > available[i].queueCount) {
+    for (size_t i = 0; i < requestedQueSizes.size(); i++) {
+        if (requestedQueSizes[i] > mGpuInfo.queueCount(i)) {
             return false;
         }
     }
@@ -221,7 +220,6 @@ bool Device::checkSupportedQueue(const std::vector<VkQueueFamilyProperties>& ava
 }
 
 VkDevice const& Device::operator*() const {
-
     return *mHandle;
 }
 

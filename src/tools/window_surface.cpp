@@ -1,6 +1,8 @@
 #include "window_surface.h"
 #include "constants.h"
 
+#include <assert.h> //TODO: remove
+
 namespace {
 
 enum UserMessage {
@@ -100,8 +102,8 @@ void WindowSurface::run() {
 
     ShowWindow(mWindowHandle.hwnd, SW_SHOWNORMAL);
     UpdateWindow(mWindowHandle.hwnd);
-
+    assert(!"stub... to implement");
 }
 
-}
-}
+} // namespace tools
+} // namespace polyp

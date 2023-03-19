@@ -2,24 +2,37 @@
 #define VK_DESTROYER_H
 
 #include "common.h"
+#include "concepts.h"
 
 namespace polyp {
 namespace engine {
 
 // Wrappers block
 
-#define DECLARE_VKDESCTOYER_WRAPPED( VkType, HandleType ) \
+// Macro for desctoying objects which descroy func takes the object handle as first argument
+#define DECLARE_VKDESCTOYER_WRAPPED( VkType, HandleType )          \
 struct VkType##Wrapper { HandleType mHandle; };
+
+/// Macro for desctoying objects which descroy func takes the vk object root handle as first argument
+/// For instance, vkDestroySurfaceKHR takes VkDevice and VkSurfaceKHR to descroy the second one
+#define DECLARE_VKDESCTOYER_CHILD_WRAPPED( VkTypeRoot, VkTypeChild)      \
+struct VkTypeChild##Wrapper { VkTypeRoot mRoot; VkTypeChild mHandle; };
 
 DECLARE_VKDESCTOYER_WRAPPED(VkInstance, VkInstance);
 DECLARE_VKDESCTOYER_WRAPPED(VkLibrary, HMODULE);
 DECLARE_VKDESCTOYER_WRAPPED(VkDevice, VkDevice);
+DECLARE_VKDESCTOYER_CHILD_WRAPPED(VkInstance, VkSurfaceKHR);
 
 // Destroy funcs
 
 template<typename PFN_Destroy, typename VkTypeWrapper, typename... Args>
 inline void destroyVulkanObject(PFN_Destroy pFun, VkTypeWrapper object, Args... args) {
-    pFun(object.mHandle, args...);
+    if constexpr (has_field_mRoot<VkTypeWrapper>) {
+        pFun(object.mRoot, object.mHandle, args...);
+    }
+    else {
+        pFun(object.mHandle, args...);
+    }
 }
 
 // VkDestroyer class
@@ -27,19 +40,19 @@ inline void destroyVulkanObject(PFN_Destroy pFun, VkTypeWrapper object, Args... 
 template<class VkTypeWrapper> //TODO: try to use concept
 class VkDestroyer {
 public:
-    VkDestroyer() :
-        mDestroyFunc(nullptr) {
+    VkDestroyer() : mDestroyFunc(nullptr) {
         mObject.mHandle = VK_NULL_HANDLE;
     }
 
-    VkDestroyer(std::function<void(VkTypeWrapper)> deleter) :
-        mDestroyFunc(deleter) {
+    VkDestroyer(std::function<void(VkTypeWrapper)> deleter) : mDestroyFunc(deleter) {
         mObject.mHandle = VK_NULL_HANDLE;
     }
 
-    VkDestroyer(VkTypeWrapper object, std::function<void(VkTypeWrapper)> deleter) :
-        mDestroyFunc(deleter) {
+    VkDestroyer(VkTypeWrapper object, std::function<void(VkTypeWrapper)> deleter) : mDestroyFunc(deleter) {
         mObject.mHandle = object.mHandle;
+        if constexpr (has_field_mRoot<VkTypeWrapper>) {
+            mObject.mRoot = object.mRoot;
+        }
     }
 
     ~VkDestroyer() {
@@ -52,11 +65,14 @@ public:
         }
     }
 
-    VkDestroyer(VkDestroyer<VkTypeWrapper>&& other) :
-        mDestroyFunc(other.mDestroyFunc) {
+    VkDestroyer(VkDestroyer<VkTypeWrapper>&& other) : mDestroyFunc(other.mDestroyFunc) {
         mObject.mHandle = other.mObject.mHandle;
         other.mObject.mHandle = VK_NULL_HANDLE;
         other.mDestroyFunc = nullptr;
+        if constexpr (has_field_mRoot<VkTypeWrapper>) {
+            mObject.mRoot = other.mObject.mRoot;
+            other.mObject.mRoot = VK_NULL_HANDLE;
+        }
     }
 
     VkDestroyer& operator=(VkDestroyer<VkTypeWrapper>&& other) {
@@ -73,6 +89,9 @@ public:
 
         other.mObject.mHandle = object.mHandle;
         other.mDestroyFunc = destroyFunc;
+        if constexpr (has_field_mRoot<VkTypeWrapper>) {
+            other.mObject.mRoot = object.mRoot;
+        }
 
         return *this;
     }

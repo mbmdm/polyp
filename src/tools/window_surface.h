@@ -17,15 +17,19 @@ public:
     
     virtual ~WindowSurface();
 
+    auto getWindowHandle() {
+        return std::make_tuple(mWindowHandle.hwnd, mWindowHandle.inst);
+    }
+
     void run();
 
 private:
     struct {
         WindowsInstance inst;
         WindowsHandle   hwnd;
-    } mWindowHandle;
+    }              mWindowHandle;
     IRenderer::Ptr mRenderer;
-    bool mInitialized;
+    bool           mInitialized;
 };
 
 } // utils

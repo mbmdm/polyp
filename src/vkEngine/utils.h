@@ -3,26 +3,16 @@
 
 #include "common.h"
 #include "device.h"
+#include "surface.h"
 #include "instance.h"
+#include "platforms.h"
 
 namespace polyp {
 namespace engine {
-namespace info {
-
-using GpuInfo = std::tuple<VkPhysicalDevice, VkPhysicalDeviceProperties, VkPhysicalDeviceMemoryProperties>;
-
-/// Returns VkPhysicalDevice and its properties by given device number.
-/// Typical usage: start loop to get all the gpu devices until VkPhysicalDevice == VK_NULL_HANDLE
-/// 
-/// \param instance - polyp::engine::Instance::Ptr.
-/// \param num - device index.
-[[nodiscard]] GpuInfo getPhysicalGPU(Instance::Ptr instance, int num);
+namespace utils {
 
 
-/// Returns GPU count in the system
-[[nodiscard]] uint32_t getPhysicalGPUCount(Instance::Ptr instance);
-
-} // info
+} // utils
 } // engine
 } // polyp
 
