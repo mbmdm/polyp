@@ -3,6 +3,8 @@
 
 #include "dispatch_table.h"
 
+#include <polyp_logs.h>
+
 #include <vector>
 #include <algorithm>
 #include <string>

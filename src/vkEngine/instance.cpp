@@ -215,7 +215,10 @@ bool Instance::init() {
     *mHandle = createInstance(
         mAppicationName.c_str(), mDispTable.CreateInstance, mInfo.mDesiredExtentions, getAppVersion());
 
-    loadVkInstance(*mHandle, mDispTable);
+    if (!loadVkInstance(*mHandle, mDispTable)) {
+        POLYPFATAL("Failed to load vulkan instance functions");
+        exit(1);
+    }
 
     initVkDestroyer(mDispTable.DestroyInstance, mHandle, nullptr);
 
