@@ -11,7 +11,7 @@ int main() {
 
     using namespace polyp::engine;
     using namespace polyp::tools;
-
+    1
     InstanceCreateInfo instanceInfo;
     instanceInfo.mVersion.major = 1;
     Instance::Ptr instance = Instance::create("AnisVkApplication", instanceInfo);
