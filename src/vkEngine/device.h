@@ -43,7 +43,7 @@ public:
     Device& operator=(Device&&)      = delete;
     ~Device()                        = default;
 
-    DispatchTable getDispatchTable() const;
+    DispatchTable dispatchTable() const;
 
     /// Creates device
     /// 

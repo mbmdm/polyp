@@ -70,8 +70,8 @@ int main() {
     }
 
     polyp::engine::GpuInfo physGpu;
-    for (size_t i = 0; i < instance->getSystemGpuCount(); i++) {
-        auto gpu = instance->getSystemGpuInfo(i);
+    for (size_t i = 0; i < instance->gpuCount(); i++) {
+        auto gpu = instance->gpuInfo(i);
         if (gpu.memory() > physGpu.memory() && gpu.isDiscrete()) {
             physGpu = gpu;
         }
@@ -79,11 +79,11 @@ int main() {
     POLYPINFO("Selected device %s with local memory %d mb\n", physGpu.name().c_str(), physGpu.memory() / 1024 / 1024);
 
     std::shared_ptr<IRenderer> sample = std::make_shared<Sample>();
-    WindowSurface win{ "Anissimus hello vulkan", 0, 0, 800, 800, sample };
+    WindowSurface win{ "Anissimus hello vulkan", 0, 0, 1024, 600, sample };
      
     SurfaceCreateInfo info = std::apply([](auto hwnd, auto inst) { 
         return SurfaceCreateInfo{ inst, hwnd };
-        }, win.getWindowHandle());
+        }, win.params());
     Surface::Ptr surface = Surface::create(instance, info);
     if (!surface) {
         POLYPFATAL("Failed to create vulkan surface (WSI)");
@@ -113,6 +113,72 @@ int main() {
     Device::Ptr device = Device::create(instance, physGpu, deviceInfo);
     if (!device) {
         POLYPFATAL("Failed to create vulkan rendering device");
+    }
+
+    VkPresentModeKHR presentMode = utils::getMostSuitablePresentationMode(instance, surface, physGpu);
+    if (presentMode == VK_PRESENT_MODE_MAX_ENUM_KHR) {
+        POLYPFATAL("Failed to select desired presentation mode");
+    }
+
+    auto surfaceCapabilities = surface->capabilities(physGpu);
+    if (surfaceCapabilities.currentExtent.width == UINT32_MAX ||
+        surfaceCapabilities.currentExtent.height == UINT32_MAX) {
+        POLYPFATAL("Unsupported swapchain creation scenario.");
+    }
+
+    auto numberOfImages = surfaceCapabilities.minImageCount + 1;
+    if (surfaceCapabilities.maxImageCount) {
+        numberOfImages = std::min(numberOfImages, surfaceCapabilities.maxImageCount);
+    }
+
+    auto swchainUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    if (surfaceCapabilities.supportedUsageFlags & swchainUsage != swchainUsage) {
+        POLYPFATAL("Failed to create swapchain with required usage flags");
+    }
+
+    if (surfaceCapabilities.currentTransform & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR == 0) {
+        POLYPFATAL("Surface doen't support the required swapchain image transformation");
+    }
+
+    auto surfaceFormats = surface->formats(physGpu);
+    VkSurfaceFormatKHR surfaceFormat = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+    if (!surface->checkSupport(physGpu, surfaceFormat)) {
+        surface->checkSupport(physGpu, surfaceFormat, surfaceFormat);
+    }
+
+    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+    std::vector<VkImage> swapchain_images;
+    {
+        VkSwapchainCreateInfoKHR swapchain_create_info = {
+        VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, // VkStructureType                 sType
+        nullptr,                                     // const void                    * pNext
+        0,                                           // VkSwapchainCreateFlagsKHR       flags
+        **surface,                                   // VkSurfaceKHR                    surface
+        numberOfImages,                              // uint32_t                        minImageCount
+        surfaceFormat.format,                        // VkFormat                        imageFormat
+        surfaceFormat.colorSpace,                    // VkColorSpaceKHR                 imageColorSpace
+        surfaceCapabilities.currentExtent,           // VkExtent2D                      imageExtent
+        1,                                           // uint32_t                        imageArrayLayers
+        swchainUsage,                                // VkImageUsageFlags               imageUsage
+        VK_SHARING_MODE_EXCLUSIVE,                   // VkSharingMode                   imageSharingMode
+        0,                                           // uint32_t                        queueFamilyIndexCount
+        nullptr,                                     // const uint32_t                * pQueueFamilyIndices
+        surfaceCapabilities.currentTransform,        // VkSurfaceTransformFlagBitsKHR   preTransform
+        VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,           // VkCompositeAlphaFlagBitsKHR     compositeAlpha
+        presentMode,                                 // VkPresentModeKHR                presentMode
+        VK_TRUE,                                     // VkBool32                        clipped
+        swapchain                                   // VkSwapchainKHR                  oldSwapchain
+        };
+        CHECKRET(device->dispatchTable().CreateSwapchainKHR(**device, &swapchain_create_info, nullptr, &swapchain));
+        if (swapchain == VK_NULL_HANDLE) {
+            POLYPFATAL("Failed to create swapchain.");
+        }
+
+        uint32_t images_count = 0;
+        VkResult result = VK_SUCCESS;
+        CHECKRET(device->dispatchTable().GetSwapchainImagesKHR(**device, swapchain, &images_count, nullptr));
+        swapchain_images.resize(images_count);
+        CHECKRET(device->dispatchTable().GetSwapchainImagesKHR(**device, swapchain, &images_count, swapchain_images.data()));
     }
 
     win.run();

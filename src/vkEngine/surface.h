@@ -31,7 +31,18 @@ public:
     ~Surface()                         = default;
 
     /// Loops over all gpu queue family indexes and returns true if supported
-    [[nodiscard]] std::vector<bool> checkSupport(GpuInfo gpu);
+    [[nodiscard]] std::vector<bool> checkSupport(GpuInfo gpuInfo)               const;
+    /// Loops over all supported formats and returns true is supported
+    [[nodiscard]] bool checkSupport(GpuInfo gpuInfo, VkSurfaceFormatKHR format) const;
+    /// Loops over all supported formats and returns true is supported and
+    /// fill out_format with the most suitable in case required is not supported
+    [[nodiscard]] bool checkSupport(GpuInfo gpuInfo, VkSurfaceFormatKHR in_format,
+                                    VkSurfaceFormatKHR& out_format)             const;
+    /// Returns Surface capabilities for SwapChain creation
+    [[nodiscard]] VkSurfaceCapabilitiesKHR capabilities(GpuInfo gpuInfo)        const;
+    /// Returns supported surface formats
+    [[nodiscard]] std::vector<VkSurfaceFormatKHR> formats(GpuInfo gpuInfo)      const;
+
 
     /// Creates presenration surface
     /// 

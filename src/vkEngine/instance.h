@@ -29,6 +29,7 @@ public:
     bool              queueHasFlags(int queueIndex, VkFlags flags);
 
     VkPhysicalDevice operator*();
+    VkPhysicalDevice operator*() const;
 
 private:
     VkPhysicalDevice                     mDevice{};
@@ -67,14 +68,14 @@ public:
     Instance& operator=(Instance&&)      = delete;
     ~Instance()                          = default;
 
-    std::string getAppName()                                 const;
-    std::tuple<uint32_t, uint32_t, uint32_t> getAppVersion() const;
-    std::vector<const char*> getExtensions()                 const;
-    DispatchTable getDispatchTable()                         const;
+    std::string appName()                                 const;
+    std::tuple<uint32_t, uint32_t, uint32_t> appVersion() const;
+    std::vector<const char*> extensions()                 const;
+    DispatchTable dispatchTable()                         const;
     /// Returns GPUs count which presented in the system
-    uint32_t getSystemGpuCount()                             const;
+    uint32_t gpuCount()                                   const;
     /// Returns GPU info by its id. Throws std::out_of_range
-    GpuInfo getSystemGpuInfo(int id)                         const;
+    GpuInfo gpuInfo(int id)                               const;
 
     /// Creates instance
     /// 

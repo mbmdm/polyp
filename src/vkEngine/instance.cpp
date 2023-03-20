@@ -109,7 +109,7 @@ namespace {
 [[nodiscard]] auto getGpuInfos(Instance::Ptr instance) {
     
     uint32_t count = {};
-    CHECKRET(instance->getDispatchTable().EnumeratePhysicalDevices(**instance, &count, nullptr));
+    CHECKRET(instance->dispatchTable().EnumeratePhysicalDevices(**instance, &count, nullptr));
 
     using ReturnT = std::tuple<VkPhysicalDevice, 
                                VkPhysicalDeviceProperties, 
@@ -119,19 +119,19 @@ namespace {
     std::vector<ReturnT>          output(count);
     std::vector<VkPhysicalDevice> devices(count);
 
-    CHECKRET(instance->getDispatchTable().EnumeratePhysicalDevices(**instance, &count, devices.data()));
+    CHECKRET(instance->dispatchTable().EnumeratePhysicalDevices(**instance, &count, devices.data()));
 
     for (size_t i = 0; i < count; i++) {
         std::get<0>(output[i]) = devices[i];
         VkPhysicalDeviceProperties       properties;
         VkPhysicalDeviceMemoryProperties memProperties;
 
-        instance->getDispatchTable().GetPhysicalDeviceProperties(devices[i],       &std::get<1>(output[i]));
-        instance->getDispatchTable().GetPhysicalDeviceMemoryProperties(devices[i], &std::get<2>(output[i]));
+        instance->dispatchTable().GetPhysicalDeviceProperties(devices[i],       &std::get<1>(output[i]));
+        instance->dispatchTable().GetPhysicalDeviceMemoryProperties(devices[i], &std::get<2>(output[i]));
         uint32_t queueFamiliesCount = 0;
-        instance->getDispatchTable().GetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamiliesCount, nullptr);
+        instance->dispatchTable().GetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamiliesCount, nullptr);
         std::get<3>(output[i]).resize(queueFamiliesCount);
-        instance->getDispatchTable().GetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamiliesCount, std::get<3>(output[i]).data());
+        instance->dispatchTable().GetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamiliesCount, std::get<3>(output[i]).data());
     }
 
     return output;
@@ -152,27 +152,27 @@ Instance::Instance(const char* appName, const InstanceCreateInfo& info) : Instan
     mInfo = info;
 }
 
-std::string Instance::getAppName() const {
+std::string Instance::appName() const {
     return mAppicationName;
 }
 
-std::tuple<uint32_t, uint32_t, uint32_t> Instance::getAppVersion() const {
+std::tuple<uint32_t, uint32_t, uint32_t> Instance::appVersion() const {
     return std::make_tuple(mInfo.mVersion.major, mInfo.mVersion.minor, mInfo.mVersion.patch);
 }
 
-std::vector<const char*> Instance::getExtensions() const {
+std::vector<const char*> Instance::extensions() const {
     return mInfo.mDesiredExtentions;
 }
 
-DispatchTable Instance::getDispatchTable() const {
+DispatchTable Instance::dispatchTable() const {
     return mDispTable;
 }
 
-uint32_t Instance::getSystemGpuCount() const {
+uint32_t Instance::gpuCount() const {
     return mGpuInfos.size();
 }
 
-GpuInfo Instance::getSystemGpuInfo(int id) const {
+GpuInfo Instance::gpuInfo(int id) const {
     return mGpuInfos.at(id);
 }
 
@@ -213,7 +213,7 @@ bool Instance::init() {
     }
 
     *mHandle = createInstance(
-        mAppicationName.c_str(), mDispTable.CreateInstance, mInfo.mDesiredExtentions, getAppVersion());
+        mAppicationName.c_str(), mDispTable.CreateInstance, mInfo.mDesiredExtentions, appVersion());
 
     if (!loadVkInstance(*mHandle, mDispTable)) {
         POLYPFATAL("Failed to load vulkan instance functions");
@@ -319,6 +319,11 @@ bool GpuInfo::queueHasFlags(int queueIndex, VkFlags flags) {
 }
 
 VkPhysicalDevice GpuInfo::operator*() {
+    const GpuInfo& this_ = *this;
+    return *this_;
+}
+
+VkPhysicalDevice GpuInfo::operator*() const {
     return mDevice;
 }
 

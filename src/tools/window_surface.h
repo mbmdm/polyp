@@ -17,7 +17,7 @@ public:
     
     virtual ~WindowSurface();
 
-    auto getWindowHandle() {
+    auto params() {
         return std::make_tuple(mWindowHandle.hwnd, mWindowHandle.inst);
     }
 

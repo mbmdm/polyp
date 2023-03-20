@@ -31,6 +31,7 @@ INSTANCE_LEVEL_VULKAN_FUNCTION(EnumerateDeviceExtensionProperties)
 INSTANCE_LEVEL_VULKAN_FUNCTION(GetPhysicalDeviceFeatures2)
 INSTANCE_LEVEL_VULKAN_FUNCTION(GetPhysicalDeviceProperties2)
 INSTANCE_LEVEL_VULKAN_FUNCTION(GetPhysicalDeviceMemoryProperties)
+INSTANCE_LEVEL_VULKAN_FUNCTION(GetPhysicalDeviceSurfacePresentModesKHR)
 
 #undef INSTANCE_LEVEL_VULKAN_FUNCTION
 //

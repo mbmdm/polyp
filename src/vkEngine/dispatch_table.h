@@ -1,7 +1,7 @@
 #ifndef DISPATCH_TABLE_H
 #define DISPATCH_TABLE_H
 
-#include <Windows.h>
+#include <platforms.h>
 #define VK_USE_PLATFORM_WIN32_KHR
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>

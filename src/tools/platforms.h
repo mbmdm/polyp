@@ -1,6 +1,7 @@
 #ifndef PLATFORMS_H
 #define PLATFORMS_H
 
+#define NOMINMAX
 #include <Windows.h>
 
 namespace polyp {

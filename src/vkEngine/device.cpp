@@ -102,7 +102,7 @@ Device::Device(Instance::Ptr instance, GpuInfo device) :
                mInfo{}, mDispTable{}, mInstance{ instance }, 
                mGpuInfo{ device }, mHandle{ VK_NULL_HANDLE }
 {
-    mDispTable = mInstance->getDispatchTable();
+    mDispTable = mInstance->dispatchTable();
 }
 
 Device::Device(Instance::Ptr instance, GpuInfo device, const DeviceCreateInfo& info) :
@@ -111,7 +111,7 @@ Device::Device(Instance::Ptr instance, GpuInfo device, const DeviceCreateInfo& i
     mInfo = info;
 }
 
-DispatchTable Device::getDispatchTable() const {
+DispatchTable Device::dispatchTable() const {
     return mDispTable;
 }
 

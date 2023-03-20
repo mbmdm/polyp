@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.6)
 
-set(sources ${CMAKE_CURRENT_SOURCE_DIR}/device.cpp
+set(sources ${CMAKE_CURRENT_SOURCE_DIR}/swapchain.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/device.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/instance.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/surface.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp)
@@ -8,7 +9,8 @@ set(sources ${CMAKE_CURRENT_SOURCE_DIR}/device.cpp
 set(includes ${CMAKE_CURRENT_SOURCE_DIR}
              ${VULKANSDK_INCLUDE_DIR})
 
-set(headers device.h
+set(headers swapchain.h
+            device.h
             instance.h
             surface.h
             destroyer.h
