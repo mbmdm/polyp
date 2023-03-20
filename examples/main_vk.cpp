@@ -85,7 +85,7 @@ int main() {
         return SurfaceCreateInfo{ inst, hwnd };
         }, win.getWindowHandle());
     Surface::Ptr surface = Surface::create(instance, info);
-    if (!surface /*&& surface->checkSupport(physGpu)*/) {
+    if (!surface) {
         POLYPFATAL("Failed to create vulkan surface (WSI)");
     }
 
