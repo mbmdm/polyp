@@ -7,6 +7,56 @@
 #include <window_surface.h>
 #include <polyp_logs.h>
 
+class Sample : public polyp::tools::IRenderer {
+public:
+    virtual ~Sample() override {
+        POLYPINFO(__FUNCTION__);
+    }
+
+    virtual bool onInit() override {
+        POLYPINFO(__FUNCTION__);
+        return true;
+    }
+
+    virtual bool onResize() override {
+        POLYPINFO(__FUNCTION__);
+        return true;
+    }
+
+    virtual void onMouseClick(uint32_t button, bool state) override {
+        POLYPINFO(__FUNCTION__);
+    }
+
+    virtual void onMouseMove(int x, int y) override {
+        //POLYPINFO(__FUNCTION__);
+    }
+
+    virtual void onMouseWheel(float value) override {
+        POLYPINFO(__FUNCTION__);
+    }
+
+    virtual void onShoutDown() override {
+        POLYPINFO(__FUNCTION__);
+    }
+
+    virtual bool isReady() override {
+        //POLYPINFO(__FUNCTION__);
+        return true;
+    }
+
+    virtual void draw() override {
+        //POLYPINFO(__FUNCTION__);
+    }
+    
+    virtual void updateTimer() override {
+        //POLYPINFO(__FUNCTION__);
+    }
+
+    virtual void mouseReset() override {
+        //POLYPINFO(__FUNCTION__);
+    }
+};
+
 int main() {
 
     using namespace polyp::engine;
@@ -28,8 +78,9 @@ int main() {
     }
     POLYPINFO("Selected device %s with local memory %d mb\n", physGpu.name().c_str(), physGpu.memory() / 1024 / 1024);
 
-    WindowSurface win{ "Anissimus hello vulkan", 0, 0, 800, 800, nullptr };
-
+    std::shared_ptr<IRenderer> sample = std::make_shared<Sample>();
+    WindowSurface win{ "Anissimus hello vulkan", 0, 0, 800, 800, sample };
+     
     SurfaceCreateInfo info = std::apply([](auto hwnd, auto inst) { 
         return SurfaceCreateInfo{ inst, hwnd };
         }, win.getWindowHandle());

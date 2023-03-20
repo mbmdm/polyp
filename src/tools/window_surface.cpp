@@ -100,9 +100,51 @@ WindowSurface::~WindowSurface() {
 
 void WindowSurface::run() {
 
+    if (!mInitialized || !mRenderer->onInit()) {
+        return;
+    }
+
     ShowWindow(mWindowHandle.hwnd, SW_SHOWNORMAL);
     UpdateWindow(mWindowHandle.hwnd);
-    assert(!"stub... to implement");
+    
+    MSG message;
+    bool stopRenderLoop = false;
+
+    while (!stopRenderLoop) {
+        if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
+            switch (message.message) {
+            case UserMessage::kMouseClick:
+                mRenderer->onMouseClick(static_cast<size_t>(message.wParam), message.lParam > 0);
+                break;
+            case UserMessage::kMouseMove:
+                mRenderer->onMouseMove(static_cast<int>(message.wParam), static_cast<int>(message.lParam));
+                break;
+            case UserMessage::kMouseWheel:
+                mRenderer->onMouseWheel(static_cast<short>(message.wParam) * 0.002f);
+                break;
+            case  UserMessage::kResize:
+                if (!mRenderer->onResize()) {
+                    stopRenderLoop = true;
+                }
+                break;
+            case UserMessage::kQuit:
+                stopRenderLoop = true;
+                break;
+            }
+            TranslateMessage(&message);
+            DispatchMessage(&message);
+        }
+        else {
+            if (!mRenderer->isReady())
+                continue;
+
+            mRenderer->updateTimer();
+            mRenderer->draw();
+            mRenderer->mouseReset();
+        }
+    }
+
+    mRenderer->onShoutDown();
 }
 
 } // namespace tools
