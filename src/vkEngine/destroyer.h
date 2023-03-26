@@ -19,10 +19,12 @@ struct VkType##Wrapper { HandleType mHandle; };
 struct VkTypeChild##Wrapper { VkTypeRoot mRoot; VkTypeChild mHandle; };
 
 DECLARE_VKDESCTOYER_WRAPPED(VkInstance, VkInstance);
-DECLARE_VKDESCTOYER_WRAPPED(VkLibrary, HMODULE);
-DECLARE_VKDESCTOYER_WRAPPED(VkDevice, VkDevice);
+DECLARE_VKDESCTOYER_WRAPPED(VkLibrary,  HMODULE);
+DECLARE_VKDESCTOYER_WRAPPED(VkDevice,   VkDevice);
 DECLARE_VKDESCTOYER_CHILD_WRAPPED(VkInstance, VkSurfaceKHR);
-DECLARE_VKDESCTOYER_CHILD_WRAPPED(VkDevice, VkSwapchainKHR);
+DECLARE_VKDESCTOYER_CHILD_WRAPPED(VkDevice,   VkSwapchainKHR);
+DECLARE_VKDESCTOYER_CHILD_WRAPPED(VkDevice,   VkCommandPool);
+DECLARE_VKDESCTOYER_CHILD_WRAPPED(VkDevice,   VkFence);
 
 // Destroy funcs
 

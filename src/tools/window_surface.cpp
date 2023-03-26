@@ -100,7 +100,7 @@ WindowSurface::~WindowSurface() {
 
 void WindowSurface::run() {
 
-    if (!mInitialized || !mRenderer->onInit()) {
+    if (!mInitialized || !mRenderer->onInit(mWindowHandle.inst, mWindowHandle.hwnd)) {
         return;
     }
 

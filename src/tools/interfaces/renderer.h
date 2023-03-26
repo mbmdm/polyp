@@ -14,7 +14,7 @@ public:
 
     virtual ~IRenderer() = default;
 
-    virtual bool onInit() = 0;
+    virtual bool onInit(WindowsInstance inst, WindowsHandle hwnd) = 0;
     virtual bool onResize() = 0;
     virtual void onMouseClick(uint32_t button, bool state) = 0;
     virtual void onMouseMove(int x, int y) = 0;

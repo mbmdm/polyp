@@ -10,7 +10,7 @@ namespace engine {
 extern class Instance;
 
 /// Presents system GPU handle and info
-class GpuInfo final {
+class PhysicalGpu final {
 public:
     friend class Instance;
 
@@ -75,7 +75,7 @@ public:
     /// Returns GPUs count which presented in the system
     uint32_t gpuCount()                                   const;
     /// Returns GPU info by its id. Throws std::out_of_range
-    GpuInfo gpuInfo(int id)                               const;
+    PhysicalGpu gpu(int id)                               const;
 
     /// Creates instance
     /// 
@@ -107,7 +107,7 @@ private:
     DECLARE_VKDESTROYER(VkLibrary)  mLibrary;
     DECLARE_VKDESTROYER(VkInstance) mHandle;
     DispatchTable                   mDispTable;
-    std::vector<GpuInfo>            mGpuInfos;
+    std::vector<PhysicalGpu>        mGPUs;
 };
 
 } // engine

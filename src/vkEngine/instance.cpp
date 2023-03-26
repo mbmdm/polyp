@@ -169,11 +169,11 @@ DispatchTable Instance::dispatchTable() const {
 }
 
 uint32_t Instance::gpuCount() const {
-    return mGpuInfos.size();
+    return mGPUs.size();
 }
 
-GpuInfo Instance::gpuInfo(int id) const {
-    return mGpuInfos.at(id);
+PhysicalGpu Instance::gpu(int id) const {
+    return mGPUs.at(id);
 }
 
 bool Instance::init() {
@@ -224,12 +224,12 @@ bool Instance::init() {
 
     auto gpus = getGpuInfos(shared_from_this());
     for (size_t i = 0; i < gpus.size(); ++i) {
-        GpuInfo gpuInfo;
-        gpuInfo.mDevice        = std::get<0>(gpus[i]);
-        gpuInfo.mProperties    = std::get<1>(gpus[i]);
-        gpuInfo.mMemProperties = std::get<2>(gpus[i]);
-        gpuInfo.mQueProperties = std::get<3>(gpus[i]);
-        mGpuInfos.push_back(gpuInfo);
+        PhysicalGpu gpu;
+        gpu.mDevice        = std::get<0>(gpus[i]);
+        gpu.mProperties    = std::get<1>(gpus[i]);
+        gpu.mMemProperties = std::get<2>(gpus[i]);
+        gpu.mQueProperties = std::get<3>(gpus[i]);
+        mGPUs.push_back(gpu);
     }
 
     return true;
@@ -253,7 +253,7 @@ VkInstance const& Instance::operator*() const {
     return *mHandle;
 }
 
-VkDeviceSize GpuInfo::memory() {
+VkDeviceSize PhysicalGpu::memory() {
     
     VkDeviceSize output = 0;
     std::vector<size_t> targetHeapsIdx;
@@ -287,19 +287,19 @@ VkDeviceSize GpuInfo::memory() {
     return output;
 }
 
-bool GpuInfo::isDiscrete() {
+bool PhysicalGpu::isDiscrete() {
     return mProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 }
 
-std::string GpuInfo::name() {
+std::string PhysicalGpu::name() {
     return mProperties.deviceName;
 }
 
-uint32_t GpuInfo::queueFamilyCount() {
+uint32_t PhysicalGpu::queueFamilyCount() {
     return mQueProperties.size();
 }
 
-std::vector<bool> GpuInfo::checkSupport(VkQueueFlags flags, uint32_t count) {
+std::vector<bool> PhysicalGpu::checkSupport(VkQueueFlags flags, uint32_t count) {
     std::vector<bool> output(mQueProperties.size(), false);
     for (size_t i = 0; i < output.size(); i++) {
         if (mQueProperties[i].queueFlags & flags &&
@@ -310,20 +310,20 @@ std::vector<bool> GpuInfo::checkSupport(VkQueueFlags flags, uint32_t count) {
     return output;
 }
 
-uint32_t GpuInfo::queueCount(int queueIndex) {
+uint32_t PhysicalGpu::queueCount(int queueIndex) {
     return mQueProperties[queueIndex].queueCount;
 }
 
-bool GpuInfo::queueHasFlags(int queueIndex, VkFlags flags) {
+bool PhysicalGpu::queueHasFlags(int queueIndex, VkFlags flags) {
     return mQueProperties[queueIndex].queueFlags & flags;
 }
 
-VkPhysicalDevice GpuInfo::operator*() {
-    const GpuInfo& this_ = *this;
+VkPhysicalDevice PhysicalGpu::operator*() {
+    const PhysicalGpu& this_ = *this;
     return *this_;
 }
 
-VkPhysicalDevice GpuInfo::operator*() const {
+VkPhysicalDevice PhysicalGpu::operator*() const {
     return mDevice;
 }
 

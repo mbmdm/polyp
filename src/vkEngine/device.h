@@ -29,10 +29,10 @@ struct DeviceCreateInfo {
 };
 
 /// Vulkan engin device.
-class Device final {
+class Device final : public std::enable_shared_from_this<Device> {
 private:
-    Device(Instance::Ptr instance, GpuInfo device);
-    Device(Instance::Ptr instance, GpuInfo device, const DeviceCreateInfo& info);
+    Device(Instance::Ptr instance, PhysicalGpu device);
+    Device(Instance::Ptr instance, PhysicalGpu device, const DeviceCreateInfo& info);
 
 public:
     using Ptr = std::shared_ptr<Device>;
@@ -43,7 +43,16 @@ public:
     Device& operator=(Device&&)      = delete;
     ~Device()                        = default;
 
-    DispatchTable dispatchTable() const;
+    DispatchTable dispatchTable()                  const;
+    PhysicalGpu gpu()                              const;
+    /// Returns VkQueue according to DeviceCreateInfo or VK_NULL_HANDLE if failed
+    /// \param family - queue family index;
+    /// \param index  - index of que in mPriorities field of QueueCreateInfo;
+    VkQueue queue(uint32_t family, uint32_t index) const;
+    /// Creates new command buffer
+    /// \param family - queue family index;
+    /// \param level  - enum of type VkCommandBufferLevel
+    VkCommandBuffer newCmdBuffer(uint32_t family, VkCommandBufferLevel level) const;
 
     /// Creates device
     /// 
@@ -71,11 +80,15 @@ private:
     [[nodiscard]] bool checkSupportedExt(const std::vector<VkExtensionProperties>& available) const;
     [[nodiscard]] bool checkSupportedQueue();
 
-    DeviceCreateInfo              mInfo;
-    DispatchTable                 mDispTable;
-    Instance::Ptr                 mInstance;
-    GpuInfo                       mGpuInfo;
-    DECLARE_VKDESTROYER(VkDevice) mHandle;
+    DeviceCreateInfo                                   mInfo;
+    DispatchTable                                      mDispTable;
+    Instance::Ptr                                      mInstance;
+    PhysicalGpu                                        mPhysicalGpu;
+    DECLARE_VKDESTROYER(VkDevice)                      mHandle;
+    /// key - queue family index, value - VkQueues of mPriorities size
+    std::unordered_map<uint32_t, std::vector<VkQueue>>               mQueue;
+    /// key - queue family index, value - Wrapped VkCommandPool
+    std::unordered_map<uint32_t, DECLARE_VKDESTROYER(VkCommandPool)> mCommandPool;
 };
 
 } // engine

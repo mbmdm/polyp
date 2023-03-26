@@ -12,18 +12,18 @@ const VkSurfaceKHR& Surface::operator*() const {
     return *mHandle;
 }
 
-std::vector<bool> Surface::checkSupport(GpuInfo gpuInfo) const {
-    std::vector<bool> output(gpuInfo.queueFamilyCount());
+std::vector<bool> Surface::checkSupport(PhysicalGpu gpu) const {
+    std::vector<bool> output(gpu.queueFamilyCount());
     VkBool32 flag = VK_FALSE;
     for (size_t i = 0; i < output.size(); i++) {
-        CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceSupportKHR(*gpuInfo, i, **this, &flag));
+        CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceSupportKHR(*gpu, i, **this, &flag));
         output[i] = flag == VK_TRUE;
     }
     return output;
 }
 
-bool Surface::checkSupport(GpuInfo gpuInfo, VkSurfaceFormatKHR format) const {
-    auto currFormats = formats(gpuInfo);
+bool Surface::checkSupport(PhysicalGpu gpu, VkSurfaceFormatKHR format) const {
+    auto currFormats = Surface::format(gpu);
     if (currFormats.size() == 1 &&
         currFormats.begin()->format == VK_FORMAT_UNDEFINED) {
         POLYPINFO("Sufrace returned VK_FORMAT_UNDEFINED. All formats are supported");
@@ -38,16 +38,16 @@ bool Surface::checkSupport(GpuInfo gpuInfo, VkSurfaceFormatKHR format) const {
     return false;
 }
 
-bool Surface::checkSupport(GpuInfo gpuInfo, VkSurfaceFormatKHR in_format,
+bool Surface::checkSupport(PhysicalGpu gpu, VkSurfaceFormatKHR in_format,
                            VkSurfaceFormatKHR& out_format) const {
     out_format = in_format;
-    auto output = checkSupport(gpuInfo, in_format);
+    auto output = checkSupport(gpu, in_format);
 
     if (output) {
         return output;
     }
 
-    auto currFormats = formats(gpuInfo);
+    auto currFormats = format(gpu);
     for (const auto& currFormat : currFormats) {
         if (in_format.format == currFormat.format) {
             out_format.colorSpace = currFormat.colorSpace;
@@ -64,17 +64,35 @@ bool Surface::checkSupport(GpuInfo gpuInfo, VkSurfaceFormatKHR in_format,
     return output;
 }
 
-VkSurfaceCapabilitiesKHR Surface::capabilities(GpuInfo gpuInfo) const {
+bool Surface::checkSupport(PhysicalGpu gpu, VkPresentModeKHR mode) const {
+    auto currModes = presentModes(gpu);
+    for (size_t i = 0; i < currModes.size(); ++i) {
+        if (currModes[i] == mode) {
+            return true;
+        }
+    }
+    return false;
+}
+
+VkSurfaceCapabilitiesKHR Surface::capabilities(PhysicalGpu gpu) const {
     VkSurfaceCapabilitiesKHR output;
-    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceCapabilitiesKHR(*gpuInfo, **this, &output));
+    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceCapabilitiesKHR(*gpu, **this, &output));
     return output;
 }
 
-std::vector<VkSurfaceFormatKHR> Surface::formats(GpuInfo gpuInfo) const {
+std::vector<VkSurfaceFormatKHR> Surface::format(PhysicalGpu gpu) const {
     uint32_t count = 0;
-    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceFormatsKHR(*gpuInfo, **this, &count, nullptr));
+    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceFormatsKHR(*gpu, **this, &count, nullptr));
     std::vector<VkSurfaceFormatKHR> output(count);
-    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceFormatsKHR(*gpuInfo, **this, &count, output.data()));
+    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceFormatsKHR(*gpu, **this, &count, output.data()));
+    return output;
+}
+
+std::vector<VkPresentModeKHR> Surface::presentModes(PhysicalGpu gpu) const {
+    uint32_t count = 0;
+    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfacePresentModesKHR(*gpu, **this, &count, nullptr));
+    std::vector<VkPresentModeKHR> output(count);
+    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfacePresentModesKHR(*gpu, **this, &count, output.data()));
     return output;
 }
 

@@ -2,6 +2,7 @@
 #define POLYP_LOGS_H
 
 #include <cstdio>
+#include <cassert>
 
 enum class LogType : uint32_t
 {
@@ -40,10 +41,11 @@ inline void polyp_direct(LogType type, const char* project, const char* file, un
 #define polyplog(type, ...)                                            \
 polyp_direct(type, POLYPLOG_PROJECT, __FILE__, __LINE__, __VA_ARGS__)
 
-#define POLYPINFO(...)  polyplog(LogType::Log,     __VA_ARGS__)
-#define POLYPDEBUG(...) polyplog(LogType::Debug,   __VA_ARGS__)
-#define POLYPWARN(...)  polyplog(LogType::Warning, __VA_ARGS__)
-#define POLYPERR(...)   polyplog(LogType::Error,   __VA_ARGS__)
-#define POLYPFATAL(...) polyplog(LogType::Fatal,   __VA_ARGS__)
+#define POLYPINFO(...)   polyplog(LogType::Log,     __VA_ARGS__)
+#define POLYPDEBUG(...)  polyplog(LogType::Debug,   __VA_ARGS__)
+#define POLYPWARN(...)   polyplog(LogType::Warning, __VA_ARGS__)
+#define POLYPERR(...)    polyplog(LogType::Error,   __VA_ARGS__)
+#define POLYPFATAL(...)  polyplog(LogType::Fatal,   __VA_ARGS__)
+#define POLYPASSERT(...) polyplog(LogType::Log,     __VA_ARGS__); /*assert(false);*/
 
-#endif // POLYP_LOGS_H
+#endif // POLYP_LOGS_H 

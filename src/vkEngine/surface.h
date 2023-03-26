@@ -31,18 +31,21 @@ public:
     ~Surface()                         = default;
 
     /// Loops over all gpu queue family indexes and returns true if supported
-    [[nodiscard]] std::vector<bool> checkSupport(GpuInfo gpuInfo)               const;
+    [[nodiscard]] std::vector<bool> checkSupport(PhysicalGpu gpu)               const;
     /// Loops over all supported formats and returns true is supported
-    [[nodiscard]] bool checkSupport(GpuInfo gpuInfo, VkSurfaceFormatKHR format) const;
+    [[nodiscard]] bool checkSupport(PhysicalGpu gpu, VkSurfaceFormatKHR format) const;
     /// Loops over all supported formats and returns true is supported and
     /// fill out_format with the most suitable in case required is not supported
-    [[nodiscard]] bool checkSupport(GpuInfo gpuInfo, VkSurfaceFormatKHR in_format,
+    [[nodiscard]] bool checkSupport(PhysicalGpu gpu, VkSurfaceFormatKHR in_format,
                                     VkSurfaceFormatKHR& out_format)             const;
+    /// Loops over all supported presentation modes and returns true if required mode was found
+    [[nodiscard]] bool checkSupport(PhysicalGpu gpu, VkPresentModeKHR mode)     const;
     /// Returns Surface capabilities for SwapChain creation
-    [[nodiscard]] VkSurfaceCapabilitiesKHR capabilities(GpuInfo gpuInfo)        const;
+    [[nodiscard]] VkSurfaceCapabilitiesKHR capabilities(PhysicalGpu gpu)        const;
     /// Returns supported surface formats
-    [[nodiscard]] std::vector<VkSurfaceFormatKHR> formats(GpuInfo gpuInfo)      const;
-
+    [[nodiscard]] std::vector<VkSurfaceFormatKHR> format(PhysicalGpu gpu)       const;
+    /// Returns supported surface presentation modes
+    [[nodiscard]] std::vector<VkPresentModeKHR> presentModes(PhysicalGpu gpu)   const;
 
     /// Creates presenration surface
     /// 

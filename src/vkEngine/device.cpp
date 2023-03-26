@@ -44,7 +44,7 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
 [[nodiscard]] auto createDevice(PFN_vkCreateDevice pFun, VkPhysicalDevice device, 
                                 const DeviceCreateInfo& info, const VkPhysicalDeviceFeatures* features) {
     VkDevice output = VK_NULL_HANDLE;
-
+    
     std::vector<VkDeviceQueueCreateInfo> queInfos(info.mQueueInfo.size());
     for (size_t i = 0; i < queInfos.size(); i++) {
         queInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -96,16 +96,39 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
     return true;
 }
 
+/// Creates VkCommandPool
+[[nodiscard]] auto createCommandPool(Device::Ptr device, uint32_t queFamilyIdx, 
+                                     VkCommandPoolCreateFlags flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT) {
+    VkCommandPool cmdPool = VK_NULL_HANDLE;
+    VkCommandPoolCreateInfo createInfo = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+    createInfo.pNext = nullptr;
+    createInfo.flags = flags;
+    createInfo.queueFamilyIndex = queFamilyIdx;
+    CHECKRET(device->dispatchTable().CreateCommandPool(**device, &createInfo, nullptr, &cmdPool));
+    return cmdPool;
+}
+
+[[nodiscard]] auto createCommandBuffer(Device::Ptr device, VkCommandPool pool, VkCommandBufferLevel level, uint32_t count) {
+    std::vector<VkCommandBuffer> output(count, VK_NULL_HANDLE);
+    VkCommandBufferAllocateInfo createInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+    createInfo.pNext = nullptr;
+    createInfo.commandPool = pool;
+    createInfo.level = level;
+    createInfo.commandBufferCount = count;
+    CHECKRET(device->dispatchTable().AllocateCommandBuffers(**device, &createInfo, output.data()));
+    return output;
+}
+
 } // anonymous namespace
 
-Device::Device(Instance::Ptr instance, GpuInfo device) :
+Device::Device(Instance::Ptr instance, PhysicalGpu device) :
                mInfo{}, mDispTable{}, mInstance{ instance }, 
-               mGpuInfo{ device }, mHandle{ VK_NULL_HANDLE }
+               mPhysicalGpu{ device }, mHandle{ VK_NULL_HANDLE }
 {
     mDispTable = mInstance->dispatchTable();
 }
 
-Device::Device(Instance::Ptr instance, GpuInfo device, const DeviceCreateInfo& info) :
+Device::Device(Instance::Ptr instance, PhysicalGpu device, const DeviceCreateInfo& info) :
                Device(instance, device)
 {
     mInfo = info;
@@ -115,13 +138,39 @@ DispatchTable Device::dispatchTable() const {
     return mDispTable;
 }
 
+PhysicalGpu Device::gpu() const {
+    return mPhysicalGpu;
+}
+
+VkQueue Device::queue(uint32_t family, uint32_t index) const {
+    auto itr = mQueue.find(family);
+    if (itr == mQueue.end() || index >= itr->second.size()) {
+        return VK_NULL_HANDLE;
+    }
+    return itr->second[index];
+}
+
+VkCommandBuffer Device::newCmdBuffer(uint32_t family, VkCommandBufferLevel level) const {
+    auto device = Device::Ptr{ const_cast<Device*>(this) };
+    auto cmdIt = mCommandPool.find(family);
+    if (cmdIt == mCommandPool.end()) {
+        return VK_NULL_HANDLE;
+    }
+    VkCommandPool cmd = *cmdIt->second;
+    auto cmdBuffers = createCommandBuffer(device, cmd, level, 1);
+    if (cmdBuffers.empty()) {
+        return VK_NULL_HANDLE;
+    }
+    return *cmdBuffers.begin();
+}
+
 bool Device::init() {
     
-    if (*mGpuInfo == VK_NULL_HANDLE || !mInstance) {
+    if (*mPhysicalGpu == VK_NULL_HANDLE || !mInstance) {
         return false;
     }
 
-    auto deviceExts = getPhysicalDeviceExts(mDispTable.EnumerateDeviceExtensionProperties, *mGpuInfo);
+    auto deviceExts = getPhysicalDeviceExts(mDispTable.EnumerateDeviceExtensionProperties, *mPhysicalGpu);
     if (deviceExts.empty() || !checkSupportedExt(deviceExts)) {
         return false;
     }
@@ -130,13 +179,26 @@ bool Device::init() {
         return false;
     }
 
-    *mHandle = createDevice(mDispTable.CreateDevice, *mGpuInfo, mInfo, nullptr);
+    *mHandle = createDevice(mDispTable.CreateDevice, *mPhysicalGpu, mInfo, nullptr);
 
     if (!loadVkDevice(*mHandle, mDispTable, deviceExts)) {
         return false;
     }
 
     initVkDestroyer(mDispTable.DestroyDevice, mHandle, nullptr);
+
+    // Getting VkQueues
+    for (size_t queFamilyIdx = 0; queFamilyIdx < mInfo.mQueueInfo.size(); ++queFamilyIdx) {
+        for (size_t queIdx = 0; queIdx < mInfo.mQueueInfo[queFamilyIdx].mPriorities.size(); queIdx++) {
+            VkQueue que = VK_NULL_HANDLE;
+            mDispTable.GetDeviceQueue(*mHandle, queFamilyIdx, queIdx, &que);
+            mQueue[queFamilyIdx].push_back(que);
+        }
+        // very-very-very badlooking
+        VkCommandPoolWrapper cmdPool{ *mHandle, createCommandPool(shared_from_this(), queFamilyIdx) };
+        mCommandPool[queFamilyIdx] = VkDestroyer<VkCommandPoolWrapper>{ cmdPool, nullptr };
+        initVkDestroyer(mDispTable.DestroyCommandPool, mCommandPool[queFamilyIdx], nullptr);
+    }
 
     return *mHandle != VK_NULL_HANDLE;
 }
@@ -167,9 +229,9 @@ bool Device::checkSupportedQueue() {
             continue;
         }
         QueueCreateInfo& queInfo = mInfo.mQueueInfo[i];
-        for (uint32_t index = 0; index < mGpuInfo.queueFamilyCount(); ++index) {
-            if ((mGpuInfo.queueCount(index) > queInfo.mPriorities.size()) &&
-                 mGpuInfo.queueHasFlags(index, queInfo.mQueueType)) {
+        for (uint32_t index = 0; index < mPhysicalGpu.queueFamilyCount(); ++index) {
+            if ((mPhysicalGpu.queueCount(index) > queInfo.mPriorities.size()) &&
+                 mPhysicalGpu.queueHasFlags(index, queInfo.mQueueType)) {
                 queInfo.mFamilyIndex = index;
                 break;
             }
@@ -196,14 +258,14 @@ bool Device::checkSupportedQueue() {
         }
     }
 
-    std::vector<uint32_t> requestedQueSizes(mGpuInfo.queueFamilyCount(), 0);
+    std::vector<uint32_t> requestedQueSizes(mPhysicalGpu.queueFamilyCount(), 0);
 
     // Checks:
     // - there are no queues with family index UINT32_MAX;
     // - requested queue family index is correct;
     for (size_t i = 0; i < mInfo.mQueueInfo.size(); i++) {
         if (mInfo.mQueueInfo[i].mFamilyIndex == UINT32_MAX ||
-            mInfo.mQueueInfo[i].mFamilyIndex >= mGpuInfo.queueCount(i)) {
+            mInfo.mQueueInfo[i].mFamilyIndex >= mPhysicalGpu.queueCount(i)) {
             return false;
         }
         requestedQueSizes[mInfo.mQueueInfo[i].mFamilyIndex] += mInfo.mQueueInfo[i].mPriorities.size();
@@ -211,7 +273,7 @@ bool Device::checkSupportedQueue() {
  
     // Check that queue family count isn't exceeded
     for (size_t i = 0; i < requestedQueSizes.size(); i++) {
-        if (requestedQueSizes[i] > mGpuInfo.queueCount(i)) {
+        if (requestedQueSizes[i] > mPhysicalGpu.queueCount(i)) {
             return false;
         }
     }
