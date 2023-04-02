@@ -104,18 +104,18 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
     createInfo.pNext = nullptr;
     createInfo.flags = flags;
     createInfo.queueFamilyIndex = queFamilyIdx;
-    CHECKRET(device->dispatchTable().CreateCommandPool(**device, &createInfo, nullptr, &cmdPool));
+    CHECKRET(device->vk().CreateCommandPool(**device, &createInfo, nullptr, &cmdPool));
     return cmdPool;
 }
 
-[[nodiscard]] auto createCommandBuffer(Device::Ptr device, VkCommandPool pool, VkCommandBufferLevel level, uint32_t count) {
+[[nodiscard]] auto createCommandBuffer(Device::ConstPtr device, VkCommandPool pool, VkCommandBufferLevel level, uint32_t count) {
     std::vector<VkCommandBuffer> output(count, VK_NULL_HANDLE);
     VkCommandBufferAllocateInfo createInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
     createInfo.pNext = nullptr;
     createInfo.commandPool = pool;
     createInfo.level = level;
     createInfo.commandBufferCount = count;
-    CHECKRET(device->dispatchTable().AllocateCommandBuffers(**device, &createInfo, output.data()));
+    CHECKRET(device->vk().AllocateCommandBuffers(**device, &createInfo, output.data()));
     return output;
 }
 
@@ -125,7 +125,7 @@ Device::Device(Instance::Ptr instance, PhysicalGpu device) :
                mInfo{}, mDispTable{}, mInstance{ instance }, 
                mPhysicalGpu{ device }, mHandle{ VK_NULL_HANDLE }
 {
-    mDispTable = mInstance->dispatchTable();
+    mDispTable = mInstance->vk();
 }
 
 Device::Device(Instance::Ptr instance, PhysicalGpu device, const DeviceCreateInfo& info) :
@@ -134,7 +134,7 @@ Device::Device(Instance::Ptr instance, PhysicalGpu device, const DeviceCreateInf
     mInfo = info;
 }
 
-DispatchTable Device::dispatchTable() const {
+DispatchTable Device::vk() const {
     return mDispTable;
 }
 
@@ -142,26 +142,94 @@ PhysicalGpu Device::gpu() const {
     return mPhysicalGpu;
 }
 
+DeviceCreateInfo Device::info() const {
+    return mInfo;
+}
+
+std::tuple<uint32_t, double> Device::info(VkQueue que) const {
+    uint32_t currFamily      = std::numeric_limits<uint32_t>::max();
+    double   currPriority    = std::numeric_limits<double>::max();
+    uint32_t currPriorityIdx = std::numeric_limits<uint32_t>::max();
+
+    for (const auto& currQueue : mQueue) {
+        for (size_t i = 0; i < currQueue.second.size(); ++i) {
+            if (currQueue.second[i] == que) {
+                currFamily = currQueue.first;
+                currPriorityIdx = i;
+            }
+        }
+    }
+
+    for (size_t i = 0; i < mInfo.mQueueInfo.size(); i++) {
+        if (mInfo.mQueueInfo[i].mFamilyIndex == currFamily) {
+            currPriority = mInfo.mQueueInfo[i].mPriorities[currPriorityIdx];
+        }
+    }
+
+    if (currFamily == std::numeric_limits<uint32_t>::max() || 
+        currPriorityIdx == std::numeric_limits<uint32_t>::max() ) {
+        throw std::out_of_range("Failed to faid appropriate queue family index. Internal error.");
+    }
+
+    return std::make_tuple(currFamily, currPriority);
+}
+
 VkQueue Device::queue(uint32_t family, uint32_t index) const {
     auto itr = mQueue.find(family);
-    if (itr == mQueue.end() || index >= itr->second.size()) {
-        return VK_NULL_HANDLE;
+    if (itr == mQueue.end()) {
+        throw std::out_of_range{"Wrong queue family index."};
     }
     return itr->second[index];
 }
 
-VkCommandBuffer Device::newCmdBuffer(uint32_t family, VkCommandBufferLevel level) const {
-    auto device = Device::Ptr{ const_cast<Device*>(this) };
-    auto cmdIt = mCommandPool.find(family);
-    if (cmdIt == mCommandPool.end()) {
+VkQueue Device::queue(VkQueueFlags type, double priority) const {
+    uint32_t currFamily      = std::numeric_limits<uint32_t>::max();
+    double   currPriority    = std::numeric_limits<double>::max();
+    uint32_t currPriorityIdx = std::numeric_limits<double>::max();
+
+    auto distanceFun = [](auto rhv, auto lhv) {
+        return std::abs(lhv - rhv);
+    };
+
+    for (size_t i = 0; i < mInfo.mQueueInfo.size(); ++i) {
+        auto queInfo = mInfo.mQueueInfo[i];
+        if (queInfo.mQueueType & type == type) {
+            for (uint32_t j = 0; j < queInfo.mPriorities.size(); j++) {
+                auto quePriority = queInfo.mPriorities[j];
+                if (quePriority == priority) {
+                    return queue(queInfo.mFamilyIndex, j);
+                }
+                auto currDistance = distanceFun(currPriority, priority);
+                auto newDistance  = distanceFun(quePriority, priority);
+                if (currDistance > newDistance) {
+                    currFamily = queInfo.mFamilyIndex;
+                    currPriority = quePriority;
+                    currPriorityIdx = j;
+                }
+            }
+        }
+    }
+    return queue(currFamily, currPriorityIdx);
+}
+
+VkCommandBuffer Device::cmdBuffer(uint32_t family, VkCommandBufferLevel level) const {
+    auto device = shared_from_this();
+    const auto& cmdPoolIt = mCommandPool.find(family);
+    if (cmdPoolIt == mCommandPool.end()) {
         return VK_NULL_HANDLE;
     }
-    VkCommandPool cmd = *cmdIt->second;
-    auto cmdBuffers = createCommandBuffer(device, cmd, level, 1);
+    VkCommandPool cmdPool = *cmdPoolIt->second;
+    auto cmdBuffers = createCommandBuffer(device, cmdPool, level, 1);
     if (cmdBuffers.empty()) {
         return VK_NULL_HANDLE;
     }
-    return *cmdBuffers.begin();
+    VkCommandBuffer cmd = *cmdBuffers.begin();
+    return cmd;
+}
+
+VkCommandBuffer Device::cmdBuffer(VkQueue queue, VkCommandBufferLevel level) const {
+    auto [family, _] = info(queue);
+    return cmdBuffer(family, level);
 }
 
 bool Device::init() {
@@ -171,7 +239,7 @@ bool Device::init() {
     }
 
     auto deviceExts = getPhysicalDeviceExts(mDispTable.EnumerateDeviceExtensionProperties, *mPhysicalGpu);
-    if (deviceExts.empty() || !checkSupportedExt(deviceExts)) {
+    if (deviceExts.empty() || !check(deviceExts)) {
         return false;
     }
 
@@ -203,7 +271,7 @@ bool Device::init() {
     return *mHandle != VK_NULL_HANDLE;
 }
 
-bool Device::checkSupportedExt(const std::vector<VkExtensionProperties>& available) const {
+bool Device::check(const std::vector<VkExtensionProperties>& available) const {
     auto availableItr = available.begin();
     auto desiredItr = mInfo.mDesiredExtentions.begin();
 

@@ -32,9 +32,11 @@ public:
     Swapchain& operator=(Swapchain&&)      = delete;
     ~Swapchain()                           = default;
 
-    /// Returns next swapchain Image or VK_NULL_HANDLE if failed
-    /// Also VK_NULL_HANDLE will be returned on timeout
-    [[nodiscard]] VkImage nextImage() const;
+    /// Returns next swapchain Image and its index.
+    /// Throws std::out_of_range if failed
+    /// \param get<0> - VkImage handle
+    /// \param get<1> - swapchain image index
+    [[nodiscard]] std::tuple<VkImage, uint32_t> nextImage() const;
     /// Updates Swapchain according new SwapChainCreateInfo.
     /// Also can be used when Surface size was changed.
     [[nodiscard]] bool update();
@@ -52,7 +54,7 @@ public:
     template<typename ...Args>
     [[nodiscard]] static Ptr create(Args... args) {
         std::shared_ptr<Swapchain> output(new Swapchain(args...));
-        if (!output->init()) {
+        if (!output->init(VK_NULL_HANDLE)) {
             output.reset();
         }
         return output;
@@ -61,7 +63,7 @@ public:
     VkSwapchainKHR const& operator*() const;
 
 private:
-    [[nodiscard]] bool init();
+    [[nodiscard]] bool init(VkSwapchainKHR oldSwapChain);
 
     SwapChainCreateInfo                 mInfo;
     Device::Ptr                         mDevice;

@@ -2,12 +2,17 @@
 #define CONSTANTS_H
 
 namespace polyp {
-namespace tools {
 namespace constants {
 
-namespace camera {
+inline constexpr auto kWindowTitle             = "Polypious (by Polyp &Ko)";
+inline constexpr auto kWindowClassName         = "PolypWindowClass";
+inline constexpr auto kInternalApplicationName = "Polyp";
+inline constexpr auto kMajorVersion = 99LU;
+inline constexpr auto kMinorVersion = 99LU;
+inline constexpr auto kPatchVersion = 99LU;
 
-// Default camera values
+namespace camera { // Default camera values
+
 inline constexpr float kYaw = -90.0f;
 inline constexpr float kPitch = 0.0f;
 inline constexpr float kSpeed = 2.5f;
@@ -16,15 +21,13 @@ inline constexpr float kZoom = 45.0f;
 
 } // namespace camera
 
-namespace window {
+namespace vk { // specific vulkan constants
 
-// Default window surface values
-inline constexpr const char* kWindowClassName = "PolypWindow";
+inline constexpr auto kVkLibraryName = "vulkan-1.dll";
 
-} // namespace window
+} // namespace vk
 
-} // constants
-} // utils
-} // polyp
+} // namespace constants
+} // namespace polyp
 
 #endif //CONSTANTS_H

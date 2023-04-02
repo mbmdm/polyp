@@ -4,6 +4,7 @@
 #include "dispatch_table.h"
 
 #include <polyp_logs.h>
+#include <constants.h>
 
 #include <vector>
 #include <algorithm>

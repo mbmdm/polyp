@@ -35,7 +35,8 @@ private:
     Device(Instance::Ptr instance, PhysicalGpu device, const DeviceCreateInfo& info);
 
 public:
-    using Ptr = std::shared_ptr<Device>;
+    using Ptr      = std::shared_ptr<Device>;
+    using ConstPtr = std::shared_ptr<Device const>;
 
     Device(const Device&)            = delete;
     Device& operator=(const Device&) = delete;
@@ -43,16 +44,32 @@ public:
     Device& operator=(Device&&)      = delete;
     ~Device()                        = default;
 
-    DispatchTable dispatchTable()                  const;
-    PhysicalGpu gpu()                              const;
-    /// Returns VkQueue according to DeviceCreateInfo or VK_NULL_HANDLE if failed
+    DispatchTable vk()                                          const;
+    /// Returns associated physical device handle&info
+    PhysicalGpu gpu()                                                      const;
+    /// Return device info
+    DeviceCreateInfo info()                                                const;
+    /// Returns VkQueue info by a given VkQueue handle
+    std::tuple<uint32_t, double> info(VkQueue que)                         const;
+    /// Returns existed VkQueue according to DeviceCreateInfo.
+    /// Throws out_of_range exeption if failed
     /// \param family - queue family index;
     /// \param index  - index of que in mPriorities field of QueueCreateInfo;
-    VkQueue queue(uint32_t family, uint32_t index) const;
+    VkQueue queue(uint32_t family, uint32_t index)                         const;
+    /// Returns existed VkQueue
+    /// Throws out_of_range exeption if failed
+    /// \param type      - queue required type (e.g. VK_QUEUE_GRAPHICS_BIT);
+    /// \param priority  - queue priority. If priority specified incorrect, returns
+    /// closest queue with similar priority;
+    VkQueue queue(VkQueueFlags type, double priority = 0.0)                const;
     /// Creates new command buffer
     /// \param family - queue family index;
     /// \param level  - enum of type VkCommandBufferLevel
-    VkCommandBuffer newCmdBuffer(uint32_t family, VkCommandBufferLevel level) const;
+    VkCommandBuffer cmdBuffer(uint32_t family, VkCommandBufferLevel level) const;
+    /// Creates new command buffer
+    /// \param queue - obtained VkQueue;
+    /// \param level - enum of type VkCommandBufferLevel
+    VkCommandBuffer cmdBuffer(VkQueue queue, VkCommandBufferLevel level)  const;
 
     /// Creates device
     /// 
@@ -77,7 +94,7 @@ public:
 
 private:
     [[nodiscard]] bool init();
-    [[nodiscard]] bool checkSupportedExt(const std::vector<VkExtensionProperties>& available) const;
+    [[nodiscard]] bool check(const std::vector<VkExtensionProperties>& available) const;
     [[nodiscard]] bool checkSupportedQueue();
 
     DeviceCreateInfo                                   mInfo;

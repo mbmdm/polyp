@@ -8,14 +8,101 @@
 #include <window_surface.h>
 #include <polyp_logs.h>
 
+#include <thread>
+#include <chrono>
+
 using namespace polyp::engine;
 using namespace polyp::tools;
 
 class Sample : public polyp::tools::IRenderer {
 private:
-    Instance::Ptr  mInstance;
-    Device::Ptr    mDevice;
-    Swapchain::Ptr mSwapchain;
+    Instance::Ptr                    mInstance;
+    Device::Ptr                      mDevice;
+    Swapchain::Ptr                   mSwapchain;
+    VkQueue                          mQueue;
+    VkCommandBuffer                  mCmdBuffer;
+    DECLARE_VKDESTROYER(VkSemaphore) mReadyToPresent;
+
+    struct ImageTransition {
+        VkImage             Image;
+        VkAccessFlags       CurrentAccess;
+        VkAccessFlags       NewAccess;
+        VkImageLayout       CurrentLayout;
+        VkImageLayout       NewLayout;
+        uint32_t            CurrentQueueFamily;
+        uint32_t            NewQueueFamily;
+        VkImageAspectFlags  Aspect;
+    };
+
+    void beginCmd() {
+        VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        CHECKRET(mDevice->vk().BeginCommandBuffer(mCmdBuffer, &beginInfo));
+    }
+
+    void endCmd() {
+        CHECKRET(mDevice->vk().EndCommandBuffer(mCmdBuffer));
+    }
+
+    void setImMemoryBarrier(VkPipelineStageFlags generatingStages, 
+                            VkPipelineStageFlags consumingStages, 
+                            std::vector<ImageTransition> imTransitions) {
+        std::vector<VkImageMemoryBarrier> barriers;
+
+        for (auto& transition : imTransitions) {
+            barriers.push_back({
+              VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,   // VkStructureType            sType
+              nullptr,                                  // const void               * pNext
+              transition.CurrentAccess,                 // VkAccessFlags              srcAccessMask
+              transition.NewAccess,                     // VkAccessFlags              dstAccessMask
+              transition.CurrentLayout,                 // VkImageLayout              oldLayout
+              transition.NewLayout,                     // VkImageLayout              newLayout
+              transition.CurrentQueueFamily,            // uint32_t                   srcQueueFamilyIndex
+              transition.NewQueueFamily,                // uint32_t                   dstQueueFamilyIndex
+              transition.Image,                         // VkImage                    image
+              {                                         // VkImageSubresourceRange    subresourceRange
+                transition.Aspect,                      // VkImageAspectFlags         aspectMask
+                0,                                      // uint32_t                   baseMipLevel
+                VK_REMAINING_MIP_LEVELS,                // uint32_t                   levelCount
+                0,                                      // uint32_t                   baseArrayLayer
+                VK_REMAINING_ARRAY_LAYERS               // uint32_t                   layerCount
+              }
+                });
+        }
+        if (!barriers.empty()) {
+            mDevice->vk().CmdPipelineBarrier(mCmdBuffer, generatingStages, consumingStages,
+                0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(barriers.size()), barriers.data());
+        }
+    }
+
+    void queueSubmit() {
+        VkSubmitInfo submitIinfo = {
+            VK_STRUCTURE_TYPE_SUBMIT_INFO,                        // VkStructureType                sType
+            nullptr,                                              // const void                   * pNext
+            0,                                                    // uint32_t                       waitSemaphoreCount
+            nullptr,                                              // const VkSemaphore            * pWaitSemaphores
+            nullptr,                                              // const VkPipelineStageFlags   * pWaitDstStageMask
+            1,                                                    // uint32_t                       commandBufferCount
+            &mCmdBuffer,                                          // const VkCommandBuffer        * pCommandBuffers
+            1,                                                    // uint32_t                       signalSemaphoreCount
+            &*mReadyToPresent                                     // const VkSemaphore            * pSignalSemaphores
+        };
+        CHECKRET(mDevice->vk().QueueSubmit(mQueue, 1, &submitIinfo, VK_NULL_HANDLE));
+    }
+
+    void present(uint32_t imIdx) {
+        VkPresentInfoKHR presentInfo = {
+            VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,                   // VkStructureType          sType
+            nullptr,                                              // const void*              pNext
+            1,                                                    // uint32_t                 waitSemaphoreCount
+            &*mReadyToPresent,                                    // const VkSemaphore      * pWaitSemaphores
+            1,                                                    // uint32_t                 swapchainCount
+            &**mSwapchain,                                        // const VkSwapchainKHR   * pSwapchains
+            &imIdx,                                               // const uint32_t         * pImageIndices
+            nullptr                                               // VkResult*                pResults
+        };
+        CHECKRET(mDevice->vk().QueuePresentKHR(mQueue, &presentInfo));
+    }
 
 public:
     virtual ~Sample() override {
@@ -26,8 +113,7 @@ public:
         POLYPINFO(__FUNCTION__);
 
         InstanceCreateInfo instanceInfo;
-        instanceInfo.mVersion.major = 1;
-        mInstance = Instance::create("AnisVkApplication", instanceInfo);
+        mInstance = Instance::create();
         if (!mInstance) {
             POLYPFATAL("Failed to create vulkan instance");
             return false;
@@ -77,6 +163,9 @@ public:
             return false;
         }
 
+        mQueue = mDevice->queue(VK_QUEUE_GRAPHICS_BIT, 0.89);
+        mCmdBuffer = mDevice->cmdBuffer(mQueue, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
         SwapChainCreateInfo swInfo;
         swInfo.presentationMode = VK_PRESENT_MODE_MAILBOX_KHR;
         mSwapchain = Swapchain::create(mDevice, surface, swInfo);
@@ -84,6 +173,12 @@ public:
             POLYPFATAL("Failed to create vulkan swap chain.");
             return false;
         }
+
+        mReadyToPresent = { {**mDevice, VK_NULL_HANDLE}, nullptr };
+        VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+        semaphoreCreateInfo.flags = 0;
+        CHECKRET(mDevice->vk().CreateSemaphore(**mDevice, &semaphoreCreateInfo, nullptr, &*mReadyToPresent));
+        initVkDestroyer(mDevice->vk().DestroySemaphore, mReadyToPresent, nullptr);
 
         return true;
     }
@@ -116,7 +211,46 @@ public:
     }
 
     virtual void draw() override {
-        //POLYPINFO(__FUNCTION__);
+        static int drawCounter = 0;
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        CHECKRET(mDevice->vk().DeviceWaitIdle(**mDevice));
+
+        auto [im, imIdx] = mSwapchain->nextImage();
+        if (im == VK_NULL_HANDLE) {
+            POLYPFATAL("Failed to get Swapchain images");
+        }
+
+        beginCmd();
+        ImageTransition imTransitionBeforeDraw = {
+             im,                                       // VkImage              Image
+             0,                                        // VkAccessFlags        CurrentAccess
+             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        NewAccess
+             VK_IMAGE_LAYOUT_UNDEFINED,                // VkImageLayout        CurrentLayout
+             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // VkImageLayout        NewLayout
+             VK_QUEUE_FAMILY_IGNORED,                  // uint32_t             CurrentQueueFamily
+             VK_QUEUE_FAMILY_IGNORED,                  // uint32_t             NewQueueFamily
+             VK_IMAGE_ASPECT_COLOR_BIT                 // VkImageAspectFlags   Aspect
+        };
+        setImMemoryBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, { imTransitionBeforeDraw });
+
+        ImageTransition imTransitionBeforePresent = {
+            im,                                       // VkImage              Image
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        CurrentAccess
+            VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        NewAccess
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // VkImageLayout        CurrentLayout
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // VkImageLayout        NewLayout
+            VK_QUEUE_FAMILY_IGNORED,                  // uint32_t             CurrentQueueFamily
+            VK_QUEUE_FAMILY_IGNORED,                  // uint32_t             NewQueueFamily
+            VK_IMAGE_ASPECT_COLOR_BIT                 // VkImageAspectFlags   Aspect
+        };
+        setImMemoryBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, { imTransitionBeforePresent });
+        endCmd();
+        
+        queueSubmit();
+        present(imIdx);
+        
+        POLYPINFO("Frame %lu", drawCounter);
+        drawCounter++;
     }
     
     virtual void updateTimer() override {
@@ -131,6 +265,6 @@ public:
 int main() {
 
     IRenderer::Ptr sample = std::make_shared<Sample>();
-    WindowSurface win{ "Anissimus hello vulkan", 0, 0, 1024, 600, sample };
+    WindowSurface win{ polyp::constants::kWindowTitle, 0, 0, 1024, 600, sample };
     win.run();
 }

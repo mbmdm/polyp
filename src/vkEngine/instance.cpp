@@ -37,12 +37,12 @@ namespace {
 }
 
 /// Returns available vulkan instance extensions.
-[[nodiscard]] auto getInstanceExtensions(PFN_vkEnumerateInstanceExtensionProperties pFun) {
+[[nodiscard]] auto getInstanceExtensions(Instance::ConstPtr instance) {
     std::vector<VkExtensionProperties> output{};
     uint32_t count = {};
-    CHECKRET(pFun(nullptr, &count, nullptr));
+    CHECKRET(instance->vk().EnumerateInstanceExtensionProperties(nullptr, &count, nullptr));
     output.resize(count);
-    CHECKRET(pFun(nullptr, &count, output.data()));
+    CHECKRET(instance->vk().EnumerateInstanceExtensionProperties(nullptr, &count, output.data()));
     return output;
 }
 
@@ -53,51 +53,57 @@ namespace {
 /// \param apiVersion - major, minor and patch versions of the required vulkan api.
 ///
 /// \returns VkInstance or VK_NULL_HANDLE when failed.
-[[nodiscard]] auto createInstance(
-    const char* appName,
-    PFN_vkCreateInstance pFun,
-    const std::vector<const char*>& desiredExt,
-    const std::tuple<uint32_t, uint32_t, uint32_t>& appVersion) {
+[[nodiscard]] auto createInstance(Instance::ConstPtr instance) {
 
-    auto [majorApp, minorApp, patchApp] = appVersion;
+    auto [majorApp, minorApp, patchApp] = instance->appVersion();
+    auto appName = instance->appName();
+    auto ext = instance->extensions();
 
-    VkApplicationInfo app_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
-    app_info.pApplicationName = appName;
-    app_info.applicationVersion = VK_MAKE_VERSION(majorApp, minorApp, patchApp);
-    app_info.apiVersion = VK_API_VERSION_1_3;
+    VkApplicationInfo appInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
+    appInfo.pApplicationName = appName.c_str();
+    appInfo.applicationVersion = VK_MAKE_VERSION(majorApp, minorApp, patchApp);
+    appInfo.apiVersion = VK_API_VERSION_1_3; POLYPASSERT("move to constants");
 
-    VkInstanceCreateInfo create_info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
-    create_info.pApplicationInfo = &app_info;
-    create_info.enabledExtensionCount = desiredExt.size();
-    create_info.ppEnabledExtensionNames = desiredExt.data();
+    VkInstanceCreateInfo createInfo = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
+    createInfo.pApplicationInfo = &appInfo;
+    createInfo.enabledExtensionCount = ext.size();
+    createInfo.ppEnabledExtensionNames = ext.data();
 
-    VkInstance instance = VK_NULL_HANDLE;
-    CHECKRET(pFun(&create_info, nullptr, &instance));
-    return instance;
+#ifdef DEBUG
+    const std::vector<const char*> debugLayers{
+    "VK_LAYER_KHRONOS_validation"
+    };
+    createInfo.enabledLayerCount = debugLayers.size();
+    createInfo.ppEnabledLayerNames = debugLayers.data();
+#endif // DEBUG
+
+    VkInstance instanceOut = VK_NULL_HANDLE;
+    CHECKRET(instance->vk().CreateInstance(&createInfo, nullptr, &instanceOut));
+    return instanceOut;
 }
 
 /// Loads vulkan instance functions and stores them in the dispatch table
-[[nodiscard]] auto loadVkInstance(VkInstance instance, DispatchTable& table) {
+[[nodiscard]] auto loadVkInstance(Instance::ConstPtr instance, DispatchTable& table) {
 
-#define INSTANCE_LEVEL_VULKAN_FUNCTION( name )                                    \
-    table.name = (PFN_vk##name)table.GetInstanceProcAddr( instance, "vk"#name );  \
-    if( table.name  == nullptr ) {                                                \
-      std::cout << "Could not load Vulkan instance function named: "              \
-      "vk"#name << std::endl;                                                     \
-      return false;                                                               \
+#define INSTANCE_LEVEL_VULKAN_FUNCTION( name )                                           \
+    table.name = (PFN_vk##name)table.GetInstanceProcAddr( instance->raw(), "vk"#name );  \
+    if( table.name  == nullptr ) {                                                       \
+      std::cout << "Could not load Vulkan instance function named: "                     \
+      "vk"#name << std::endl;                                                            \
+      return false;                                                                      \
     }
 
-    auto availableExt = getInstanceExtensions(table.EnumerateInstanceExtensionProperties);
+    auto availableExt = getInstanceExtensions(instance);
 
-#define INSTANCE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION( name, extension )                    \
-    for (auto& ext : availableExt) {                                                        \
-        if (strcmp(ext.extensionName, extension) == 0) {                                    \
-            table.name = (PFN_vk##name)table.GetInstanceProcAddr( instance, "vk"#name );    \
-            if( table.name == nullptr ) {                                                   \
-                std::cout << "Could not load Vulkan instance function named: "              \
-                "vk"#name << std::endl; return false;                                       \
-            }                                                                               \
-         }                                                                                  \
+#define INSTANCE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION( name, extension )                           \
+    for (auto& ext : availableExt) {                                                               \
+        if (strcmp(ext.extensionName, extension) == 0) {                                           \
+            table.name = (PFN_vk##name)table.GetInstanceProcAddr( instance->raw(), "vk"#name );    \
+            if( table.name == nullptr ) {                                                          \
+                std::cout << "Could not load Vulkan instance function named: "                     \
+                "vk"#name << std::endl; return false;                                              \
+            }                                                                                      \
+         }                                                                                         \
      }
 
 #include "dispatch_table.inl"
@@ -106,10 +112,10 @@ namespace {
 }
 
 /// Returns info about all the GPUs in system
-[[nodiscard]] auto getGpuInfos(Instance::Ptr instance) {
+[[nodiscard]] auto getGpuInfos(Instance::ConstPtr instance) {
     
     uint32_t count = {};
-    CHECKRET(instance->dispatchTable().EnumeratePhysicalDevices(**instance, &count, nullptr));
+    CHECKRET(instance->vk().EnumeratePhysicalDevices(instance->raw(), &count, nullptr));
 
     using ReturnT = std::tuple<VkPhysicalDevice, 
                                VkPhysicalDeviceProperties, 
@@ -119,19 +125,19 @@ namespace {
     std::vector<ReturnT>          output(count);
     std::vector<VkPhysicalDevice> devices(count);
 
-    CHECKRET(instance->dispatchTable().EnumeratePhysicalDevices(**instance, &count, devices.data()));
+    CHECKRET(instance->vk().EnumeratePhysicalDevices(instance->raw(), &count, devices.data()));
 
     for (size_t i = 0; i < count; i++) {
         std::get<0>(output[i]) = devices[i];
         VkPhysicalDeviceProperties       properties;
         VkPhysicalDeviceMemoryProperties memProperties;
 
-        instance->dispatchTable().GetPhysicalDeviceProperties(devices[i],       &std::get<1>(output[i]));
-        instance->dispatchTable().GetPhysicalDeviceMemoryProperties(devices[i], &std::get<2>(output[i]));
+        instance->vk().GetPhysicalDeviceProperties(devices[i],       &std::get<1>(output[i]));
+        instance->vk().GetPhysicalDeviceMemoryProperties(devices[i], &std::get<2>(output[i]));
         uint32_t queueFamiliesCount = 0;
-        instance->dispatchTable().GetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamiliesCount, nullptr);
+        instance->vk().GetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamiliesCount, nullptr);
         std::get<3>(output[i]).resize(queueFamiliesCount);
-        instance->dispatchTable().GetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamiliesCount, std::get<3>(output[i]).data());
+        instance->vk().GetPhysicalDeviceQueueFamilyProperties(devices[i], &queueFamiliesCount, std::get<3>(output[i]).data());
     }
 
     return output;
@@ -139,32 +145,33 @@ namespace {
 
 } // anonymous namespace
 
-Instance::Instance() :
-    mAppicationName{ "Polyp application (default)" }, 
+Instance::Instance() : 
     mInfo{}, mLibrary{ NULL }, mHandle{ VK_NULL_HANDLE }, mDispTable{}
-{}
-
-Instance::Instance(const char* appName) : Instance() {
-    mAppicationName = appName;
+{
 }
 
-Instance::Instance(const char* appName, const InstanceCreateInfo& info) : Instance(appName) {
+Instance::Instance(const InstanceCreateInfo& info) : Instance()
+{
     mInfo = info;
 }
 
 std::string Instance::appName() const {
-    return mAppicationName;
+    return mInfo.mApplicationName;
 }
 
 std::tuple<uint32_t, uint32_t, uint32_t> Instance::appVersion() const {
-    return std::make_tuple(mInfo.mVersion.major, mInfo.mVersion.minor, mInfo.mVersion.patch);
+    return std::make_tuple(mInfo.mMajorVersion, mInfo.mMinorVersion, mInfo.mPatchVersion);
 }
 
 std::vector<const char*> Instance::extensions() const {
     return mInfo.mDesiredExtentions;
 }
 
-DispatchTable Instance::dispatchTable() const {
+InstanceCreateInfo Instance::info() const {
+    return mInfo;
+}
+
+DispatchTable Instance::vk() const {
     return mDispTable;
 }
 
@@ -178,16 +185,14 @@ PhysicalGpu Instance::gpu(int id) const {
 
 bool Instance::init() {
 
-    if (mAppicationName.empty() || mLibrary || mDispTable.GetInstanceProcAddr) {
-        printf("Something went wrong. Only single init() call can be invoked.\n");
+    if (mInfo.mApplicationName.empty() || mLibrary || mDispTable.GetInstanceProcAddr) {
+        POLYPERROR("Something went wrong on vk instance creation");
         return false;
     }
 
-    constexpr auto vulkan_lib_name = "vulkan-1.dll";
-    *mLibrary = LoadLibraryA(vulkan_lib_name);
-
+    *mLibrary = LoadLibraryA(constants::vk::kVkLibraryName);
     if (!mLibrary) {
-        printf("Failed to load %s library\n", vulkan_lib_name);
+        POLYPERROR("Failed to load %s library", constants::vk::kVkLibraryName);
         return false;
     }
 
@@ -197,7 +202,7 @@ bool Instance::init() {
         return false;
     }
 
-    auto availableExt = getInstanceExtensions(mDispTable.EnumerateInstanceExtensionProperties);
+    auto availableExt = getInstanceExtensions(shared_from_this());
     auto comparer = []<typename T>(const T & lhv, const T & rhv) {
         if constexpr (std::is_same_v<T, VkExtensionProperties>)
             return strcmp(lhv.extensionName, rhv.extensionName) < 0;
@@ -207,17 +212,16 @@ bool Instance::init() {
     std::sort(mInfo.mDesiredExtentions.begin(), mInfo.mDesiredExtentions.end(), comparer);
     std::sort(availableExt.begin(), availableExt.end(), comparer);
 
-    if (!checkSupportedExt(availableExt)) {
-        printf("Required vulkan instance extensions aren't supported\n");
+    if (!check(availableExt)) {
+        POLYPERROR("Required vulkan instance extensions aren't supported");
         return false;
     }
 
-    *mHandle = createInstance(
-        mAppicationName.c_str(), mDispTable.CreateInstance, mInfo.mDesiredExtentions, appVersion());
+    *mHandle = createInstance(shared_from_this());
 
-    if (!loadVkInstance(*mHandle, mDispTable)) {
-        POLYPFATAL("Failed to load vulkan instance functions");
-        exit(1);
+    if (!loadVkInstance(shared_from_this(), mDispTable)) {
+        POLYPERROR("Failed to load vulkan instance functions");
+        return false;
     }
 
     initVkDestroyer(mDispTable.DestroyInstance, mHandle, nullptr);
@@ -235,7 +239,7 @@ bool Instance::init() {
     return true;
 }
 
-bool Instance::checkSupportedExt(const std::vector<VkExtensionProperties>& availableExt) const {
+bool Instance::check(const std::vector<VkExtensionProperties>& availableExt) const {
     bool flag = false;
     auto& extentions = mInfo.mDesiredExtentions; // alias
     for (size_t i = 0, j = 0; i < extentions.size() && j < availableExt.size() && !flag; j++) {
@@ -251,6 +255,10 @@ bool Instance::checkSupportedExt(const std::vector<VkExtensionProperties>& avail
 
 VkInstance const& Instance::operator*() const {
     return *mHandle;
+}
+
+VkInstance Instance::raw() const {
+    return this->operator*();
 }
 
 VkDeviceSize PhysicalGpu::memory() {

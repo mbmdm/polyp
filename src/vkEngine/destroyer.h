@@ -10,7 +10,7 @@ namespace engine {
 // Wrappers block
 
 // Macro for desctoying objects which descroy func takes the object handle as first argument
-#define DECLARE_VKDESCTOYER_WRAPPED( VkType, HandleType )          \
+#define DECLARE_VKDESCTOYER_WRAPPED( VkType, HandleType )                \
 struct VkType##Wrapper { HandleType mHandle; };
 
 /// Macro for desctoying objects which descroy func takes the vk object root handle as first argument
@@ -25,6 +25,7 @@ DECLARE_VKDESCTOYER_CHILD_WRAPPED(VkInstance, VkSurfaceKHR);
 DECLARE_VKDESCTOYER_CHILD_WRAPPED(VkDevice,   VkSwapchainKHR);
 DECLARE_VKDESCTOYER_CHILD_WRAPPED(VkDevice,   VkCommandPool);
 DECLARE_VKDESCTOYER_CHILD_WRAPPED(VkDevice,   VkFence);
+DECLARE_VKDESCTOYER_CHILD_WRAPPED(VkDevice,   VkSemaphore);
 
 // Destroy funcs
 
@@ -60,10 +61,8 @@ public:
 
     ~VkDestroyer() {
         if (mDestroyFunc && mObject.mHandle) {
-            //TODO: need special macro for this perpos in common.h (like RDCDEBUG/RDCINFO...)
-            printf("Desctoying object %s %lu\n",
-                typeid(decltype(mObject.mHandle)).name(),
-                mObject);
+            auto handleVal = reinterpret_cast<uint64_t*>(mObject.mHandle);
+            POLYPDEBUG("Desctoying object %s %lu", typeid(decltype(mObject.mHandle)).name(), mObject.mHandle);
             mDestroyFunc(mObject);
         }
     }
@@ -88,6 +87,9 @@ public:
         std::function<void(VkTypeWrapper)> destroyFunc = mDestroyFunc;
 
         mObject.mHandle = other.mObject.mHandle;
+        if constexpr (has_field_mRoot<VkTypeWrapper>) {
+            mObject.mRoot = other.mObject.mRoot;
+        }
         mDestroyFunc = other.mDestroyFunc;
 
         other.mObject.mHandle = object.mHandle;
@@ -134,7 +136,7 @@ inline void initVkDestroyer(PFN_VK_TYPE pfnDestroy, VkDestroyer<VkTypeWrapper>& 
 
     using namespace std::placeholders;
     VkTypeWrapper object;
-    memcpy(&object, &wrapped, sizeof(VkTypeWrapper));
+    memcpy(&object, &wrapped, sizeof(VkTypeWrapper)); // backup underlying VkTypeWrapper object. We're gonna recreate VkDestroyer
     auto destroyFunc = std::bind(destroyVulkanObject<PFN_VK_TYPE, VkTypeWrapper, Args...>, pfnDestroy, _1, args...);
     wrapped = VkDestroyer<VkTypeWrapper>(object, destroyFunc);
 }

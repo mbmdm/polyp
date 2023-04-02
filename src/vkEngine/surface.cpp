@@ -16,7 +16,7 @@ std::vector<bool> Surface::checkSupport(PhysicalGpu gpu) const {
     std::vector<bool> output(gpu.queueFamilyCount());
     VkBool32 flag = VK_FALSE;
     for (size_t i = 0; i < output.size(); i++) {
-        CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceSupportKHR(*gpu, i, **this, &flag));
+        CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceSupportKHR(*gpu, i, **this, &flag));
         output[i] = flag == VK_TRUE;
     }
     return output;
@@ -76,32 +76,32 @@ bool Surface::checkSupport(PhysicalGpu gpu, VkPresentModeKHR mode) const {
 
 VkSurfaceCapabilitiesKHR Surface::capabilities(PhysicalGpu gpu) const {
     VkSurfaceCapabilitiesKHR output;
-    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceCapabilitiesKHR(*gpu, **this, &output));
+    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceCapabilitiesKHR(*gpu, **this, &output));
     return output;
 }
 
 std::vector<VkSurfaceFormatKHR> Surface::format(PhysicalGpu gpu) const {
     uint32_t count = 0;
-    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceFormatsKHR(*gpu, **this, &count, nullptr));
+    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceFormatsKHR(*gpu, **this, &count, nullptr));
     std::vector<VkSurfaceFormatKHR> output(count);
-    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfaceFormatsKHR(*gpu, **this, &count, output.data()));
+    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceFormatsKHR(*gpu, **this, &count, output.data()));
     return output;
 }
 
 std::vector<VkPresentModeKHR> Surface::presentModes(PhysicalGpu gpu) const {
     uint32_t count = 0;
-    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfacePresentModesKHR(*gpu, **this, &count, nullptr));
+    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfacePresentModesKHR(*gpu, **this, &count, nullptr));
     std::vector<VkPresentModeKHR> output(count);
-    CHECKRET(mInstance->dispatchTable().GetPhysicalDeviceSurfacePresentModesKHR(*gpu, **this, &count, output.data()));
+    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfacePresentModesKHR(*gpu, **this, &count, output.data()));
     return output;
 }
 
 bool Surface::init() {
     VkWin32SurfaceCreateInfoKHR createInfo = {
         VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, nullptr, 0, mInfo.mWindow.inst, mInfo.mWindow.hwnd };
-    CHECKRET(mInstance->dispatchTable().CreateWin32SurfaceKHR(**mInstance, &createInfo, nullptr, &*mHandle));
+    CHECKRET(mInstance->vk().CreateWin32SurfaceKHR(**mInstance, &createInfo, nullptr, &*mHandle));
 
-    initVkDestroyer(mInstance->dispatchTable().DestroySurfaceKHR, mHandle, nullptr);
+    initVkDestroyer(mInstance->vk().DestroySurfaceKHR, mHandle, nullptr);
 
     return true;
 }

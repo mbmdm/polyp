@@ -41,9 +41,9 @@ VkPresentModeKHR mostSuitablePresentationMode(Surface::Ptr surface, const Physic
 std::vector<VkImage> getSwapchainImages(Device::Ptr device, Swapchain::Ptr swapchain) {
     uint32_t count = 0;
     VkResult result = VK_SUCCESS;
-    CHECKRET(device->dispatchTable().GetSwapchainImagesKHR(**device, **swapchain, &count, nullptr));
+    CHECKRET(device->vk().GetSwapchainImagesKHR(**device, **swapchain, &count, nullptr));
     std::vector<VkImage> output(count);
-    CHECKRET(device->dispatchTable().GetSwapchainImagesKHR(**device, **swapchain, &count, output.data()));
+    CHECKRET(device->vk().GetSwapchainImagesKHR(**device, **swapchain, &count, output.data()));
     return output;
 }
 
@@ -52,8 +52,8 @@ VkFence createFence(Device::Ptr device) {
     VkFence fence = VK_NULL_HANDLE;
     VkFenceCreateInfo createInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
     createInfo.pNext = nullptr;
-    createInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    CHECKRET(device->dispatchTable().CreateFence(**device, &createInfo, nullptr, &fence));
+    //createInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    CHECKRET(device->vk().CreateFence(**device, &createInfo, nullptr, &fence));
     return fence;
 }
 
@@ -72,27 +72,28 @@ Swapchain::Swapchain(Device::Ptr device, Surface::Ptr surface, const SwapChainCr
     mInfo = info;
 }
 
-VkImage Swapchain::nextImage() const {
+std::tuple<VkImage, uint32_t> Swapchain::nextImage() const {
     uint32_t imIndex = 0;
-    CHECKRET(mDevice->dispatchTable().AcquireNextImageKHR(**mDevice, 
-        *mHandle, gImageAcquireTimeoutNs, VK_NULL_HANDLE, *mFence, &imIndex));
-    CHECKRET(mDevice->dispatchTable().WaitForFences(**mDevice, 1, &*mFence, 
-        VK_TRUE, gImageAcquireTimeoutNs));
-    CHECKRET(mDevice->dispatchTable().GetFenceStatus(**mDevice, *mFence));
-    POLYPINFO("Returned swapchain image idx %d", imIndex);
-    return mImages[imIndex];
+    CHECKRET(mDevice->vk().AcquireNextImageKHR(**mDevice, *mHandle, gImageAcquireTimeoutNs, VK_NULL_HANDLE, *mFence, &imIndex));
+    CHECKRET(mDevice->vk().WaitForFences(**mDevice, 1, &*mFence, VK_TRUE, gImageAcquireTimeoutNs));
+    CHECKRET(mDevice->vk().GetFenceStatus(**mDevice, *mFence));
+    CHECKRET(mDevice->vk().ResetFences(**mDevice, 1, &*mFence));
+    POLYPDEBUG("Returned swapchain image idx %d", imIndex);
+    return std::make_tuple(mImages[imIndex], imIndex);
 }
 
 bool Swapchain::update() {
-    POLYPASSERT("Not implemented");
-    return true;
+    mDevice->vk().DeviceWaitIdle(**mDevice);
+    DECLARE_VKDESTROYER(VkSwapchainKHR) oldHandle{ {**mDevice, VK_NULL_HANDLE}, nullptr };
+    oldHandle = std::move(mHandle); //swap
+    return init(*oldHandle);
 }
 
 VkSwapchainKHR const& Swapchain::operator*() const {
     return *mHandle;
 }
 
-bool Swapchain::init() {
+bool Swapchain::init(VkSwapchainKHR oldSwapChain) {
     // check presentation mode
     auto isSupported = mSurface->checkSupport(mDevice->gpu(), mInfo.presentationMode);
     if (!isSupported) {
@@ -157,20 +158,23 @@ bool Swapchain::init() {
     VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,           // VkCompositeAlphaFlagBitsKHR     compositeAlpha
     mInfo.presentationMode,                      // VkPresentModeKHR                presentMode
     VK_TRUE,                                     // VkBool32                        clipped
-    *mHandle                                     // VkSwapchainKHR                  oldSwapchain
+    oldSwapChain                                 // VkSwapchainKHR                  oldSwapchain
     };
 
-    CHECKRET(mDevice->dispatchTable().CreateSwapchainKHR(**mDevice, &createInfo, nullptr, &*mHandle));
+    CHECKRET(mDevice->vk().CreateSwapchainKHR(**mDevice, &createInfo, nullptr, &*mHandle));
     if (*mHandle == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create swapchain.");
     }
 
-    initVkDestroyer(mDevice->dispatchTable().DestroySwapchainKHR, mHandle, nullptr);
+    initVkDestroyer(mDevice->vk().DestroySwapchainKHR, mHandle, nullptr);
 
+    mImages.clear(); // just explicit call
     mImages = getSwapchainImages(mDevice, shared_from_this());
 
-    *mFence = createFence(mDevice);
-    initVkDestroyer(mDevice->dispatchTable().DestroyFence, mFence, nullptr);
+    if (oldSwapChain == VK_NULL_HANDLE) { // comes from Swapchan::update
+        *mFence = createFence(mDevice);
+        initVkDestroyer(mDevice->vk().DestroyFence, mFence, nullptr);
+    }
 
     return true;
 }

@@ -72,7 +72,7 @@ WindowSurface::WindowSurface(const char* title,
         LoadCursor(nullptr, IDC_ARROW),      // HCURSOR   hCursor
         (HBRUSH)(COLOR_WINDOW + 1),          // HBRUSH    hbrBackground
         nullptr,                             // LPCSTR    lpszMenuName
-        constants::window::kWindowClassName, // LPCSTR    lpszClassName
+        constants::kWindowClassName,         // LPCSTR    lpszClassName
         nullptr                              // HICON     hIconSm
     };
 
@@ -80,7 +80,7 @@ WindowSurface::WindowSurface(const char* title,
         return;
     }
 
-    mWindowHandle.hwnd = CreateWindow(constants::window::kWindowClassName, 
+    mWindowHandle.hwnd = CreateWindow(constants::kWindowClassName,
         title, WS_OVERLAPPEDWINDOW, x, y, width, height, nullptr, nullptr, mWindowHandle.inst, nullptr);
     if (!mWindowHandle.hwnd) {
         return;
@@ -94,7 +94,7 @@ WindowSurface::~WindowSurface() {
         DestroyWindow(mWindowHandle.hwnd);
     }
     if (mWindowHandle.inst) {
-        UnregisterClass(constants::window::kWindowClassName, mWindowHandle.inst);
+        UnregisterClass(constants::kWindowClassName, mWindowHandle.inst);
     }
 }
 
