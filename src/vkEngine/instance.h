@@ -79,7 +79,7 @@ public:
     /// Throws std::out_of_range.
     PhysicalGpu   gpu(int id)                             const;
 
-    /// Creates instance
+    /// Creates instance.
     /// 
     /// Typical usage:
     /// \code

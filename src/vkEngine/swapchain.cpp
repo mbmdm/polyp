@@ -1,4 +1,5 @@
 #include "swapchain.h"
+#include "utils.h"
 
 #include <array>
 
@@ -15,10 +16,10 @@ inline constexpr std::array<VkPresentModeKHR, 2> gSuitablePresentationModePriori
 /// Default minimum number of images to be requested
 inline constexpr uint32_t gMinSwapchainRequiestedImagesCount = 3;
 /// Default timeout for swapchain image acquiring
-inline constexpr uint32_t gImageAcquireTimeoutNs = 2000000000;
+inline constexpr uint32_t gImageAcquireTimeoutNs             = 2'000'000'000;
 
 /// Returns the best available presentation mode. Returns VK_PRESENT_MODE_MAX_ENUM_KHR if failed
-VkPresentModeKHR mostSuitablePresentationMode(Surface::Ptr surface, const PhysicalGpu& gpu) {
+VkPresentModeKHR mostSuitablePresentationMode(Surface::ConstPtr surface, const PhysicalGpu& gpu) {
     auto modes = surface->presentModes(gpu);
     std::vector<bool> seekResult(gSuitablePresentationModePriorities.size(), false);
     for (size_t i = 0; i < modes.size(); i++) {
@@ -38,7 +39,7 @@ VkPresentModeKHR mostSuitablePresentationMode(Surface::Ptr surface, const Physic
 }
 
 /// Returns image handles of created swapchain
-std::vector<VkImage> getSwapchainImages(Device::Ptr device, Swapchain::Ptr swapchain) {
+std::vector<VkImage> getSwapchainImages(Device::ConstPtr device, Swapchain::ConstPtr swapchain) {
     uint32_t count = 0;
     VkResult result = VK_SUCCESS;
     CHECKRET(device->vk().GetSwapchainImagesKHR(**device, **swapchain, &count, nullptr));
@@ -47,23 +48,14 @@ std::vector<VkImage> getSwapchainImages(Device::Ptr device, Swapchain::Ptr swapc
     return output;
 }
 
-/// Creates a new VkFence in signaled state
-VkFence createFence(Device::Ptr device) {
-    VkFence fence = VK_NULL_HANDLE;
-    VkFenceCreateInfo createInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-    createInfo.pNext = nullptr;
-    //createInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    CHECKRET(device->vk().CreateFence(**device, &createInfo, nullptr, &fence));
-    return fence;
-}
-
 } // anonymous namespace
 
 Swapchain::Swapchain(Device::Ptr device, Surface::Ptr surface) :
                      mInfo{}, mDevice{ device }, mSurface{ surface }, 
-                     mHandle{ {**device, VK_NULL_HANDLE}, nullptr },
-                     mFence{ {**device, VK_NULL_HANDLE}, nullptr }
+                     mHandle{ }, mFence{ }
 {
+    mHandle.setRoot(mDevice->raw());
+    mFence.setRoot(mDevice->raw());
 }
 
 Swapchain::Swapchain(Device::Ptr device, Surface::Ptr surface, const SwapChainCreateInfo& info) : 
@@ -84,13 +76,17 @@ std::tuple<VkImage, uint32_t> Swapchain::nextImage() const {
 
 bool Swapchain::update() {
     mDevice->vk().DeviceWaitIdle(**mDevice);
-    DECLARE_VKDESTROYER(VkSwapchainKHR) oldHandle{ {**mDevice, VK_NULL_HANDLE}, nullptr };
-    oldHandle = std::move(mHandle); //swap
+    DECLARE_VKDESTROYER(VkSwapchainKHR) oldHandle = std::move(mHandle);
+    mHandle.setRoot(mDevice->raw());
     return init(*oldHandle);
 }
 
 VkSwapchainKHR const& Swapchain::operator*() const {
     return *mHandle;
+}
+
+VkSwapchainKHR Swapchain::raw() const {
+    return this->operator*();
 }
 
 bool Swapchain::init(VkSwapchainKHR oldSwapChain) {
@@ -141,24 +137,24 @@ bool Swapchain::init(VkSwapchainKHR oldSwapChain) {
     }
 
     VkSwapchainCreateInfoKHR createInfo = {
-    VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, // VkStructureType                 sType
-    nullptr,                                     // const void                    * pNext
-    0,                                           // VkSwapchainCreateFlagsKHR       flags
-    **mSurface,                                  // VkSurfaceKHR                    surface
-    numberOfImages,                              // uint32_t                        minImageCount
-    mInfo.format.format,                         // VkFormat                        imageFormat
-    mInfo.format.colorSpace,                     // VkColorSpaceKHR                 imageColorSpace
-    surfaceCapabilities.currentExtent,           // VkExtent2D                      imageExtent
-    1,                                           // uint32_t                        imageArrayLayers
-    mInfo.usage,                                 // VkImageUsageFlags               imageUsage
-    VK_SHARING_MODE_EXCLUSIVE,                   // VkSharingMode                   imageSharingMode
-    0,                                           // uint32_t                        queueFamilyIndexCount
-    nullptr,                                     // const uint32_t                * pQueueFamilyIndices
-    mInfo.transformation,                        // VkSurfaceTransformFlagBitsKHR   preTransform
-    VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,           // VkCompositeAlphaFlagBitsKHR     compositeAlpha
-    mInfo.presentationMode,                      // VkPresentModeKHR                presentMode
-    VK_TRUE,                                     // VkBool32                        clipped
-    oldSwapChain                                 // VkSwapchainKHR                  oldSwapchain
+        VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, // VkStructureType                 sType
+        nullptr,                                     // const void                    * pNext
+        0,                                           // VkSwapchainCreateFlagsKHR       flags
+        **mSurface,                                  // VkSurfaceKHR                    surface
+        numberOfImages,                              // uint32_t                        minImageCount
+        mInfo.format.format,                         // VkFormat                        imageFormat
+        mInfo.format.colorSpace,                     // VkColorSpaceKHR                 imageColorSpace
+        surfaceCapabilities.currentExtent,           // VkExtent2D                      imageExtent
+        1,                                           // uint32_t                        imageArrayLayers
+        mInfo.usage,                                 // VkImageUsageFlags               imageUsage
+        VK_SHARING_MODE_EXCLUSIVE,                   // VkSharingMode                   imageSharingMode
+        0,                                           // uint32_t                        queueFamilyIndexCount
+        nullptr,                                     // const uint32_t                * pQueueFamilyIndices
+        mInfo.transformation,                        // VkSurfaceTransformFlagBitsKHR   preTransform
+        VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,           // VkCompositeAlphaFlagBitsKHR     compositeAlpha
+        mInfo.presentationMode,                      // VkPresentModeKHR                presentMode
+        VK_TRUE,                                     // VkBool32                        clipped
+        oldSwapChain                                 // VkSwapchainKHR                  oldSwapchain
     };
 
     CHECKRET(mDevice->vk().CreateSwapchainKHR(**mDevice, &createInfo, nullptr, &*mHandle));
@@ -172,7 +168,7 @@ bool Swapchain::init(VkSwapchainKHR oldSwapChain) {
     mImages = getSwapchainImages(mDevice, shared_from_this());
 
     if (oldSwapChain == VK_NULL_HANDLE) { // comes from Swapchan::update
-        *mFence = createFence(mDevice);
+        *mFence = utils::createFence(mDevice);
         initVkDestroyer(mDevice->vk().DestroyFence, mFence, nullptr);
     }
 

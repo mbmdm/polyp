@@ -174,7 +174,7 @@ public:
             return false;
         }
 
-        mReadyToPresent = { {**mDevice, VK_NULL_HANDLE}, nullptr };
+        mReadyToPresent.setRoot(mDevice->raw());
         VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
         semaphoreCreateInfo.flags = 0;
         CHECKRET(mDevice->vk().CreateSemaphore(**mDevice, &semaphoreCreateInfo, nullptr, &*mReadyToPresent));
@@ -185,8 +185,7 @@ public:
 
     virtual bool onResize() override {
         POLYPINFO(__FUNCTION__);
-        mSwapchain->update();
-        return true;
+        return mSwapchain->update();
     }
 
     virtual void onMouseClick(uint32_t button, bool state) override {
@@ -202,6 +201,7 @@ public:
     }
 
     virtual void onShoutDown() override {
+        mDevice->vk().DeviceWaitIdle(mDevice->raw());
         POLYPINFO(__FUNCTION__);
     }
 

@@ -6,12 +6,12 @@ namespace engine {
 namespace {
 
 /// Returns supported device extensions in a sorted order
-auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhysicalDevice device) {
+auto getPhysicalDeviceExts(Device::ConstPtr device) {
     std::vector<VkExtensionProperties> exts;
     uint32_t count = 0;
-    CHECKRET(pFun(device, nullptr, &count, nullptr));
+    CHECKRET(device->vk().EnumerateDeviceExtensionProperties(*device->gpu(), nullptr, &count, nullptr));
     exts.resize(count);
-    CHECKRET(pFun(device, nullptr, &count, exts.data()));
+    CHECKRET(device->vk().EnumerateDeviceExtensionProperties(*device->gpu(), nullptr, &count, exts.data()));
     std::sort(exts.begin(), exts.end(), [](auto& lhv, auto& rhv) {
         return strcmp(lhv.extensionName, rhv.extensionName) < 0;
         });
@@ -19,32 +19,34 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
 }
 
 /// Returns supported device features
-[[nodiscard]] auto getPhysicalDeviceFeatures(PFN_vkGetPhysicalDeviceFeatures pFun, VkPhysicalDevice device) {
+[[nodiscard]] auto getPhysicalDeviceFeatures(Device::ConstPtr device) {
     VkPhysicalDeviceFeatures features;
-    pFun(device, &features);
+    device->vk().GetPhysicalDeviceFeatures(*device->gpu(), &features);
     return features;
 }
 
 /// Returns supported device properties
-[[nodiscard]] auto getPhysicalDeviceProperties(PFN_vkGetPhysicalDeviceProperties pFun, VkPhysicalDevice device) {
+[[nodiscard]] auto getPhysicalDeviceProperties(Device::ConstPtr device) {
     VkPhysicalDeviceProperties properties;
-    pFun(device, &properties);
+    device->vk().GetPhysicalDeviceProperties(*device->gpu(), &properties);
     return properties;
 }
 
-[[nodiscard]] auto getQueueFamiliesProperties(PFN_vkGetPhysicalDeviceQueueFamilyProperties pFun, VkPhysicalDevice device) {
+/// Returns array of VkQueueFamilyProperties
+[[nodiscard]] auto getQueueFamiliesProperties(Device::ConstPtr device) {
     std::vector<VkQueueFamilyProperties> output;
     uint32_t queue_families_count = 0;
-    pFun(device, &queue_families_count, nullptr);
+    device->vk().GetPhysicalDeviceQueueFamilyProperties(*device->gpu(), &queue_families_count, nullptr);
     output.resize(queue_families_count);
-    pFun(device, &queue_families_count, output.data());
+    device->vk().GetPhysicalDeviceQueueFamilyProperties(*device->gpu(), &queue_families_count, output.data());
     return output;
 }
 
-[[nodiscard]] auto createDevice(PFN_vkCreateDevice pFun, VkPhysicalDevice device, 
-                                const DeviceCreateInfo& info, const VkPhysicalDeviceFeatures* features) {
+/// Creates VkDevice
+[[nodiscard]] auto createDevice(Device::ConstPtr device) {
     VkDevice output = VK_NULL_HANDLE;
-    
+    auto info = device->info();
+
     std::vector<VkDeviceQueueCreateInfo> queInfos(info.mQueueInfo.size());
     for (size_t i = 0; i < queInfos.size(); i++) {
         queInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -61,34 +63,35 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
     deviceCreateInfo.enabledLayerCount = 0;
     deviceCreateInfo.enabledExtensionCount = info.mDesiredExtentions.size();
     deviceCreateInfo.ppEnabledExtensionNames = info.mDesiredExtentions.data();
-    deviceCreateInfo.pEnabledFeatures = features;
+    deviceCreateInfo.pEnabledFeatures = nullptr;
 
-    CHECKRET(pFun(device, &deviceCreateInfo, nullptr, &output));
+    CHECKRET(device->vk().CreateDevice(*device->gpu(), &deviceCreateInfo, nullptr, &output));
 
     return output;
 }
 
 /// Loads vulkan device functions and stores them in the dispatch table.
-[[nodiscard]] auto loadVkDevice(VkDevice device, DispatchTable& table,
-                                const std::vector<VkExtensionProperties>& availableExt) {
+[[nodiscard]] auto loadVkDevice(Device::ConstPtr device, DispatchTable& table) {
 
-#define DEVICE_LEVEL_VULKAN_FUNCTION( name )                                 \
-    table.name = (PFN_vk##name)table.GetDeviceProcAddr( device, "vk"#name ); \
-    if( table.name  == nullptr ) {                                           \
-      std::cout << "Could not load Vulkan function named: "                  \
-        "vk"#name << std::endl;                                              \
-      return false;                                                          \
+#define DEVICE_LEVEL_VULKAN_FUNCTION( name )                                        \
+    table.name = (PFN_vk##name)table.GetDeviceProcAddr( device->raw(), "vk"#name ); \
+    if( table.name  == nullptr ) {                                                  \
+      std::cout << "Could not load Vulkan function named: "                         \
+        "vk"#name << std::endl;                                                     \
+      return false;                                                                 \
     }
 
-#define DEVICE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION( name, extension )               \
-    for (auto& ext : availableExt) {                                                 \
-        if (strcmp(ext.extensionName, extension) == 0) {                             \
-            table.name = (PFN_vk##name)table.GetDeviceProcAddr( device, "vk"#name ); \
-            if( table.name == nullptr ) {                                            \
-                std::cout << "Could not load Vulkan function named: "                \
-                "vk"#name << std::endl;                                              \
-            }                                                                        \
-         }                                                                           \
+    auto availableExt = getPhysicalDeviceExts(device);
+
+#define DEVICE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION( name, extension )                      \
+    for (auto& ext : availableExt) {                                                        \
+        if (strcmp(ext.extensionName, extension) == 0) {                                    \
+            table.name = (PFN_vk##name)table.GetDeviceProcAddr( device->raw(), "vk"#name ); \
+            if( table.name == nullptr ) {                                                   \
+                std::cout << "Could not load Vulkan function named: "                       \
+                "vk"#name << std::endl;                                                     \
+            }                                                                               \
+         }                                                                                  \
      }
 
 #include "dispatch_table.inl"
@@ -97,25 +100,27 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
 }
 
 /// Creates VkCommandPool
-[[nodiscard]] auto createCommandPool(Device::Ptr device, uint32_t queFamilyIdx, 
+[[nodiscard]] auto createCommandPool(Device::ConstPtr device, uint32_t queFamilyIdx, 
                                      VkCommandPoolCreateFlags flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT) {
     VkCommandPool cmdPool = VK_NULL_HANDLE;
     VkCommandPoolCreateInfo createInfo = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
     createInfo.pNext = nullptr;
     createInfo.flags = flags;
     createInfo.queueFamilyIndex = queFamilyIdx;
-    CHECKRET(device->vk().CreateCommandPool(**device, &createInfo, nullptr, &cmdPool));
+    CHECKRET(device->vk().CreateCommandPool(device->raw(), &createInfo, nullptr, &cmdPool));
     return cmdPool;
 }
 
-[[nodiscard]] auto createCommandBuffer(Device::ConstPtr device, VkCommandPool pool, VkCommandBufferLevel level, uint32_t count) {
+/// Creates VkCommandBuffer
+[[nodiscard]] auto createCommandBuffer(Device::ConstPtr device, VkCommandPool pool, 
+                                       VkCommandBufferLevel level, uint32_t count) {
     std::vector<VkCommandBuffer> output(count, VK_NULL_HANDLE);
     VkCommandBufferAllocateInfo createInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
     createInfo.pNext = nullptr;
     createInfo.commandPool = pool;
     createInfo.level = level;
     createInfo.commandBufferCount = count;
-    CHECKRET(device->vk().AllocateCommandBuffers(**device, &createInfo, output.data()));
+    CHECKRET(device->vk().AllocateCommandBuffers(device->raw(), &createInfo, output.data()));
     return output;
 }
 
@@ -123,7 +128,7 @@ auto getPhysicalDeviceExts(PFN_vkEnumerateDeviceExtensionProperties pFun, VkPhys
 
 Device::Device(Instance::Ptr instance, PhysicalGpu device) :
                mInfo{}, mDispTable{}, mInstance{ instance }, 
-               mPhysicalGpu{ device }, mHandle{ VK_NULL_HANDLE }
+               mPhysicalGpu{ device }, mHandle{ }
 {
     mDispTable = mInstance->vk();
 }
@@ -146,14 +151,14 @@ DeviceCreateInfo Device::info() const {
     return mInfo;
 }
 
-std::tuple<uint32_t, double> Device::info(VkQueue que) const {
+std::tuple<uint32_t, double> Device::info(VkQueue queue) const {
     uint32_t currFamily      = std::numeric_limits<uint32_t>::max();
     double   currPriority    = std::numeric_limits<double>::max();
     uint32_t currPriorityIdx = std::numeric_limits<uint32_t>::max();
 
     for (const auto& currQueue : mQueue) {
         for (size_t i = 0; i < currQueue.second.size(); ++i) {
-            if (currQueue.second[i] == que) {
+            if (currQueue.second[i] == queue) {
                 currFamily = currQueue.first;
                 currPriorityIdx = i;
             }
@@ -193,7 +198,7 @@ VkQueue Device::queue(VkQueueFlags type, double priority) const {
 
     for (size_t i = 0; i < mInfo.mQueueInfo.size(); ++i) {
         auto queInfo = mInfo.mQueueInfo[i];
-        if (queInfo.mQueueType & type == type) {
+        if ((queInfo.mQueueType & type) == type) {
             for (uint32_t j = 0; j < queInfo.mPriorities.size(); j++) {
                 auto quePriority = queInfo.mPriorities[j];
                 if (quePriority == priority) {
@@ -238,7 +243,7 @@ bool Device::init() {
         return false;
     }
 
-    auto deviceExts = getPhysicalDeviceExts(mDispTable.EnumerateDeviceExtensionProperties, *mPhysicalGpu);
+    auto deviceExts = getPhysicalDeviceExts(shared_from_this());
     if (deviceExts.empty() || !check(deviceExts)) {
         return false;
     }
@@ -247,9 +252,9 @@ bool Device::init() {
         return false;
     }
 
-    *mHandle = createDevice(mDispTable.CreateDevice, *mPhysicalGpu, mInfo, nullptr);
+    *mHandle = createDevice(shared_from_this());
 
-    if (!loadVkDevice(*mHandle, mDispTable, deviceExts)) {
+    if (!loadVkDevice(shared_from_this(), mDispTable)) {
         return false;
     }
 
@@ -262,10 +267,10 @@ bool Device::init() {
             mDispTable.GetDeviceQueue(*mHandle, queFamilyIdx, queIdx, &que);
             mQueue[queFamilyIdx].push_back(que);
         }
-        // very-very-very badlooking
-        VkCommandPoolWrapper cmdPool{ *mHandle, createCommandPool(shared_from_this(), queFamilyIdx) };
-        mCommandPool[queFamilyIdx] = VkDestroyer<VkCommandPoolWrapper>{ cmdPool, nullptr };
-        initVkDestroyer(mDispTable.DestroyCommandPool, mCommandPool[queFamilyIdx], nullptr);
+        DECLARE_VKDESTROYER(VkCommandPool) cmdPool { *mHandle, VK_NULL_HANDLE };
+        *cmdPool = createCommandPool(shared_from_this(), queFamilyIdx);
+        initVkDestroyer(mDispTable.DestroyCommandPool, cmdPool, nullptr);
+        mCommandPool[queFamilyIdx] = std::move(cmdPool);
     }
 
     return *mHandle != VK_NULL_HANDLE;
@@ -351,6 +356,10 @@ bool Device::checkSupportedQueue() {
 
 VkDevice const& Device::operator*() const {
     return *mHandle;
+}
+
+VkDevice Device::raw() const {
+    return this->operator*();
 }
 
 } // engine

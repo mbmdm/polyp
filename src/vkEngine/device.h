@@ -9,23 +9,14 @@ namespace polyp {
 namespace engine {
 
 struct QueueCreateInfo {
-    QueueCreateInfo() :
-        mFamilyIndex{ UINT32_MAX },
-        mQueueType{ VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT },
-        mPriorities { {1.} }
-    {}
-    uint32_t           mFamilyIndex;
-    VkQueueFlags       mQueueType;
-    std::vector<float> mPriorities;
+    uint32_t           mFamilyIndex = UINT32_MAX;
+    VkQueueFlags       mQueueType   = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT;
+    std::vector<float> mPriorities { 1.0 };
 };
 
 struct DeviceCreateInfo {
-    DeviceCreateInfo() :
-        mQueueInfo{ },
-        mDesiredExtentions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME }
-    {}
-    std::vector<QueueCreateInfo>  mQueueInfo;
-    std::vector<const char*>      mDesiredExtentions;
+    std::vector<QueueCreateInfo> mQueueInfo{};
+    std::vector<const char*>     mDesiredExtentions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 };
 
 /// Vulkan engin device.
@@ -44,34 +35,35 @@ public:
     Device& operator=(Device&&)      = delete;
     ~Device()                        = default;
 
-    DispatchTable vk()                                          const;
-    /// Returns associated physical device handle&info
-    PhysicalGpu gpu()                                                      const;
+    DispatchTable    vk()                                                  const;
+    /// Returns associated physical device handle&info.
+    PhysicalGpu      gpu()                                                 const;
     /// Return device info
     DeviceCreateInfo info()                                                const;
-    /// Returns VkQueue info by a given VkQueue handle
-    std::tuple<uint32_t, double> info(VkQueue que)                         const;
+    /// Returns VkQueue family index and its priority by a given VkQueue handle.
+    /// Throws out_of_range exeption when failed.
+    std::tuple<uint32_t, double> info(VkQueue queue)                       const;
     /// Returns existed VkQueue according to DeviceCreateInfo.
-    /// Throws out_of_range exeption if failed
+    /// Throws out_of_range exeption when failed.
     /// \param family - queue family index;
     /// \param index  - index of que in mPriorities field of QueueCreateInfo;
     VkQueue queue(uint32_t family, uint32_t index)                         const;
-    /// Returns existed VkQueue
-    /// Throws out_of_range exeption if failed
+    /// Returns existed VkQueue.
+    /// Throws out_of_range exeption when failed.
     /// \param type      - queue required type (e.g. VK_QUEUE_GRAPHICS_BIT);
-    /// \param priority  - queue priority. If priority specified incorrect, returns
-    /// closest queue with similar priority;
+    /// \param priority  - queue priority. If priority specified incorrect,
+    /// returns closest queue with similar priority;
     VkQueue queue(VkQueueFlags type, double priority = 0.0)                const;
-    /// Creates new command buffer
+    /// Creates new command buffer.
     /// \param family - queue family index;
-    /// \param level  - enum of type VkCommandBufferLevel
+    /// \param level  - enum of type VkCommandBufferLevel;
     VkCommandBuffer cmdBuffer(uint32_t family, VkCommandBufferLevel level) const;
     /// Creates new command buffer
     /// \param queue - obtained VkQueue;
-    /// \param level - enum of type VkCommandBufferLevel
-    VkCommandBuffer cmdBuffer(VkQueue queue, VkCommandBufferLevel level)  const;
+    /// \param level - enum of type VkCommandBufferLevel;
+    VkCommandBuffer cmdBuffer(VkQueue queue, VkCommandBufferLevel level)   const;
 
-    /// Creates device
+    /// Creates device.
     /// 
     /// Typical usage:
     /// \code
@@ -90,7 +82,10 @@ public:
         return output;
     }
 
+    /// Returns underlying vulkan handle.
     VkDevice const& operator*() const;
+    /// Returns underlying vulkan handle.
+    VkDevice raw()              const;
 
 private:
     [[nodiscard]] bool init();

@@ -11,6 +11,9 @@ namespace polyp {
 namespace engine {
 namespace utils {
 
+/// Creates a new VkFence in signaled state
+VkFence createFence(Device::ConstPtr device);
+
 } // utils
 } // engine
 } // polyp

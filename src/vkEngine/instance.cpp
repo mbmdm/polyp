@@ -62,7 +62,7 @@ namespace {
     VkApplicationInfo appInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
     appInfo.pApplicationName = appName.c_str();
     appInfo.applicationVersion = VK_MAKE_VERSION(majorApp, minorApp, patchApp);
-    appInfo.apiVersion = VK_API_VERSION_1_3; POLYPASSERT("move to constants");
+    appInfo.apiVersion = VK_API_VERSION_1_3;
 
     VkInstanceCreateInfo createInfo = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
     createInfo.pApplicationInfo = &appInfo;
@@ -146,7 +146,7 @@ namespace {
 } // anonymous namespace
 
 Instance::Instance() : 
-    mInfo{}, mLibrary{ NULL }, mHandle{ VK_NULL_HANDLE }, mDispTable{}
+    mInfo{}, mLibrary{ }, mHandle{ }, mDispTable{}
 {
 }
 

@@ -24,7 +24,8 @@ private:
     Swapchain(Device::Ptr device, Surface::Ptr surface, const SwapChainCreateInfo& info);
 
 public:
-    using Ptr = std::shared_ptr<Swapchain>;
+    using Ptr      = std::shared_ptr<Swapchain>;
+    using ConstPtr = std::shared_ptr<Swapchain>;
 
     Swapchain(const Swapchain&)            = delete;
     Swapchain& operator=(const Swapchain&) = delete;
@@ -60,7 +61,10 @@ public:
         return output;
     }
 
+    /// Returns underlying vulkan handle.
     VkSwapchainKHR const& operator*() const;
+    /// Returns underlying vulkan handle.
+    VkSwapchainKHR raw()              const;
 
 private:
     [[nodiscard]] bool init(VkSwapchainKHR oldSwapChain);
