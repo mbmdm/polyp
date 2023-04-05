@@ -15,13 +15,13 @@
 #include <tuple>
 #include <iterator>
 
-#define CHECKRET(expr)                         \
-{                                              \
-auto temp = expr;                              \
-if (temp != VK_SUCCESS) {                      \
-printf("Expression %s\n", #expr);              \
-printf("Failed with result = %lu\n", temp);    \
-exit(1);}                                      \
+#define CHECKRET(expr)                             \
+{                                                  \
+    auto temp = expr;                              \
+    if (temp != VK_SUCCESS) {                      \
+    printf("Expression %s\n", #expr);              \
+    printf("Failed with result = %lu\n", temp);    \
+    exit(1);}                                      \
 }
 
 #endif // COMMON_H
