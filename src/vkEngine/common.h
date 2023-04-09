@@ -1,10 +1,10 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <Windows.h>
-#define VK_USE_PLATFORM_WIN32_KHR
-#define VK_NO_PROTOTYPES
-#include <vulkan/vulkan.h>
+#include "dispatch_table.h"
+
+#include <polyp_logs.h>
+#include <constants.h>
 
 #include <vector>
 #include <algorithm>
@@ -12,14 +12,16 @@
 #include <iostream>
 #include <functional>
 #include <memory>
+#include <tuple>
+#include <iterator>
 
-#define CHECKRET(expr)                         \
-{                                              \
-auto temp = expr;                              \
-if (temp != VK_SUCCESS) {                      \
-printf("Expression %s\n", #expr);              \
-printf("Failed with result = %lu\n", temp);    \
-exit(1);}                                      \
+#define CHECKRET(expr)                             \
+{                                                  \
+    auto temp = expr;                              \
+    if (temp != VK_SUCCESS) {                      \
+    printf("Expression %s\n", #expr);              \
+    printf("Failed with result = %lu\n", temp);    \
+    exit(1);}                                      \
 }
 
 #endif // COMMON_H

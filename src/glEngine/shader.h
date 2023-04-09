@@ -2,7 +2,7 @@
 #define SHADER_H
 
 #include "concepts.h"
-#include <utils_errors.h>
+#include <error_codes.h>
 
 #include <glad/gl.h>
 

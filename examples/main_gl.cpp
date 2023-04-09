@@ -1,5 +1,5 @@
 #include <camera.h>
-#include <utils_errors.h>
+#include <error_codes.h>
 #include <shader.h>
 
 #include <glad/gl.h>
@@ -19,10 +19,12 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
 namespace 
 {
+    using namespace polyp::tools;
+
     constexpr unsigned int kWidth = 800;
     constexpr unsigned int kHeight = 600;
 
-    utils::Camera gCamera(glm::vec3(0.0f, 0.0f, 3.0f));
+    Camera gCamera(glm::vec3(0.0f, 0.0f, 3.0f));
 
     float gDeltaTime = 0.0f;
     float gLastFrame = 0.0f;
@@ -176,7 +178,7 @@ int main(void)
 
 void processInput(GLFWwindow* window)
 {
-    using namespace utils;
+    using namespace tools;
     
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);

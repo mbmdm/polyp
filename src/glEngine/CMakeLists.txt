@@ -13,7 +13,7 @@ add_library(glEngine STATIC ${sources})
 
 target_include_directories(glEngine PUBLIC ${includes})
 
-target_link_libraries(glEngine utils
+target_link_libraries(glEngine tools
                                glm
                                glad_gl_core_46)
 
