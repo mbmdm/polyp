@@ -267,6 +267,11 @@ bool Device::init() {
             mDispTable.GetDeviceQueue(*mHandle, queFamilyIdx, queIdx, &que);
             mQueue[queFamilyIdx].push_back(que);
         }
+        POLYPTODO(
+            "We have to create the same number of command pools as number of queues."
+            "We also want to specify the type of command pool. For sove of them to create cmdBuffers"
+            "which can be rest individually, and another not."
+         );
         DECLARE_VKDESTROYER(VkCommandPool) cmdPool { *mHandle, VK_NULL_HANDLE };
         *cmdPool = createCommandPool(shared_from_this(), queFamilyIdx);
         initVkDestroyer(mDispTable.DestroyCommandPool, cmdPool, nullptr);
