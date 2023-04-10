@@ -5,7 +5,7 @@
 #include <device.h>
 #include <swapchain.h>
 #include <utils.h>
-#include <window_surface.h>
+#include <polyp_window.h>
 #include <polyp_logs.h>
 
 #include <thread>
@@ -192,12 +192,6 @@ public:
         return mSwapchain->update();
     }
 
-    virtual void onMouseClick(uint32_t button, bool state) override { }
-
-    virtual void onMouseMove(int x, int y) override { }
-
-    virtual void onMouseWheel(float value) override { }
-
     virtual void onShoutDown() override {
         mDevice->vk().DeviceWaitIdle(mDevice->raw());
         POLYPTODO(
@@ -262,15 +256,11 @@ public:
         CHECKRET(mDevice->vk().GetFenceStatus(**mDevice, *mSubmitFence));
         CHECKRET(mDevice->vk().ResetFences(**mDevice, 1, &*mSubmitFence));
     }
-    
-    virtual void updateTimer() override { }
-
-    virtual void mouseReset() override { }
 };
 
 int main() {
 
     IRenderer::Ptr sample = std::make_shared<Sample>();
-    WindowSurface win{ polyp::constants::kWindowTitle, 0, 0, 1024, 600, sample };
+    PolypWindow win{ polyp::constants::kWindowTitle, 0, 0, 1024, 600, sample };
     win.run();
 }

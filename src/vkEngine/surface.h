@@ -5,7 +5,7 @@
 #include "destroyer.h"
 #include "instance.h"
 
-#include <window_surface.h>
+#include <polyp_window.h>
 
 namespace polyp {
 namespace engine {

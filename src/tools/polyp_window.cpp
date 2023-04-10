@@ -1,4 +1,4 @@
-#include "window_surface.h"
+#include "polyp_window.h"
 #include "constants.h"
 
 #include <assert.h> //TODO: remove
@@ -52,7 +52,7 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 namespace polyp {
 namespace tools {
 
-WindowSurface::WindowSurface(const char* title,
+PolypWindow::PolypWindow(const char* title,
                              int x, int y, int width, int height, 
                              IRenderer::Ptr renderer) :
     mWindowHandle{},
@@ -89,7 +89,7 @@ WindowSurface::WindowSurface(const char* title,
     mInitialized = true;
 }
 
-WindowSurface::~WindowSurface() {
+PolypWindow::~PolypWindow() {
     if (mWindowHandle.hwnd) {
         DestroyWindow(mWindowHandle.hwnd);
     }
@@ -98,7 +98,7 @@ WindowSurface::~WindowSurface() {
     }
 }
 
-void WindowSurface::run() {
+void PolypWindow::run() {
 
     if (!mInitialized || !mRenderer->onInit(mWindowHandle.inst, mWindowHandle.hwnd)) {
         return;

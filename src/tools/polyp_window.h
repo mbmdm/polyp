@@ -9,13 +9,14 @@
 namespace polyp {
 namespace tools {
 
-class WindowSurface {
+/// Base class for a window, to catch events
+class PolypWindow {
 public:
-    WindowSurface(const char* title,
+    PolypWindow(const char* title,
                   int x, int y, int width, int height, 
                   IRenderer::Ptr renderer);
     
-    virtual ~WindowSurface();
+    virtual ~PolypWindow();
 
     auto params() {
         return std::make_tuple(mWindowHandle.hwnd, mWindowHandle.inst);
