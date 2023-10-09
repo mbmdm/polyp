@@ -98,13 +98,13 @@ void setImMemoryBarrier(Device::ConstPtr device, VkCommandBuffer cmd, VkPipeline
 
 class Sample : public polyp::tools::IRenderer {
 private:
-    Instance::Ptr                    mInstance;
-    Device::Ptr                      mDevice;
-    Swapchain::Ptr                   mSwapchain;
-    VkQueue                          mQueue;
-    VkCommandBuffer                  mCmdBuffer;
-    DECLARE_VKDESTROYER(VkFence)     mSubmitFence;
-    DECLARE_VKDESTROYER(VkSemaphore) mReadyToPresent;
+    Instance::Ptr            mInstance;
+    Device::Ptr              mDevice;
+    Swapchain::Ptr           mSwapchain;
+    VkQueue                  mQueue;
+    VkCommandBuffer          mCmdBuffer;
+    DESTROYABLE(VkFence)     mSubmitFence;
+    DESTROYABLE(VkSemaphore) mReadyToPresent;
 
 public:
     virtual ~Sample() override { }
@@ -174,15 +174,13 @@ public:
             return false;
         }
 
-        mReadyToPresent.setRoot(mDevice->raw());
         VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
         semaphoreCreateInfo.flags = 0;
-        CHECKRET(mDevice->vk().CreateSemaphore(**mDevice, &semaphoreCreateInfo, nullptr, &*mReadyToPresent));
-        initVkDestroyer(mDevice->vk().DestroySemaphore, mReadyToPresent, nullptr);
+        CHECKRET(mDevice->vk().CreateSemaphore(**mDevice, &semaphoreCreateInfo, nullptr, mReadyToPresent.pNative()));
+        mReadyToPresent.initDestroyer(mDevice);
 
-        mSubmitFence.setRoot(mDevice->raw());
         *mSubmitFence = utils::createFence(mDevice);
-        initVkDestroyer(mDevice->vk().DestroyFence, mSubmitFence, nullptr);
+        mSubmitFence.initDestroyer(mDevice);
 
         return true;
     }
@@ -193,7 +191,7 @@ public:
     }
 
     virtual void onShoutDown() override {
-        mDevice->vk().DeviceWaitIdle(mDevice->raw());
+        mDevice->vk().DeviceWaitIdle(mDevice->native());
         POLYPTODO(
             "Need association cmdBuffer and cmdPool to have an ability to release cmdBuffer with vkFreeCommandBuffers()"
             "Seems I should move such login in device class and someway point out that native handles shouldn't be "
@@ -249,7 +247,7 @@ public:
         endCmd(mDevice, mCmdBuffer);
         
         queueSubmit(mDevice, mCmdBuffer, mQueue, *mReadyToPresent, *mSubmitFence);
-        present(mDevice, mQueue, mSwapchain->raw(), *mReadyToPresent, imIdx);
+        present(mDevice, mQueue, mSwapchain->native(), *mReadyToPresent, imIdx);
 
         // Waiting for pending cmdBuffer
         CHECKRET(mDevice->vk().WaitForFences(**mDevice, 1, &*mSubmitFence, VK_TRUE, gFenceTimeout));
@@ -259,7 +257,6 @@ public:
 };
 
 int main() {
-
     IRenderer::Ptr sample = std::make_shared<Sample>();
     PolypWindow win{ polyp::constants::kWindowTitle, 0, 0, 1024, 600, sample };
     win.run();

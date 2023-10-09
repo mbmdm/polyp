@@ -13,9 +13,9 @@ namespace tools {
 class PolypWindow {
 public:
     PolypWindow(const char* title,
-                  int x, int y, int width, int height, 
-                  IRenderer::Ptr renderer);
-    
+                int x, int y, int width, int height, 
+                IRenderer::Ptr renderer);
+
     virtual ~PolypWindow();
 
     auto params() {

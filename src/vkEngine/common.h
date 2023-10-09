@@ -14,6 +14,7 @@
 #include <memory>
 #include <tuple>
 #include <iterator>
+#include <type_traits>
 
 #define CHECKRET(expr)                             \
 {                                                  \

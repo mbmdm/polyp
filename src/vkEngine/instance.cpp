@@ -85,25 +85,25 @@ namespace {
 /// Loads vulkan instance functions and stores them in the dispatch table
 [[nodiscard]] auto loadVkInstance(Instance::ConstPtr instance, DispatchTable& table) {
 
-#define INSTANCE_LEVEL_VULKAN_FUNCTION( name )                                           \
-    table.name = (PFN_vk##name)table.GetInstanceProcAddr( instance->raw(), "vk"#name );  \
-    if( table.name  == nullptr ) {                                                       \
-      std::cout << "Could not load Vulkan instance function named: "                     \
-      "vk"#name << std::endl;                                                            \
-      return false;                                                                      \
+#define INSTANCE_LEVEL_VULKAN_FUNCTION( name )                                              \
+    table.name = (PFN_vk##name)table.GetInstanceProcAddr( instance->native(), "vk"#name );  \
+    if( table.name  == nullptr ) {                                                          \
+      std::cout << "Could not load Vulkan instance function named: "                        \
+      "vk"#name << std::endl;                                                               \
+      return false;                                                                         \
     }
 
     auto availableExt = getInstanceExtensions(instance);
 
-#define INSTANCE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION( name, extension )                           \
-    for (auto& ext : availableExt) {                                                               \
-        if (strcmp(ext.extensionName, extension) == 0) {                                           \
-            table.name = (PFN_vk##name)table.GetInstanceProcAddr( instance->raw(), "vk"#name );    \
-            if( table.name == nullptr ) {                                                          \
-                std::cout << "Could not load Vulkan instance function named: "                     \
-                "vk"#name << std::endl; return false;                                              \
-            }                                                                                      \
-         }                                                                                         \
+#define INSTANCE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION( name, extension )                              \
+    for (auto& ext : availableExt) {                                                                  \
+        if (strcmp(ext.extensionName, extension) == 0) {                                              \
+            table.name = (PFN_vk##name)table.GetInstanceProcAddr( instance->native(), "vk"#name );    \
+            if( table.name == nullptr ) {                                                             \
+                std::cout << "Could not load Vulkan instance function named: "                        \
+                "vk"#name << std::endl; return false;                                                 \
+            }                                                                                         \
+         }                                                                                            \
      }
 
 #include "dispatch_table.inl"
@@ -115,7 +115,7 @@ namespace {
 [[nodiscard]] auto getGpuInfos(Instance::ConstPtr instance) {
     
     uint32_t count = {};
-    CHECKRET(instance->vk().EnumeratePhysicalDevices(instance->raw(), &count, nullptr));
+    CHECKRET(instance->vk().EnumeratePhysicalDevices(instance->native(), &count, nullptr));
 
     using ReturnT = std::tuple<VkPhysicalDevice, 
                                VkPhysicalDeviceProperties, 
@@ -125,7 +125,7 @@ namespace {
     std::vector<ReturnT>          output(count);
     std::vector<VkPhysicalDevice> devices(count);
 
-    CHECKRET(instance->vk().EnumeratePhysicalDevices(instance->raw(), &count, devices.data()));
+    CHECKRET(instance->vk().EnumeratePhysicalDevices(instance->native(), &count, devices.data()));
 
     for (size_t i = 0; i < count; i++) {
         std::get<0>(output[i]) = devices[i];
@@ -196,7 +196,7 @@ bool Instance::init() {
         return false;
     }
 
-    initVkDestroyer(FreeLibrary, mLibrary);
+    mLibrary.setDestroyer(FreeLibrary);
 
     if (!loadVkExported(*mLibrary, mDispTable) || !loadVkGlobal(mDispTable)) {
         return false;
@@ -224,7 +224,7 @@ bool Instance::init() {
         return false;
     }
 
-    initVkDestroyer(mDispTable.DestroyInstance, mHandle, nullptr);
+    mHandle.initDestroyer(shared_from_this());
 
     auto gpus = getGpuInfos(shared_from_this());
     for (size_t i = 0; i < gpus.size(); ++i) {
@@ -257,7 +257,7 @@ VkInstance const& Instance::operator*() const {
     return *mHandle;
 }
 
-VkInstance Instance::raw() const {
+VkInstance Instance::native() const {
     return this->operator*();
 }
 

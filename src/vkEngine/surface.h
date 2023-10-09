@@ -72,14 +72,14 @@ public:
     /// Returns underlying vulkan handle.
     const VkSurfaceKHR& operator*() const;
     /// Returns underlying vulkan handle.
-    VkSurfaceKHR raw()              const;
+    VkSurfaceKHR native()           const;
 
 private:
     [[nodiscard]] bool init();
 
-    Instance::Ptr                     mInstance;
-    SurfaceCreateInfo                 mInfo;
-    DECLARE_VKDESTROYER(VkSurfaceKHR) mHandle;
+    Instance::Ptr             mInstance;
+    SurfaceCreateInfo         mInfo;
+    DESTROYABLE(VkSurfaceKHR) mHandle;
 };
 
 } // engine

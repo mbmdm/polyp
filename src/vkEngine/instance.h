@@ -100,17 +100,17 @@ public:
     /// Returns underlying vulkan handle.
     VkInstance const& operator*() const;
     /// Returns underlying vulkan handle.
-    VkInstance raw()              const;
+    VkInstance native()           const;
 
 private:
     [[nodiscard]] bool init();
     [[nodiscard]] bool check(const std::vector<VkExtensionProperties>& available) const;
 
-    InstanceCreateInfo              mInfo;
-    DECLARE_VKDESTROYER(VkLibrary)  mLibrary;
-    DECLARE_VKDESTROYER(VkInstance) mHandle;
-    DispatchTable                   mDispTable;
-    std::vector<PhysicalGpu>        mGPUs;
+    InstanceCreateInfo       mInfo;
+    DESTROYABLE(HMODULE)     mLibrary;
+    DESTROYABLE(VkInstance)  mHandle;
+    DispatchTable            mDispTable;
+    std::vector<PhysicalGpu> mGPUs;
 };
 
 } // engine

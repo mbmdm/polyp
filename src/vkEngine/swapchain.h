@@ -64,17 +64,17 @@ public:
     /// Returns underlying vulkan handle.
     VkSwapchainKHR const& operator*() const;
     /// Returns underlying vulkan handle.
-    VkSwapchainKHR raw()              const;
+    VkSwapchainKHR native()           const;
 
 private:
     [[nodiscard]] bool init(VkSwapchainKHR oldSwapChain);
 
-    SwapChainCreateInfo                 mInfo;
-    Device::Ptr                         mDevice;
-    Surface::Ptr                        mSurface;
-    DECLARE_VKDESTROYER(VkSwapchainKHR) mHandle;
-    std::vector<VkImage>                mImages;
-    DECLARE_VKDESTROYER(VkFence)        mFence;
+    SwapChainCreateInfo         mInfo;
+    Device::Ptr                 mDevice;
+    Surface::Ptr                mSurface;
+    DESTROYABLE(VkSwapchainKHR) mHandle;
+    std::vector<VkImage>        mImages;
+    DESTROYABLE(VkFence)        mFence;
 };
 
 } // engine

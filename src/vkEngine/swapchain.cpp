@@ -53,10 +53,7 @@ std::vector<VkImage> getSwapchainImages(Device::ConstPtr device, Swapchain::Cons
 Swapchain::Swapchain(Device::Ptr device, Surface::Ptr surface) :
                      mInfo{}, mDevice{ device }, mSurface{ surface }, 
                      mHandle{ }, mFence{ }
-{
-    mHandle.setRoot(mDevice->raw());
-    mFence.setRoot(mDevice->raw());
-}
+{ }
 
 Swapchain::Swapchain(Device::Ptr device, Surface::Ptr surface, const SwapChainCreateInfo& info) : 
                      Swapchain(device, surface) 
@@ -76,8 +73,7 @@ std::tuple<VkImage, uint32_t> Swapchain::nextImage() const {
 
 bool Swapchain::update() {
     mDevice->vk().DeviceWaitIdle(**mDevice);
-    DECLARE_VKDESTROYER(VkSwapchainKHR) oldHandle = std::move(mHandle);
-    mHandle.setRoot(mDevice->raw());
+    DESTROYABLE(VkSwapchainKHR) oldHandle = std::move(mHandle);
     return init(*oldHandle);
 }
 
@@ -85,7 +81,7 @@ VkSwapchainKHR const& Swapchain::operator*() const {
     return *mHandle;
 }
 
-VkSwapchainKHR Swapchain::raw() const {
+VkSwapchainKHR Swapchain::native() const {
     return this->operator*();
 }
 
@@ -162,14 +158,14 @@ bool Swapchain::init(VkSwapchainKHR oldSwapChain) {
         POLYPFATAL("Failed to create swapchain.");
     }
 
-    initVkDestroyer(mDevice->vk().DestroySwapchainKHR, mHandle, nullptr);
+    mHandle.initDestroyer(mDevice);
 
     mImages.clear(); // just explicit call
     mImages = getSwapchainImages(mDevice, shared_from_this());
 
     if (oldSwapChain == VK_NULL_HANDLE) { // comes from Swapchan::update
         *mFence = utils::createFence(mDevice);
-        initVkDestroyer(mDevice->vk().DestroyFence, mFence, nullptr);
+        mFence.initDestroyer(mDevice);
     }
 
     return true;
