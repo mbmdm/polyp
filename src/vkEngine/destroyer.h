@@ -118,8 +118,8 @@ public:
         mDestroyer(mHandle);
     }
 
-    PlainDestroyable(const PlainDestroyable&) = delete;
-    PlainDestroyable(PlainDestroyable&&)      = delete;
+    PlainDestroyable(const PlainDestroyable&)  = delete;
+    PlainDestroyable(PlainDestroyable&&)       = delete;
     T& operator=(const PlainDestroyable&)      = delete;
     T& operator=(PlainDestroyable&&)           = delete;
 
@@ -146,7 +146,6 @@ public:
 private:
     T mHandle;
     std::function<void(T)> mDestroyer;
-
 };
 
 using HMODULEDestroyable = PlainDestroyable<HMODULE>;
