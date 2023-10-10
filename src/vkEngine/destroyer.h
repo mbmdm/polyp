@@ -112,8 +112,8 @@ public:
         mDestroyer(mHandle);
     }
 
-    PlainDestroyable(const PlainDestroyable&) = delete;
-    PlainDestroyable(PlainDestroyable&&)      = delete;
+    PlainDestroyable(const PlainDestroyable&)  = delete;
+    PlainDestroyable(PlainDestroyable&&)       = delete;
     T& operator=(const PlainDestroyable&)      = delete;
     T& operator=(PlainDestroyable&&)           = delete;
 
