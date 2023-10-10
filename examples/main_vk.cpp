@@ -98,7 +98,6 @@ void setImMemoryBarrier(Device::ConstPtr device, VkCommandBuffer cmd, VkPipeline
 
 class Sample : public polyp::tools::IRenderer {
 private:
-    Instance::Ptr            mInstance;
     Device::Ptr              mDevice;
     Swapchain::Ptr           mSwapchain;
     VkQueue                  mQueue;
@@ -113,15 +112,15 @@ public:
         POLYPINFO(__FUNCTION__);
 
         InstanceCreateInfo instanceInfo;
-        mInstance = Instance::create();
-        if (!mInstance) {
+        auto instance = Instance::create();
+        if (!instance) {
             POLYPFATAL("Failed to create vulkan instance");
             return false;
         }
 
         polyp::engine::PhysicalGpu physGpu;
-        for (size_t i = 0; i < mInstance->gpuCount(); i++) {
-            auto gpu = mInstance->gpu(i);
+        for (size_t i = 0; i < instance->gpuCount(); i++) {
+            auto gpu = instance->gpu(i);
             if (gpu.memory() > physGpu.memory() && gpu.isDiscrete()) {
                 physGpu = gpu;
             }
@@ -129,7 +128,7 @@ public:
         POLYPINFO("Selected device %s with local memory %d mb\n", physGpu.name().c_str(), physGpu.memory() / 1024 / 1024);
 
         SurfaceCreateInfo info{ inst, hwnd };
-        Surface::Ptr surface = Surface::create(mInstance, info);
+        Surface::Ptr surface = Surface::create(instance, info);
         if (!surface) {
             POLYPFATAL("Failed to create vulkan surface (WSI)");
             return false;
@@ -157,7 +156,7 @@ public:
         DeviceCreateInfo deviceInfo;
         queInfo.mFamilyIndex = UINT32_MAX;
         deviceInfo.mQueueInfo = { queInfo };
-        mDevice = Device::create(mInstance, physGpu, deviceInfo);
+        mDevice = Device::create(instance, physGpu, deviceInfo);
         if (!mDevice) {
             POLYPFATAL("Failed to create vulkan rendering device");
             return false;

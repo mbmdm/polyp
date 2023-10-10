@@ -10,11 +10,6 @@
 namespace polyp {
 namespace engine {
 
-struct SurfaceCreateInfo {
-    polyp::tools::WindowInstance mWindowsInstance;
-    polyp::tools::WindowHandle   mWindowsHandle;
-};
-
 class Surface final {
 private:
     Surface(Instance::Ptr instance, const SurfaceCreateInfo& info);

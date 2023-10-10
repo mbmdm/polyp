@@ -9,14 +9,6 @@
 namespace polyp {
 namespace engine {
 
-struct SwapChainCreateInfo {
-    VkPresentModeKHR presentationMode            = VK_PRESENT_MODE_FIFO_KHR;
-    VkImageUsageFlagBits usage                   = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    VkSurfaceTransformFlagBitsKHR transformation = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-    VkSurfaceFormatKHR format                    = { VK_FORMAT_R8G8B8A8_UNORM, 
-                                                     VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-};
-
 /// Vulkan engin swapchain.
 class Swapchain final : public std::enable_shared_from_this<Swapchain> {
 private:
