@@ -27,7 +27,6 @@ public:
         POLYPDEBUG(__FUNCTION__);
     };
     virtual void onShoutDown() = 0;
-
     virtual bool isReady() = 0;
     virtual void draw() = 0;
     virtual void updateTimer() {
