@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 set(sources_gl main_gl.cpp)
-set(sources_vk main_Vk.cpp)
+set(sources_vk main_vk.cpp)
 
 set(includes ${STB_LOCATION})
 

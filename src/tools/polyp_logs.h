@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cassert>
 
-enum class LogType : uint32_t
+enum class LogType
 {
     ToDo,
     Debug,
@@ -20,19 +20,19 @@ inline void polyp_direct(LogType type, const char* project, const char* file, un
     va_start(args, fmt);
 
     const char* typestr[] = {
-    "TODO:    ", "Debug:   ", "Log:     ", "Warning: ", "Error:   ", "Fatal:   "
+        "TODO:    ", "Debug:   ", "Log:     ", "Warning: ", "Error:   ", "Fatal:   "
     };
 
     printf("%s ",  project);                             /// Temporal logging solution
-    printf("%s",  typestr[static_cast<uint32_t>(type)]); /// Temporal logging solution
+    printf("%s",  typestr[static_cast<int>(type)]);      /// Temporal logging solution
     if (type == LogType::ToDo || type == LogType::Fatal || type == LogType::Error ) {
         printf("[%s:%d] ", file, line); /// Temporal logging solution
     }
     if (type == LogType::ToDo && strlen(fmt) == 0) {
-        printf("Not implemented yet!");
+        printf("Not implemented yet!");                  /// Temporal logging solution
     }
     vprintf(fmt,  args);                                 /// Temporal logging solution
-    printf("\n");                                       /// Temporal logging solution
+    printf("\n");                                        /// Temporal logging solution
 
     va_end(args);
 

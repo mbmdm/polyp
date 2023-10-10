@@ -53,10 +53,7 @@ std::vector<VkImage> getSwapchainImages(Device::ConstPtr device, Swapchain::Cons
 Swapchain::Swapchain(Device::Ptr device, Surface::Ptr surface) :
                      mInfo{}, mDevice{ device }, mSurface{ surface }, 
                      mHandle{ }, mFence{ }
-{
-    mHandle.setRoot(mDevice->raw());
-    mFence.setRoot(mDevice->raw());
-}
+{ }
 
 Swapchain::Swapchain(Device::Ptr device, Surface::Ptr surface, const SwapChainCreateInfo& info) : 
                      Swapchain(device, surface) 
@@ -66,18 +63,17 @@ Swapchain::Swapchain(Device::Ptr device, Surface::Ptr surface, const SwapChainCr
 
 std::tuple<VkImage, uint32_t> Swapchain::nextImage() const {
     uint32_t imIndex = 0;
-    CHECKRET(mDevice->vk().AcquireNextImageKHR(**mDevice, *mHandle, gImageAcquireTimeoutNs, VK_NULL_HANDLE, *mFence, &imIndex));
-    CHECKRET(mDevice->vk().WaitForFences(**mDevice, 1, &*mFence, VK_TRUE, gImageAcquireTimeoutNs));
-    CHECKRET(mDevice->vk().GetFenceStatus(**mDevice, *mFence));
-    CHECKRET(mDevice->vk().ResetFences(**mDevice, 1, &*mFence));
+    CHECKRET(mDevice->vk().AcquireNextImageKHR(mDevice->native(), *mHandle, gImageAcquireTimeoutNs, VK_NULL_HANDLE, *mFence, &imIndex));
+    CHECKRET(mDevice->vk().WaitForFences(mDevice->native(), 1, mFence.pNative(), VK_TRUE, gImageAcquireTimeoutNs));
+    CHECKRET(mDevice->vk().GetFenceStatus(mDevice->native(), *mFence));
+    CHECKRET(mDevice->vk().ResetFences(mDevice->native(), 1, mFence.pNative()));
     POLYPDEBUG("Returned swapchain image idx %d", imIndex);
     return std::make_tuple(mImages[imIndex], imIndex);
 }
 
 bool Swapchain::update() {
-    mDevice->vk().DeviceWaitIdle(**mDevice);
-    DECLARE_VKDESTROYER(VkSwapchainKHR) oldHandle = std::move(mHandle);
-    mHandle.setRoot(mDevice->raw());
+    mDevice->vk().DeviceWaitIdle(mDevice->native());
+    DESTROYABLE(VkSwapchainKHR) oldHandle = std::move(mHandle);
     return init(*oldHandle);
 }
 
@@ -85,7 +81,7 @@ VkSwapchainKHR const& Swapchain::operator*() const {
     return *mHandle;
 }
 
-VkSwapchainKHR Swapchain::raw() const {
+VkSwapchainKHR Swapchain::native() const {
     return this->operator*();
 }
 
@@ -157,19 +153,19 @@ bool Swapchain::init(VkSwapchainKHR oldSwapChain) {
         oldSwapChain                                 // VkSwapchainKHR                  oldSwapchain
     };
 
-    CHECKRET(mDevice->vk().CreateSwapchainKHR(**mDevice, &createInfo, nullptr, &*mHandle));
+    CHECKRET(mDevice->vk().CreateSwapchainKHR(mDevice->native(), &createInfo, nullptr, mHandle.pNative()));
     if (*mHandle == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create swapchain.");
     }
 
-    initVkDestroyer(mDevice->vk().DestroySwapchainKHR, mHandle, nullptr);
+    mHandle.initDestroyer(mDevice);
 
     mImages.clear(); // just explicit call
     mImages = getSwapchainImages(mDevice, shared_from_this());
 
     if (oldSwapChain == VK_NULL_HANDLE) { // comes from Swapchan::update
         *mFence = utils::createFence(mDevice);
-        initVkDestroyer(mDevice->vk().DestroyFence, mFence, nullptr);
+        mFence.initDestroyer(mDevice);
     }
 
     return true;

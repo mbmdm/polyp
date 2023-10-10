@@ -5,15 +5,13 @@ namespace engine {
 
 Surface::Surface(Instance::Ptr instance, const SurfaceCreateInfo& info) : 
                  mInstance{ instance }, mInfo{ info }, mHandle{ } 
-{
-    mHandle.setRoot(mInstance->raw());
-}
+{ }
 
 const VkSurfaceKHR& Surface::operator*() const {
     return *mHandle;
 }
 
-VkSurfaceKHR Surface::raw() const {
+VkSurfaceKHR Surface::native() const {
     return this->operator*();
 }
 
@@ -21,7 +19,7 @@ std::vector<bool> Surface::checkSupport(PhysicalGpu gpu) const {
     std::vector<bool> output(gpu.queueFamilyCount());
     VkBool32 flag = VK_FALSE;
     for (size_t i = 0; i < output.size(); i++) {
-        CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceSupportKHR(*gpu, i, this->raw(), &flag));
+        CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceSupportKHR(*gpu, i, this->native(), &flag));
         output[i] = flag == VK_TRUE;
     }
     return output;
@@ -86,32 +84,32 @@ bool Surface::checkSupport(PhysicalGpu gpu, VkPresentModeKHR in_mode, VkPresentM
 
 VkSurfaceCapabilitiesKHR Surface::capabilities(PhysicalGpu gpu) const {
     VkSurfaceCapabilitiesKHR output;
-    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceCapabilitiesKHR(*gpu, this->raw(), &output));
+    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceCapabilitiesKHR(*gpu, this->native(), &output));
     return output;
 }
 
 std::vector<VkSurfaceFormatKHR> Surface::format(PhysicalGpu gpu) const {
     uint32_t count = 0;
-    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceFormatsKHR(*gpu, this->raw(), &count, nullptr));
+    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceFormatsKHR(*gpu, this->native(), &count, nullptr));
     std::vector<VkSurfaceFormatKHR> output(count);
-    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceFormatsKHR(*gpu, this->raw(), &count, output.data()));
+    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfaceFormatsKHR(*gpu, this->native(), &count, output.data()));
     return output;
 }
 
 std::vector<VkPresentModeKHR> Surface::presentModes(PhysicalGpu gpu) const {
     uint32_t count = 0;
-    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfacePresentModesKHR(*gpu, this->raw(), &count, nullptr));
+    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfacePresentModesKHR(*gpu, this->native(), &count, nullptr));
     std::vector<VkPresentModeKHR> output(count);
-    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfacePresentModesKHR(*gpu, this->raw(), &count, output.data()));
+    CHECKRET(mInstance->vk().GetPhysicalDeviceSurfacePresentModesKHR(*gpu, this->native(), &count, output.data()));
     return output;
 }
 
 bool Surface::init() {
     VkWin32SurfaceCreateInfoKHR createInfo = {
         VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, nullptr, 0, mInfo.mWindowsInstance, mInfo.mWindowsHandle };
-    CHECKRET(mInstance->vk().CreateWin32SurfaceKHR(mInstance->raw(), &createInfo, nullptr, &*mHandle));
+    CHECKRET(mInstance->vk().CreateWin32SurfaceKHR(mInstance->native(), &createInfo, nullptr, mHandle.pNative()));
 
-    initVkDestroyer(mInstance->vk().DestroySurfaceKHR, mHandle, nullptr);
+    mHandle.initDestroyer(mInstance);
 
     return true;
 }

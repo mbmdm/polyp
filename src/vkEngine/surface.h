@@ -5,14 +5,14 @@
 #include "destroyer.h"
 #include "instance.h"
 
-#include <window_surface.h>
+#include <polyp_window.h>
 
 namespace polyp {
 namespace engine {
 
 struct SurfaceCreateInfo {
-    polyp::tools::WindowsInstance mWindowsInstance;
-    polyp::tools::WindowsHandle   mWindowsHandle;
+    polyp::tools::WindowInstance mWindowsInstance;
+    polyp::tools::WindowHandle   mWindowsHandle;
 };
 
 class Surface final {
@@ -72,14 +72,14 @@ public:
     /// Returns underlying vulkan handle.
     const VkSurfaceKHR& operator*() const;
     /// Returns underlying vulkan handle.
-    VkSurfaceKHR raw()              const;
+    VkSurfaceKHR native()           const;
 
 private:
-    [[nodiscard]] bool init();
+    bool init();
 
-    Instance::Ptr                     mInstance;
-    SurfaceCreateInfo                 mInfo;
-    DECLARE_VKDESTROYER(VkSurfaceKHR) mHandle;
+    Instance::Ptr             mInstance;
+    SurfaceCreateInfo         mInfo;
+    DESTROYABLE(VkSurfaceKHR) mHandle;
 };
 
 } // engine

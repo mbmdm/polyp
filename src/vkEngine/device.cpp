@@ -6,7 +6,7 @@ namespace engine {
 namespace {
 
 /// Returns supported device extensions in a sorted order
-auto getPhysicalDeviceExts(Device::ConstPtr device) {
+[[nodiscard]] auto getPhysicalDeviceExts(Device::ConstPtr device) {
     std::vector<VkExtensionProperties> exts;
     uint32_t count = 0;
     CHECKRET(device->vk().EnumerateDeviceExtensionProperties(*device->gpu(), nullptr, &count, nullptr));
@@ -73,25 +73,25 @@ auto getPhysicalDeviceExts(Device::ConstPtr device) {
 /// Loads vulkan device functions and stores them in the dispatch table.
 [[nodiscard]] auto loadVkDevice(Device::ConstPtr device, DispatchTable& table) {
 
-#define DEVICE_LEVEL_VULKAN_FUNCTION( name )                                        \
-    table.name = (PFN_vk##name)table.GetDeviceProcAddr( device->raw(), "vk"#name ); \
-    if( table.name  == nullptr ) {                                                  \
-      std::cout << "Could not load Vulkan function named: "                         \
-        "vk"#name << std::endl;                                                     \
-      return false;                                                                 \
+#define DEVICE_LEVEL_VULKAN_FUNCTION( name )                                           \
+    table.name = (PFN_vk##name)table.GetDeviceProcAddr( device->native(), "vk"#name ); \
+    if( table.name  == nullptr ) {                                                     \
+      std::cout << "Could not load Vulkan function named: "                            \
+        "vk"#name << std::endl;                                                        \
+      return false;                                                                    \
     }
 
     auto availableExt = getPhysicalDeviceExts(device);
 
-#define DEVICE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION( name, extension )                      \
-    for (auto& ext : availableExt) {                                                        \
-        if (strcmp(ext.extensionName, extension) == 0) {                                    \
-            table.name = (PFN_vk##name)table.GetDeviceProcAddr( device->raw(), "vk"#name ); \
-            if( table.name == nullptr ) {                                                   \
-                std::cout << "Could not load Vulkan function named: "                       \
-                "vk"#name << std::endl;                                                     \
-            }                                                                               \
-         }                                                                                  \
+#define DEVICE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION( name, extension )                         \
+    for (auto& ext : availableExt) {                                                           \
+        if (strcmp(ext.extensionName, extension) == 0) {                                       \
+            table.name = (PFN_vk##name)table.GetDeviceProcAddr( device->native(), "vk"#name ); \
+            if( table.name == nullptr ) {                                                      \
+                std::cout << "Could not load Vulkan function named: "                          \
+                "vk"#name << std::endl;                                                        \
+            }                                                                                  \
+         }                                                                                     \
      }
 
 #include "dispatch_table.inl"
@@ -107,7 +107,7 @@ auto getPhysicalDeviceExts(Device::ConstPtr device) {
     createInfo.pNext = nullptr;
     createInfo.flags = flags;
     createInfo.queueFamilyIndex = queFamilyIdx;
-    CHECKRET(device->vk().CreateCommandPool(device->raw(), &createInfo, nullptr, &cmdPool));
+    CHECKRET(device->vk().CreateCommandPool(device->native(), &createInfo, nullptr, &cmdPool));
     return cmdPool;
 }
 
@@ -120,7 +120,7 @@ auto getPhysicalDeviceExts(Device::ConstPtr device) {
     createInfo.commandPool = pool;
     createInfo.level = level;
     createInfo.commandBufferCount = count;
-    CHECKRET(device->vk().AllocateCommandBuffers(device->raw(), &createInfo, output.data()));
+    CHECKRET(device->vk().AllocateCommandBuffers(device->native(), &createInfo, output.data()));
     return output;
 }
 
@@ -258,7 +258,7 @@ bool Device::init() {
         return false;
     }
 
-    initVkDestroyer(mDispTable.DestroyDevice, mHandle, nullptr);
+    mHandle.initDestroyer(shared_from_this());
 
     // Getting VkQueues
     for (size_t queFamilyIdx = 0; queFamilyIdx < mInfo.mQueueInfo.size(); ++queFamilyIdx) {
@@ -272,9 +272,9 @@ bool Device::init() {
             "We also want to specify the type of command pool. For sove of them to create cmdBuffers"
             "which can be rest individually, and another not."
          );
-        DECLARE_VKDESTROYER(VkCommandPool) cmdPool { *mHandle, VK_NULL_HANDLE };
-        *cmdPool = createCommandPool(shared_from_this(), queFamilyIdx);
-        initVkDestroyer(mDispTable.DestroyCommandPool, cmdPool, nullptr);
+        auto pool = createCommandPool(shared_from_this(), queFamilyIdx);
+
+        DESTROYABLE(VkCommandPool) cmdPool = { pool, shared_from_this() };
         mCommandPool[queFamilyIdx] = std::move(cmdPool);
     }
 
@@ -363,7 +363,7 @@ VkDevice const& Device::operator*() const {
     return *mHandle;
 }
 
-VkDevice Device::raw() const {
+VkDevice Device::native() const {
     return this->operator*();
 }
 

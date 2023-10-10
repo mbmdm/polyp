@@ -15,8 +15,8 @@ struct QueueCreateInfo {
 };
 
 struct DeviceCreateInfo {
-    std::vector<QueueCreateInfo> mQueueInfo{};
-    std::vector<const char*>     mDesiredExtentions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+    std::vector<QueueCreateInfo> mQueueInfo {};
+    std::vector<const char*>     mDesiredExtentions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 };
 
 /// Vulkan engin device.
@@ -85,22 +85,22 @@ public:
     /// Returns underlying vulkan handle.
     VkDevice const& operator*() const;
     /// Returns underlying vulkan handle.
-    VkDevice raw()              const;
+    VkDevice native()           const;
 
 private:
-    [[nodiscard]] bool init();
-    [[nodiscard]] bool check(const std::vector<VkExtensionProperties>& available) const;
-    [[nodiscard]] bool checkSupportedQueue();
+    bool init();
+    bool check(const std::vector<VkExtensionProperties>& available) const;
+    bool checkSupportedQueue();
 
-    DeviceCreateInfo                                   mInfo;
-    DispatchTable                                      mDispTable;
-    Instance::Ptr                                      mInstance;
-    PhysicalGpu                                        mPhysicalGpu;
-    DECLARE_VKDESTROYER(VkDevice)                      mHandle;
+    DeviceCreateInfo                                         mInfo;
+    DispatchTable                                            mDispTable;
+    Instance::Ptr                                            mInstance;
+    PhysicalGpu                                              mPhysicalGpu;
+    DESTROYABLE(VkDevice)                                    mHandle;
     /// key - queue family index, value - VkQueues of mPriorities size
-    std::unordered_map<uint32_t, std::vector<VkQueue>>               mQueue;
+    std::unordered_map<uint32_t, std::vector<VkQueue>>       mQueue;
     /// key - queue family index, value - Wrapped VkCommandPool
-    std::unordered_map<uint32_t, DECLARE_VKDESTROYER(VkCommandPool)> mCommandPool;
+    std::unordered_map<uint32_t, DESTROYABLE(VkCommandPool)> mCommandPool;
 };
 
 } // engine

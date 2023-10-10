@@ -2,6 +2,7 @@
 #define RENDERER_H
 
 #include "platforms.h"
+#include "polyp_logs.h"
 
 #include <memory>
 
@@ -14,17 +15,26 @@ public:
 
     virtual ~IRenderer() = default;
 
-    virtual bool onInit(WindowsInstance inst, WindowsHandle hwnd) = 0;
+    virtual bool onInit(WindowInstance inst, WindowHandle hwnd) = 0;
     virtual bool onResize() = 0;
-    virtual void onMouseClick(uint32_t button, bool state) = 0;
-    virtual void onMouseMove(int x, int y) = 0;
-    virtual void onMouseWheel(float value) = 0;
+    virtual void onMouseClick(uint32_t button, bool state) {
+        POLYPDEBUG(__FUNCTION__);
+    };
+    virtual void onMouseMove(int x, int y) {
+        POLYPDEBUG(__FUNCTION__);
+    };
+    virtual void onMouseWheel(float value) {
+        POLYPDEBUG(__FUNCTION__);
+    };
     virtual void onShoutDown() = 0;
-
     virtual bool isReady() = 0;
     virtual void draw() = 0;
-    virtual void updateTimer() = 0;
-    virtual void mouseReset() = 0;
+    virtual void updateTimer() {
+        POLYPDEBUG(__FUNCTION__);
+    };
+    virtual void mouseReset() {
+        POLYPDEBUG(__FUNCTION__);
+    };
 };
 
 } // tools
