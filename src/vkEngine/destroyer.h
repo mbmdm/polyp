@@ -134,7 +134,6 @@ public:
 private:
     T mHandle;
     std::function<void(T)> mDestroyer;
-
 };
 
 using HMODULEDestroyable = PlainDestroyable<HMODULE>;
