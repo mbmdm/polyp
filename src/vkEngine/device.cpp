@@ -6,7 +6,7 @@ namespace engine {
 namespace {
 
 /// Returns supported device extensions in a sorted order
-auto getPhysicalDeviceExts(Device::ConstPtr device) {
+[[nodiscard]] auto getPhysicalDeviceExts(Device::ConstPtr device) {
     std::vector<VkExtensionProperties> exts;
     uint32_t count = 0;
     CHECKRET(device->vk().EnumerateDeviceExtensionProperties(*device->gpu(), nullptr, &count, nullptr));

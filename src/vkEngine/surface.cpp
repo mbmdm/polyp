@@ -107,7 +107,7 @@ std::vector<VkPresentModeKHR> Surface::presentModes(PhysicalGpu gpu) const {
 bool Surface::init() {
     VkWin32SurfaceCreateInfoKHR createInfo = {
         VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, nullptr, 0, mInfo.mWindowsInstance, mInfo.mWindowsHandle };
-    CHECKRET(mInstance->vk().CreateWin32SurfaceKHR(mInstance->native(), &createInfo, nullptr, &*mHandle));
+    CHECKRET(mInstance->vk().CreateWin32SurfaceKHR(mInstance->native(), &createInfo, nullptr, mHandle.pNative()));
 
     mHandle.initDestroyer(mInstance);
 

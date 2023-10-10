@@ -63,9 +63,9 @@ public:
     Instance& operator=(Instance&&)      = delete;
     ~Instance()                          = default;
 
-    /// Returns instance assiciated application name.
+    /// Returns instance associated application name.
     std::string                              appName()    const;
-    /// Returns instance assiciated application version.
+    /// Returns instance associated application version.
     std::tuple<uint32_t, uint32_t, uint32_t> appVersion() const;
     /// Returns acquired vulkan extentions.
     std::vector<const char*>                 extensions() const;
@@ -103,8 +103,8 @@ public:
     VkInstance native()           const;
 
 private:
-    [[nodiscard]] bool init();
-    [[nodiscard]] bool check(const std::vector<VkExtensionProperties>& available) const;
+    bool init();
+    bool check(const std::vector<VkExtensionProperties>& available) const;
 
     InstanceCreateInfo       mInfo;
     DESTROYABLE(HMODULE)     mLibrary;

@@ -75,7 +75,7 @@ public:
     VkSurfaceKHR native()           const;
 
 private:
-    [[nodiscard]] bool init();
+    bool init();
 
     Instance::Ptr             mInstance;
     SurfaceCreateInfo         mInfo;

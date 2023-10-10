@@ -88,9 +88,9 @@ public:
     VkDevice native()           const;
 
 private:
-    [[nodiscard]] bool init();
-    [[nodiscard]] bool check(const std::vector<VkExtensionProperties>& available) const;
-    [[nodiscard]] bool checkSupportedQueue();
+    bool init();
+    bool check(const std::vector<VkExtensionProperties>& available) const;
+    bool checkSupportedQueue();
 
     DeviceCreateInfo                                         mInfo;
     DispatchTable                                            mDispTable;

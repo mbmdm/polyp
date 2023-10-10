@@ -66,7 +66,13 @@ public:                                                                         
                                                                                         \
     Vk##VkType& native() noexcept { return mHandle; }                                   \
                                                                                         \
+    const Vk##VkType& native() const noexcept { return mHandle; }                       \
+                                                                                        \
     Vk##VkType* pNative() noexcept { return &mHandle; }                                 \
+                                                                                        \
+    const Vk##VkType* pNative() const noexcept { return &mHandle; }                     \
+                                                                                        \
+    void setHandle(Vk##VkType&& handle) { mHandle = std::move(handle); }                \
                                                                                         \
     void setDestroyer(std::function<void(Vk##VkType)> func) { mDestroyer = func; }      \
                                                                                         \
@@ -127,7 +133,13 @@ public:
 
     T& native() noexcept { return mHandle; }
 
+    const T& native() const noexcept { return mHandle; }
+
     T* pNative() noexcept { return &mHandle; }
+
+    const T* pNative() const noexcept { return &mHandle; }
+
+    void setHandle(T&& handle) { mHandle = std::forward(handle); }
 
     void setDestroyer(std::function<void(T)> func) { mDestroyer = func; }
 

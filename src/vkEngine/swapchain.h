@@ -67,7 +67,7 @@ public:
     VkSwapchainKHR native()           const;
 
 private:
-    [[nodiscard]] bool init(VkSwapchainKHR oldSwapChain);
+    bool init(VkSwapchainKHR oldSwapChain);
 
     SwapChainCreateInfo         mInfo;
     Device::Ptr                 mDevice;
