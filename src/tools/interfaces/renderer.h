@@ -15,7 +15,7 @@ public:
 
     virtual ~IRenderer() = default;
 
-    virtual bool onInit(WindowsInstance inst, WindowsHandle hwnd) = 0;
+    virtual bool onInit(WindowInstance inst, WindowHandle hwnd) = 0;
     virtual bool onResize() = 0;
     virtual void onMouseClick(uint32_t button, bool state) {
         POLYPDEBUG(__FUNCTION__);

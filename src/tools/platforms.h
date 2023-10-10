@@ -7,8 +7,8 @@
 namespace polyp {
 namespace tools {
 
-using WindowsInstance = HINSTANCE;
-using WindowsHandle   = HWND;
+using WindowInstance = HINSTANCE;
+using WindowHandle   = HWND;
 
 } // utils
 } // polyp

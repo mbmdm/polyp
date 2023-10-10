@@ -109,7 +109,7 @@ private:
 public:
     virtual ~Sample() override { }
 
-    virtual bool onInit(WindowsInstance inst, WindowsHandle hwnd) override {
+    virtual bool onInit(WindowInstance inst, WindowHandle hwnd) override {
         POLYPINFO(__FUNCTION__);
 
         InstanceCreateInfo instanceInfo;

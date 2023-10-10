@@ -26,8 +26,8 @@ public:
 
 private:
     struct {
-        WindowsInstance inst;
-        WindowsHandle   hwnd;
+        WindowInstance inst;
+        WindowHandle   hwnd;
     }              mWindowHandle;
     IRenderer::Ptr mRenderer;
     bool           mInitialized;
