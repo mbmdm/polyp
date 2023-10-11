@@ -1,16 +1,35 @@
-cmake_minimum_required(VERSION 3.20)
+﻿cmake_minimum_required(VERSION 3.20)
 
-set(sources_vk main_vk.cpp)
+MACRO(SUBDIRLIST result curdir)
+  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  SET(dirlist "")
+  FOREACH(child ${children})
+    IF(IS_DIRECTORY ${curdir}/${child})
+      LIST(APPEND dirlist ${child})
+    ENDIF()
+  ENDFOREACH()
+  SET(${result} ${dirlist})
+ENDMACRO()
 
-set(includes ${STB_LOCATION})
+function(buildSample SAMPLE_NAME)
+    message(STATUS "Generating sample \"${SAMPLE_NAME}\"")
+    SET(SAMPLE_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/${SAMPLE_NAME})
+    SET(MAIN_CPP ${SAMPLE_FOLDER}/main.cpp)
+    set(SHADER_DIR_GLSL "${SAMPLE_FOLDER}/shaders")
+    file(GLOB SHADERS_GLSL "${SHADER_DIR_GLSL}/*.vert" "${SHADER_DIR_GLSL}/*.frag" "${SHADER_DIR_GLSL}/*.comp" "${SHADER_DIR_GLSL}/*.geom" "${SHADER_DIR_GLSL}/*.tesc" "${SHADER_DIR_GLSL}/*.tese" "${SHADER_DIR_GLSL}/*.mesh" "${SHADER_DIR_GLSL}/*.task" "${SHADER_DIR_GLSL}/*.rgen" "${SHADER_DIR_GLSL}/*.rchit" "${SHADER_DIR_GLSL}/*.rmiss" "${SHADER_DIR_GLSL}/*.rcall" "${SHADER_DIR_GLSL}/*.rahit" "${SHADER_DIR_GLSL}/*.rint" "${SHADER_DIR_GLSL}/*.glsl")
+    source_group("Shaders" FILES ${SHADERS_GLSL})
+    add_executable(${SAMPLE_NAME} ${MAIN_CPP} )
+    target_link_libraries(${SAMPLE_NAME} glfw glm tools vkEngine)
+    set_target_properties(${SAMPLE_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_target_properties(${SAMPLE_NAME} PROPERTIES FOLDER "samples/vk")
+endfunction(buildSample)
 
-include_directories(${includes})
+function(buildSamples)
+	foreach(SAMPLE ${SAMPLES})
+		buildSample(${SAMPLE})
+	endforeach(SAMPLE)
+endfunction(buildSamples)
 
-add_executable(example_vk ${sources_vk})
+SUBDIRLIST(SAMPLES ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(example_vk glfw
-                                 glm
-                                 tools
-                                 vkEngine)
-
-set_target_properties(example_vk PROPERTIES FOLDER "samples/vk")
+buildSamples()
