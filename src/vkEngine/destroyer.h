@@ -83,6 +83,9 @@ public:                                                                         
                       std::is_same_v<decltype(mHandle), VkDevice> == true)              \
             mDestroyer =                                                                \
                 std::bind(root->vk().Destroy##VkType, _1, nullptr);                     \
+        else if constexpr (std::is_same_v<decltype(mHandle), VkDeviceMemory> == true)   \
+            mDestroyer =                                                                \
+                std::bind(root->vk().FreeMemory, root->native(), _1, nullptr);          \
         else                                                                            \
             mDestroyer =                                                                \
                 std::bind(root->vk().Destroy##VkType, root->native(), _1, nullptr);     \
@@ -157,6 +160,12 @@ DECLARE_VK_DESCTOYABLE(SwapchainKHR);
 DECLARE_VK_DESCTOYABLE(CommandPool);
 DECLARE_VK_DESCTOYABLE(Fence);
 DECLARE_VK_DESCTOYABLE(Semaphore);
+DECLARE_VK_DESCTOYABLE(Buffer);
+DECLARE_VK_DESCTOYABLE(DeviceMemory);
+DECLARE_VK_DESCTOYABLE(DescriptorSet);
+DECLARE_VK_DESCTOYABLE(DescriptorSetLayout);
+DECLARE_VK_DESCTOYABLE(Pipeline);
+DECLARE_VK_DESCTOYABLE(PipelineLayout);
 
 #define DESTROYABLE(Type) Type##Destroyable
 
