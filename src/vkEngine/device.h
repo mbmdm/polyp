@@ -8,17 +8,6 @@
 namespace polyp {
 namespace engine {
 
-struct QueueCreateInfo {
-    uint32_t           mFamilyIndex = UINT32_MAX;
-    VkQueueFlags       mQueueType   = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT;
-    std::vector<float> mPriorities { 1.0 };
-};
-
-struct DeviceCreateInfo {
-    std::vector<QueueCreateInfo> mQueueInfo {};
-    std::vector<const char*>     mDesiredExtentions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-};
-
 /// Vulkan engin device.
 class Device final : public std::enable_shared_from_this<Device> {
 private:

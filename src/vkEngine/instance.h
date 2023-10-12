@@ -38,15 +38,6 @@ private:
     std::vector<VkQueueFamilyProperties> mQueProperties{};
 };
 
-struct InstanceCreateInfo {
-    uint32_t mMajorVersion = constants::kMajorVersion;
-    uint32_t mMinorVersion = constants::kMinorVersion;
-    uint32_t mPatchVersion = constants::kPatchVersion;
-    std::vector<const char*> mDesiredExtentions{ VK_KHR_SURFACE_EXTENSION_NAME, 
-                                                 VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
-    std::string              mApplicationName = constants::kInternalApplicationName;
-};
-
 /// Vulkan engin instance.
 class Instance final : public std::enable_shared_from_this<Instance> {
 private:

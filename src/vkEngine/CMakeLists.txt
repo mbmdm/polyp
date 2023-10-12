@@ -19,7 +19,8 @@ set(headers
             common.h
             utils.h
             concepts.h
-            dispatch_table.h)
+            dispatch_table.h
+            create_infos.h)
 
 set(sources ${sources}
             ${headers})
