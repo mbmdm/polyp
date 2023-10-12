@@ -1,3 +1,4 @@
+#include <common.h>
 #include <instance.h>
 #include <surface.h>
 #include <device.h>
@@ -6,16 +7,48 @@
 #include <polyp_window.h>
 #include <polyp_logs.h>
 
-#include <thread>
-#include <chrono>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <array>
 
 using namespace polyp::engine;
 using namespace polyp::tools;
 
-constexpr auto gFenceTimeout = 2'000'000'000;
-uint64_t       gFrameCounter = 0;
+constexpr auto gFenceTimeout    = 2'000'000'000ULL;
+constexpr auto gConcurentFrames = 2U;
+uint64_t       gFrameCounter    = 0ULL;
 
 namespace {
+
+struct Vertex {
+    float position[3];
+    float color[3];
+};
+
+struct VertexStorage {
+    DESTROYABLE(VkBuffer)       buffer;
+    DESTROYABLE(VkDeviceMemory) memory;
+};
+
+struct IndexStorage {
+    DESTROYABLE(VkBuffer)       buffer;
+    DESTROYABLE(VkDeviceMemory) memory;
+    uint32_t count;
+};
+
+struct UniformBuffer {
+    DESTROYABLE(VkBuffer)        buffer;
+    DESTROYABLE(VkDeviceMemory)  memory;
+    DESTROYABLE(VkDescriptorSet) descriptorSet;
+    uint8_t* mapped{ nullptr };
+};
+
+struct ShaderData {
+    glm::mat4 projectionMatrix;
+    glm::mat4 modelMatrix;
+    glm::mat4 viewMatrix;
+};
 
 void beginCmd(Device::ConstPtr device, VkCommandBuffer cmd) {
     VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
@@ -96,12 +129,22 @@ void setImMemoryBarrier(Device::ConstPtr device, VkCommandBuffer cmd, VkPipeline
 
 class Sample : public polyp::tools::IRenderer {
 private:
-    Device::Ptr              mDevice;
-    Swapchain::Ptr           mSwapchain;
-    VkQueue                  mQueue;
-    VkCommandBuffer          mCmdBuffer;
-    DESTROYABLE(VkFence)     mSubmitFence;
-    DESTROYABLE(VkSemaphore) mReadyToPresent;
+    Device::Ptr                        mDevice;
+    Swapchain::Ptr                     mSwapchain;
+    VkQueue                            mQueue;
+    VkCommandBuffer                    mCmdBuffer;
+    DESTROYABLE(VkFence)               mSubmitFence;
+    DESTROYABLE(VkSemaphore)           mReadyToPresent;
+    DESTROYABLE(VkPipeline)            mPipeline;
+    DESTROYABLE(VkPipelineLayout)      mPipelineLayout;
+    DESTROYABLE(VkDescriptorSetLayout) mDsLayout;
+
+    std::array<DESTROYABLE(VkSemaphore), gConcurentFrames> mPresentSems;
+    std::array<DESTROYABLE(VkSemaphore), gConcurentFrames> mRenderSems;
+    std::array<VkCommandBuffer,          gConcurentFrames> mCmdBuffers;
+    std::array<DESTROYABLE(VkFence),     gConcurentFrames> mFences;
+
+
 
 public:
     virtual ~Sample() override { }
@@ -191,7 +234,7 @@ public:
         mDevice->vk().DeviceWaitIdle(mDevice->native());
         POLYPTODO(
             "Need association cmdBuffer and cmdPool to have an ability to release cmdBuffer with vkFreeCommandBuffers()"
-            "Seems I should move such login in device class and someway point out that native handles shouldn't be "
+            "Seems I should move such logic in device class and someway point out that native handles shouldn't be "
             "desctoyed manually. I can also have logic of recreatiion objects with different flags"
         );
         POLYPTODO(
@@ -207,8 +250,6 @@ public:
 
     virtual void draw() override {
         POLYPINFO("Frame %lu", gFrameCounter++);
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         auto [im, imIdx] = mSwapchain->nextImage();
         if (im == VK_NULL_HANDLE) {
