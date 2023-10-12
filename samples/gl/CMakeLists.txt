@@ -27,5 +27,3 @@ target_link_libraries(example_gl glfw
                                  glad_gl_core_46)
 
 set_target_properties(example_gl PROPERTIES FOLDER "samples/gl")
-
-#add_subdirectory(gl)
