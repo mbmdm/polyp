@@ -90,14 +90,25 @@ public:                                                                         
         else if constexpr (std::is_same_v<decltype(mHandle), VkDeviceMemory> == true)   \
             mDestroyer =                                                                \
                 std::bind(root->vk().FreeMemory, root->native(), _1, nullptr);          \
+        else if constexpr (std::is_same_v<decltype(mHandle), VkCommandBuffer> == true)  \
+            notDestroyable();                                                           \
+        else if constexpr (std::is_same_v<decltype(mHandle), VkQueue> == true)          \
+            notDestroyable();                                                           \
         else                                                                            \
             mDestroyer =                                                                \
                 std::bind(root->vk().Destroy##VkType, root->native(), _1, nullptr);     \
     }                                                                                   \
                                                                                         \
+    void notDestroyable() noexcept {                                                    \
+        auto pStub = &Vk##VkType##Destroyable::destroyerStub;                           \
+        mDestroyer = std::bind(pStub, this, std::placeholders::_1);                     \
+    }                                                                                   \
+                                                                                        \
 private:                                                                                \
     Vk##VkType mHandle                         = { VK_NULL_HANDLE };                    \
     std::function<void(Vk##VkType)> mDestroyer = { nullptr };                           \
+                                                                                        \
+    void destroyerStub(Vk##VkType) noexcept {}                                          \
 };
 
 template<typename T>
@@ -170,6 +181,8 @@ DECLARE_VK_DESCTOYABLE(DescriptorSet);
 DECLARE_VK_DESCTOYABLE(DescriptorSetLayout);
 DECLARE_VK_DESCTOYABLE(Pipeline);
 DECLARE_VK_DESCTOYABLE(PipelineLayout);
+DECLARE_VK_DESCTOYABLE(Queue);
+DECLARE_VK_DESCTOYABLE(CommandBuffer);
 
 #define DESTROYABLE(Type) Type##Destroyable
 
