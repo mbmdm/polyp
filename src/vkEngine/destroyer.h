@@ -11,104 +11,103 @@
 namespace polyp {
 namespace engine {
 
-#define DECLARE_VK_DESCTOYABLE(VkType)                                                  \
-class Vk##VkType##Destroyable                                                           \
-{                                                                                       \
-public:                                                                                 \
-     Vk##VkType##Destroyable() = default;                                               \
-                                                                                        \
-    explicit Vk##VkType##Destroyable(Vk##VkType handle) :                               \
-        mHandle{ handle }                                                               \
-    { }                                                                                 \
-                                                                                        \
-    template<typename VkRootPtr>                                                        \
-    Vk##VkType##Destroyable(Vk##VkType handle, VkRootPtr root) :                        \
-        mHandle{ handle }                                                               \
-    { initDestroyer<VkRootPtr>(root); }                                                 \
-                                                                                        \
-    Vk##VkType##Destroyable(Vk##VkType##Destroyable&& other) :                          \
-        mHandle{ other.mHandle },                                                       \
-        mDestroyer{ other.mDestroyer }                                                  \
-    {                                                                                   \
-        other.mHandle = VK_NULL_HANDLE;                                                 \
-        other.mDestroyer = nullptr;                                                     \
-    }                                                                                   \
-                                                                                        \
-    ~Vk##VkType##Destroyable()                                                          \
-    {                                                                                   \
-        if (!mHandle) return;                                                           \
-        if (!mDestroyer) {                                                              \
-            POLYPERROR("Descroying of %s failed", "Vk"#VkType"Descroyable");            \
-            return;                                                                     \
-        }                                                                               \
-        mDestroyer(mHandle);                                                            \
-    }                                                                                   \
-                                                                                        \
-    Vk##VkType##Destroyable(Vk##VkType##Destroyable const&) = delete;                   \
-                                                                                        \
-    Vk##VkType##Destroyable& operator=(Vk##VkType##Destroyable const&) = delete;        \
-                                                                                        \
-    Vk##VkType##Destroyable& operator=(Vk##VkType##Destroyable&& other) noexcept        \
-    {                                                                                   \
-        if (this == &other) return *this;                                               \
-        auto handle = mHandle;                                                          \
-        auto descroyer = mDestroyer;                                                    \
-        mHandle = other.mHandle;                                                        \
-        mDestroyer = other.mDestroyer;                                                  \
-        other.mHandle = handle;                                                         \
-        other.mDestroyer = descroyer;                                                   \
-        return *this;                                                                   \
-    }                                                                                   \
-                                                                                        \
-    Vk##VkType& operator*() noexcept { return mHandle; }                                \
-                                                                                        \
-    const Vk##VkType& operator*() const noexcept { return mHandle; }                    \
-                                                                                        \
-    bool operator!() const noexcept { return mHandle == VK_NULL_HANDLE; }               \
-                                                                                        \
-    operator bool() const noexcept { return mHandle != VK_NULL_HANDLE; }                \
-                                                                                        \
-    Vk##VkType& native() noexcept { return mHandle; }                                   \
-                                                                                        \
-    const Vk##VkType& native() const noexcept { return mHandle; }                       \
-                                                                                        \
-    Vk##VkType* pNative() noexcept { return &mHandle; }                                 \
-                                                                                        \
-    const Vk##VkType* pNative() const noexcept { return &mHandle; }                     \
-                                                                                        \
-    void setHandle(Vk##VkType&& handle) { mHandle = std::move(handle); }                \
-                                                                                        \
-    void setDestroyer(std::function<void(Vk##VkType)> func) { mDestroyer = func; }      \
-                                                                                        \
-    template<typename VkRootPtr>                                                        \
-    void initDestroyer(VkRootPtr root) {                                                \
-        using namespace std::placeholders;                                              \
-        if constexpr (std::is_same_v<decltype(mHandle), VkInstance> == true ||          \
-                      std::is_same_v<decltype(mHandle), VkDevice> == true)              \
-            mDestroyer =                                                                \
-                std::bind(root->vk().Destroy##VkType, _1, nullptr);                     \
-        else if constexpr (std::is_same_v<decltype(mHandle), VkDeviceMemory> == true)   \
-            mDestroyer =                                                                \
-                std::bind(root->vk().FreeMemory, root->native(), _1, nullptr);          \
-        else if constexpr (std::is_same_v<decltype(mHandle), VkCommandBuffer> == true)  \
-            notDestroyable();                                                           \
-        else if constexpr (std::is_same_v<decltype(mHandle), VkQueue> == true)          \
-            notDestroyable();                                                           \
-        else                                                                            \
-            mDestroyer =                                                                \
-                std::bind(root->vk().Destroy##VkType, root->native(), _1, nullptr);     \
-    }                                                                                   \
-                                                                                        \
-    void notDestroyable() noexcept {                                                    \
-        auto pStub = &Vk##VkType##Destroyable::destroyerStub;                           \
-        mDestroyer = std::bind(pStub, this, std::placeholders::_1);                     \
-    }                                                                                   \
-                                                                                        \
-private:                                                                                \
-    Vk##VkType mHandle                         = { VK_NULL_HANDLE };                    \
-    std::function<void(Vk##VkType)> mDestroyer = { nullptr };                           \
-                                                                                        \
-    void destroyerStub(Vk##VkType) noexcept {}                                          \
+#define DECLARE_VK_DESCTOYABLE(VkType)                                                     \
+class Vk##VkType##Destroyable                                                              \
+{                                                                                          \
+public:                                                                                    \
+     Vk##VkType##Destroyable() = default;                                                  \
+                                                                                           \
+    explicit Vk##VkType##Destroyable(Vk##VkType handle) :                                  \
+        mHandle{ handle }                                                                  \
+    { }                                                                                    \
+                                                                                           \
+    template<typename VkRootPtr>                                                           \
+    Vk##VkType##Destroyable(Vk##VkType handle, VkRootPtr root) :                           \
+        mHandle{ handle }                                                                  \
+    { initDestroyer<VkRootPtr>(root); }                                                    \
+                                                                                           \
+    Vk##VkType##Destroyable(Vk##VkType##Destroyable&& other) :                             \
+        mHandle{ other.mHandle },                                                          \
+        mDestroyer{ other.mDestroyer }                                                     \
+    {                                                                                      \
+        other.mHandle = VK_NULL_HANDLE;                                                    \
+        other.mDestroyer = nullptr;                                                        \
+    }                                                                                      \
+                                                                                           \
+    ~Vk##VkType##Destroyable()                                                             \
+    {                                                                                      \
+        if (!mHandle) return;                                                              \
+        if (!mDestroyer) {                                                                 \
+            POLYPERROR("Descroying of %s failed", "Vk"#VkType"Descroyable");               \
+            return;                                                                        \
+        }                                                                                  \
+        mDestroyer(mHandle);                                                               \
+    }                                                                                      \
+                                                                                           \
+    Vk##VkType##Destroyable(Vk##VkType##Destroyable const&) = delete;                      \
+                                                                                           \
+    Vk##VkType##Destroyable& operator=(Vk##VkType##Destroyable const&) = delete;           \
+                                                                                           \
+    Vk##VkType##Destroyable& operator=(Vk##VkType##Destroyable&& other) noexcept           \
+    {                                                                                      \
+        if (this == &other) return *this;                                                  \
+        auto handle = mHandle;                                                             \
+        auto descroyer = mDestroyer;                                                       \
+        mHandle = other.mHandle;                                                           \
+        mDestroyer = other.mDestroyer;                                                     \
+        other.mHandle = handle;                                                            \
+        other.mDestroyer = descroyer;                                                      \
+        return *this;                                                                      \
+    }                                                                                      \
+                                                                                           \
+    Vk##VkType& operator*() noexcept { return mHandle; }                                   \
+                                                                                           \
+    const Vk##VkType& operator*() const noexcept { return mHandle; }                       \
+                                                                                           \
+    bool operator!() const noexcept { return mHandle == VK_NULL_HANDLE; }                  \
+                                                                                           \
+    operator bool() const noexcept { return mHandle != VK_NULL_HANDLE; }                   \
+                                                                                           \
+    Vk##VkType& native() noexcept { return mHandle; }                                      \
+                                                                                           \
+    const Vk##VkType& native() const noexcept { return mHandle; }                          \
+                                                                                           \
+    Vk##VkType* pNative() noexcept { return &mHandle; }                                    \
+                                                                                           \
+    const Vk##VkType* pNative() const noexcept { return &mHandle; }                        \
+                                                                                           \
+    void setHandle(Vk##VkType&& handle) { mHandle = std::move(handle); }                   \
+                                                                                           \
+    void setDestroyer(std::function<void(Vk##VkType)> func) { mDestroyer = func; }         \
+                                                                                           \
+    template<typename VkRootPtr>                                                           \
+    void initDestroyer(VkRootPtr root) {                                                   \
+        using namespace std::placeholders;                                                 \
+        if constexpr (std::is_same_v<decltype(mHandle), VkInstance> == true ||             \
+                      std::is_same_v<decltype(mHandle), VkDevice> == true)                 \
+            mDestroyer =                                                                   \
+                std::bind(root->vk().Destroy##VkType, _1, nullptr);                        \
+        else if constexpr (std::is_same_v<decltype(mHandle), VkDeviceMemory> == true)      \
+            mDestroyer =                                                                   \
+                std::bind(root->vk().FreeMemory, root->native(), _1, nullptr);             \
+        else if constexpr (std::is_same_v<decltype(mHandle), VkCommandBuffer> == true ||   \
+                           std::is_same_v<decltype(mHandle), VkQueue> == true)             \
+            notDestroyable();                                                              \
+        else                                                                               \
+            mDestroyer =                                                                   \
+                std::bind(root->vk().Destroy##VkType, root->native(), _1, nullptr);        \
+    }                                                                                      \
+                                                                                           \
+    void notDestroyable() noexcept {                                                       \
+        auto pStub = &Vk##VkType##Destroyable::destroyerStub;                              \
+        mDestroyer = std::bind(pStub, this, std::placeholders::_1);                        \
+    }                                                                                      \
+                                                                                           \
+private:                                                                                   \
+    Vk##VkType mHandle                         = { VK_NULL_HANDLE };                       \
+    std::function<void(Vk##VkType)> mDestroyer = { nullptr };                              \
+                                                                                           \
+    void destroyerStub(Vk##VkType) noexcept {}                                             \
 };
 
 template<typename T>
