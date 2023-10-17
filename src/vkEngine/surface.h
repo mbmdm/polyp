@@ -67,7 +67,8 @@ public:
     /// Returns underlying vulkan handle.
     const VkSurfaceKHR& operator*() const;
     /// Returns underlying vulkan handle.
-    VkSurfaceKHR native()           const;
+    VkSurfaceKHR         native()   const;
+    const VkSurfaceKHR* pNative()   const;
 
 private:
     bool init();

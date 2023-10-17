@@ -367,5 +367,9 @@ VkDevice Device::native() const {
     return this->operator*();
 }
 
+const VkDevice* Device::pNative() const {
+    return &this->operator*();
+}
+
 } // engine
 } // polyp

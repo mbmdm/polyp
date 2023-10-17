@@ -5,7 +5,8 @@ set(sources
             ${CMAKE_CURRENT_SOURCE_DIR}/device.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/instance.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/surface.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp)
+            ${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/example.cpp)
 
 set(includes ${CMAKE_CURRENT_SOURCE_DIR}
              ${VULKANSDK_INCLUDE_DIR})
@@ -20,7 +21,8 @@ set(headers
             utils.h
             concepts.h
             dispatch_table.h
-            create_infos.h)
+            create_infos.h
+            example.h)
 
 set(sources ${sources}
             ${headers})

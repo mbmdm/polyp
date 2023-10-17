@@ -56,7 +56,8 @@ public:
     /// Returns underlying vulkan handle.
     VkSwapchainKHR const& operator*() const;
     /// Returns underlying vulkan handle.
-    VkSwapchainKHR native()           const;
+    VkSwapchainKHR         native()   const;
+    const VkSwapchainKHR* pNative()   const;
 
 private:
     bool init(VkSwapchainKHR oldSwapChain);

@@ -1,8 +1,12 @@
 #ifndef VK_DESTROYER_H
 #define VK_DESTROYER_H
 
-#include "common.h"
+#include "dispatch_table.h"
 #include "concepts.h"
+
+#include <polyp_logs.h>
+
+#include <functional>
 
 namespace polyp {
 namespace engine {
@@ -34,7 +38,7 @@ public:                                                                         
     {                                                                                   \
         if (!mHandle) return;                                                           \
         if (!mDestroyer) {                                                              \
-            POLYPERROR("Descroying of %s failed", "Vk"#VkType"DEscroyable");            \
+            POLYPERROR("Descroying of %s failed", "Vk"#VkType"Descroyable");            \
             return;                                                                     \
         }                                                                               \
         mDestroyer(mHandle);                                                            \

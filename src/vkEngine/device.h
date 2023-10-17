@@ -74,7 +74,8 @@ public:
     /// Returns underlying vulkan handle.
     VkDevice const& operator*() const;
     /// Returns underlying vulkan handle.
-    VkDevice native()           const;
+    VkDevice         native()   const;
+    const VkDevice* pNative()   const;
 
 private:
     bool init();
