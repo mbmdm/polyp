@@ -261,6 +261,10 @@ VkInstance Instance::native() const {
     return this->operator*();
 }
 
+const VkInstance* Instance::pNative() const {
+    return &this->operator*();
+}
+
 VkDeviceSize PhysicalGpu::memory() {
     
     VkDeviceSize output = 0;

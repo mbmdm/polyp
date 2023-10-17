@@ -85,6 +85,10 @@ VkSwapchainKHR Swapchain::native() const {
     return this->operator*();
 }
 
+const VkSwapchainKHR* Swapchain::pNative() const {
+    return &this->operator*();
+}
+
 bool Swapchain::init(VkSwapchainKHR oldSwapChain) {
     // check presentation mode
     auto isSupported = mSurface->checkSupport(mDevice->gpu(), mInfo.presentationMode);

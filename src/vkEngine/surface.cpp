@@ -15,6 +15,10 @@ VkSurfaceKHR Surface::native() const {
     return this->operator*();
 }
 
+const VkSurfaceKHR* Surface::pNative() const {
+    return &this->operator*();
+}
+
 std::vector<bool> Surface::checkSupport(PhysicalGpu gpu) const {
     std::vector<bool> output(gpu.queueFamilyCount());
     VkBool32 flag = VK_FALSE;

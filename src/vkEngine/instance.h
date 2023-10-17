@@ -32,6 +32,8 @@ public:
     VkPhysicalDevice operator*() const;
 
 private:
+    PhysicalGpu() = default;
+
     VkPhysicalDevice                     mDevice{};
     VkPhysicalDeviceProperties           mProperties{};
     VkPhysicalDeviceMemoryProperties     mMemProperties{};
@@ -91,7 +93,8 @@ public:
     /// Returns underlying vulkan handle.
     VkInstance const& operator*() const;
     /// Returns underlying vulkan handle.
-    VkInstance native()           const;
+    VkInstance         native()   const;
+    const VkInstance* pNative()   const;
 
 private:
     bool init();
