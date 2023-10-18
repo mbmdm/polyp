@@ -91,7 +91,8 @@ public:                                                                         
             mDestroyer =                                                                   \
                 std::bind(root->vk().FreeMemory, root->native(), _1, nullptr);             \
         else if constexpr (std::is_same_v<decltype(mHandle), VkCommandBuffer> == true ||   \
-                           std::is_same_v<decltype(mHandle), VkQueue> == true)             \
+                           std::is_same_v<decltype(mHandle), VkQueue> == true         ||   \
+                           std::is_same_v<decltype(mHandle), VkDescriptorSet> == true)     \
             notDestroyable();                                                              \
         else                                                                               \
             mDestroyer =                                                                   \
@@ -175,6 +176,7 @@ DECLARE_VK_DESCTOYABLE(CommandPool);
 DECLARE_VK_DESCTOYABLE(Fence);
 DECLARE_VK_DESCTOYABLE(Semaphore);
 DECLARE_VK_DESCTOYABLE(Buffer);
+DECLARE_VK_DESCTOYABLE(BufferView);
 DECLARE_VK_DESCTOYABLE(DeviceMemory);
 DECLARE_VK_DESCTOYABLE(DescriptorSet);
 DECLARE_VK_DESCTOYABLE(DescriptorSetLayout);
@@ -182,6 +184,11 @@ DECLARE_VK_DESCTOYABLE(Pipeline);
 DECLARE_VK_DESCTOYABLE(PipelineLayout);
 DECLARE_VK_DESCTOYABLE(Queue);
 DECLARE_VK_DESCTOYABLE(CommandBuffer);
+DECLARE_VK_DESCTOYABLE(Image);
+DECLARE_VK_DESCTOYABLE(ImageView);
+DECLARE_VK_DESCTOYABLE(RenderPass);
+DECLARE_VK_DESCTOYABLE(Framebuffer);
+DECLARE_VK_DESCTOYABLE(DescriptorPool);
 
 #define DESTROYABLE(Type) Type##Destroyable
 

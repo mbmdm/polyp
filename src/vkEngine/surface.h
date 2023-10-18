@@ -24,6 +24,8 @@ public:
     Surface& operator=(Surface&&)      = delete;
     ~Surface()                         = default;
 
+    Instance::ConstPtr instance() const { return mInstance; };
+
     /// Loops over all gpu queue family indexes and returns true if Surface 
     /// is supported by an apropriate queue family by given index
     std::vector<bool> checkSupport(PhysicalGpu gpu)                  const;
@@ -45,6 +47,10 @@ public:
     std::vector<VkSurfaceFormatKHR> format(PhysicalGpu gpu)          const;
     /// Returns supported surface presentation 
     std::vector<VkPresentModeKHR> presentModes(PhysicalGpu gpu)      const;
+    /// Returns current surface width
+    uint32_t width(PhysicalGpu gpu)                                  const;
+    /// Returns current surface width
+    uint32_t height(PhysicalGpu gpu)                                 const;
 
     /// Creates presenration surface
     /// 

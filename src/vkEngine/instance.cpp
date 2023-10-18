@@ -330,6 +330,19 @@ bool PhysicalGpu::queueHasFlags(int queueIndex, VkFlags flags) {
     return mQueProperties[queueIndex].queueFlags & flags;
 }
 
+uint32_t PhysicalGpu::memTypeIndex(const VkMemoryRequirements& memReq, VkMemoryPropertyFlags props) const {
+    auto typeBits = memReq.memoryTypeBits;
+    for (uint32_t i = 0; i < mMemProperties.memoryTypeCount; ++i) {
+        if ((typeBits & 1) == 1) {
+            if ((mMemProperties.memoryTypes[i].propertyFlags & props) == props) {
+                return i;
+            }
+        }
+        typeBits >>= 1;
+    }
+    return UINT32_MAX;
+}
+
 VkPhysicalDevice PhysicalGpu::operator*() {
     const PhysicalGpu& this_ = *this;
     return *this_;

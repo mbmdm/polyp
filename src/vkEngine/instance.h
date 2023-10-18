@@ -27,6 +27,8 @@ public:
     uint32_t          queueCount(int queueIndex);
     /// Returns true if queue family has specified flag. Throws std::out_of_range
     bool              queueHasFlags(int queueIndex, VkFlags flags);
+    /// Returns memory type index or UINT32_MAX if failed
+    uint32_t memTypeIndex(const VkMemoryRequirements& memReq, VkMemoryPropertyFlags props) const;
 
     VkPhysicalDevice operator*();
     VkPhysicalDevice operator*() const;
