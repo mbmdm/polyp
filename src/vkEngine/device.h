@@ -24,33 +24,35 @@ public:
     Device& operator=(Device&&)      = delete;
     ~Device()                        = default;
 
-    DispatchTable    vk()                                                  const;
+    Instance::ConstPtr instance() const { return mInstance; };
+
+    DispatchTable    vk()                                                           const;
     /// Returns associated physical device handle&info.
-    PhysicalGpu      gpu()                                                 const;
+    PhysicalGpu      gpu()                                                          const;
     /// Return device info
-    DeviceCreateInfo info()                                                const;
+    DeviceCreateInfo info()                                                         const;
     /// Returns VkQueue family index and its priority by a given VkQueue handle.
     /// Throws out_of_range exeption when failed.
-    std::tuple<uint32_t, double> info(VkQueue queue)                       const;
+    std::tuple<uint32_t, double> info(VkQueue queue)                                const;
     /// Returns existed VkQueue according to DeviceCreateInfo.
     /// Throws out_of_range exeption when failed.
     /// \param family - queue family index;
     /// \param index  - index of que in mPriorities field of QueueCreateInfo;
-    VkQueue queue(uint32_t family, uint32_t index)                         const;
+    VkQueue queue(uint32_t family, uint32_t index)                                  const;
     /// Returns existed VkQueue.
     /// Throws out_of_range exeption when failed.
     /// \param type      - queue required type (e.g. VK_QUEUE_GRAPHICS_BIT);
     /// \param priority  - queue priority. If priority specified incorrect,
     /// returns closest queue with similar priority;
-    VkQueue queue(VkQueueFlags type, double priority = 0.0)                const;
+    VkQueue queue(VkQueueFlags type, double priority = 0.0)                         const;
     /// Creates new command buffer.
     /// \param family - queue family index;
     /// \param level  - enum of type VkCommandBufferLevel;
-    VkCommandBuffer cmdBuffer(uint32_t family, VkCommandBufferLevel level) const;
+    VkCommandBuffer cmdBuffer(uint32_t family, VkCommandBufferLevel level)          const;
     /// Creates new command buffer
     /// \param queue - obtained VkQueue;
     /// \param level - enum of type VkCommandBufferLevel;
-    VkCommandBuffer cmdBuffer(VkQueue queue, VkCommandBufferLevel level)   const;
+    VkCommandBuffer cmdBuffer(VkQueue queue, VkCommandBufferLevel level)            const;
 
     /// Creates device.
     /// 

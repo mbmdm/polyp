@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <cassert>
+#include <stdint.h>
 
 enum class LogType
 {
@@ -53,7 +54,23 @@ polyp_direct(type, POLYPLOG_PROJECT, __FILE__, __LINE__, __VA_ARGS__)
 #define POLYPWARN(...)   polyplog(LogType::Warning, __VA_ARGS__)
 #define POLYPERROR(...)  polyplog(LogType::Error,   __VA_ARGS__)
 #define POLYPFATAL(...)  polyplog(LogType::Fatal,   __VA_ARGS__)
-#define POLYPASSERT(...) polyplog(LogType::ToDo,    __VA_ARGS__); assert(false);
 #define POLYPTODO(...)   polyplog(LogType::ToDo,    __VA_ARGS__);
+
+#define POLYPASSERT(...)                     \
+if (!__VA_ARGS__)                            \
+polyplog(LogType::Warning, #__VA_ARGS__);    \
+assert(__VA_ARGS__);
+
+#define POLYPASSERTNOTEQUAL(lhv, rhv)        \
+if (lhv == rhv)                              \
+polyplog(LogType::Warning, #lhv" is "#rhv);  \
+assert(lhv != rhv);
+
+#ifndef DEBUG
+#undef POLYPDEBUG
+#undef POLYPASSERT
+#define POLYPDEBUG(...)
+#define POLYPASSERT(...)
+#endif // !DEBUG
 
 #endif // POLYP_LOGS_H 

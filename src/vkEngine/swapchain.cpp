@@ -41,10 +41,41 @@ VkPresentModeKHR mostSuitablePresentationMode(Surface::ConstPtr surface, const P
 /// Returns image handles of created swapchain
 std::vector<VkImage> getSwapchainImages(Device::ConstPtr device, Swapchain::ConstPtr swapchain) {
     uint32_t count = 0;
-    VkResult result = VK_SUCCESS;
     CHECKRET(device->vk().GetSwapchainImagesKHR(**device, **swapchain, &count, nullptr));
     std::vector<VkImage> output(count);
     CHECKRET(device->vk().GetSwapchainImagesKHR(**device, **swapchain, &count, output.data()));
+    return output;
+}
+
+/// Returns image views for swapchain images
+std::vector<DESTROYABLE(VkImageView)> createSwapchainImageViews(Swapchain::ConstPtr swapchain, const std::vector<VkImage>& images) {
+    std::vector<DESTROYABLE(VkImageView)> output(swapchain->imageCount());
+
+    auto device = swapchain->device();
+    for (auto i = 0; i < swapchain->imageCount(); ++i) {
+        VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+        createInfo.format     = swapchain->colorFormat();
+        createInfo.components = {
+            VK_COMPONENT_SWIZZLE_R,
+            VK_COMPONENT_SWIZZLE_G,
+            VK_COMPONENT_SWIZZLE_B,
+            VK_COMPONENT_SWIZZLE_A
+        };
+        createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel   = 0;
+        createInfo.subresourceRange.levelCount     = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount     = 1;
+        createInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.flags                           = 0;
+        createInfo.image                           = images[i];
+
+        VkImageView view = VK_NULL_HANDLE;
+        CHECKRET(device->vk().CreateImageView(device->native(), &createInfo, nullptr, &view));
+
+        output[i] = { view, device };
+    }
+
     return output;
 }
 
@@ -61,7 +92,11 @@ Swapchain::Swapchain(Device::Ptr device, Surface::Ptr surface, const SwapChainCr
     mInfo = info;
 }
 
-std::tuple<VkImage, uint32_t> Swapchain::nextImage() const {
+SwapChainCreateInfo Swapchain::info() const {
+    return mInfo;
+}
+
+std::tuple<VkImage, uint32_t> Swapchain::aquireNextImage() const {
     uint32_t imIndex = 0;
     CHECKRET(mDevice->vk().AcquireNextImageKHR(mDevice->native(), *mHandle, gImageAcquireTimeoutNs, VK_NULL_HANDLE, *mFence, &imIndex));
     CHECKRET(mDevice->vk().WaitForFences(mDevice->native(), 1, mFence.pNative(), VK_TRUE, gImageAcquireTimeoutNs));
@@ -75,6 +110,29 @@ bool Swapchain::update() {
     mDevice->vk().DeviceWaitIdle(mDevice->native());
     DESTROYABLE(VkSwapchainKHR) oldHandle = std::move(mHandle);
     return init(*oldHandle);
+}
+
+size_t Swapchain::imageCount() const {
+    return mImages.size();
+}
+
+VkFormat Swapchain::colorFormat() const {
+    return mInfo.format.format;
+}
+
+std::vector<VkImageView> Swapchain::views() const {
+    std::vector<VkImageView> output(mImageViews.size());
+    for (size_t i = 0; i < output.size(); i++)
+        output[i] = *mImageViews[i];
+    return output;
+}
+
+uint32_t Swapchain::width() const {
+    return mSurface->width(mDevice->gpu());
+}
+
+uint32_t Swapchain::height() const {
+    return mSurface->height(mDevice->gpu());
 }
 
 VkSwapchainKHR const& Swapchain::operator*() const {
@@ -165,7 +223,10 @@ bool Swapchain::init(VkSwapchainKHR oldSwapChain) {
     mHandle.initDestroyer(mDevice);
 
     mImages.clear(); // just explicit call
-    mImages = getSwapchainImages(mDevice, shared_from_this());
+    mImageViews.clear(); // just explicit call
+    
+    mImages     = getSwapchainImages(mDevice, shared_from_this());
+    mImageViews = createSwapchainImageViews(shared_from_this(), mImages);
 
     if (oldSwapChain == VK_NULL_HANDLE) { // comes from Swapchan::update
         *mFence = utils::createFence(mDevice);

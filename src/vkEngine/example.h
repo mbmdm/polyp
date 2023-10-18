@@ -19,18 +19,36 @@ namespace example {
 
 using namespace tools;
 
-class ExampleBase : public tools::IRenderer {
-private:
-    Device::Ptr              mDevice;
-    Swapchain::Ptr           mSwapchain;
-    VkQueue                  mQueue;
-    VkCommandBuffer          mCmdBuffer;
-    DESTROYABLE(VkSemaphore) mReadyToPresent;
-    DESTROYABLE(VkFence)     mSubmitFence;
-    VkImageMemoryBarrier     currSwImBarrier; // current swapchain image barrier
-    uint32_t                 currSwImIndex;
+struct ImageResource {
+    DESTROYABLE(VkDeviceMemory) memory { VK_NULL_HANDLE };
+    DESTROYABLE(VkImage)        image { VK_NULL_HANDLE };
+    DESTROYABLE(VkImageView)    view { VK_NULL_HANDLE };
+};
 
+struct BufferResource {
+    DESTROYABLE(VkDeviceMemory) memory { VK_NULL_HANDLE };
+    DESTROYABLE(VkBuffer)       buffer { VK_NULL_HANDLE };
+    DESTROYABLE(VkBufferView)   view { VK_NULL_HANDLE };
+    void* mapping = nullptr;
+};
+
+class ExampleBase : public tools::IRenderer {
 protected:
+    using FrameBufferArray = std::vector<DESTROYABLE(VkFramebuffer)>;
+
+    Device::Ptr               mDevice;
+    Swapchain::Ptr            mSwapchain;
+    VkQueue                   mQueue;
+    VkCommandBuffer           mCmdBuffer;
+    DESTROYABLE(VkSemaphore)  mReadyToPresent;
+    DESTROYABLE(VkFence)      mSubmitFence;
+    VkImageMemoryBarrier      currSwImBarrier; // current swapchain image barrier
+    uint32_t                  currSwImIndex;
+    ImageResource             mDepthStencil;
+    VkFormat                  mDepthStencilFormat = VK_FORMAT_UNDEFINED;
+    DESTROYABLE(VkRenderPass) mRenderPass;
+    FrameBufferArray          mFrameBuffers;
+
     void preDraw();
     void postDraw();
 

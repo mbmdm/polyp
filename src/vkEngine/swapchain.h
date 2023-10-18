@@ -25,14 +25,30 @@ public:
     Swapchain& operator=(Swapchain&&)      = delete;
     ~Swapchain()                           = default;
 
+    Device::ConstPtr device()   const { return mDevice; };
+    Surface::ConstPtr surface() const { return mSurface; };
+
+    /// Returns swapchin create info
+    SwapChainCreateInfo info()  const;
+
     /// Returns next swapchain Image and its index.
     /// Throws std::out_of_range if failed
     /// \param get<0> - VkImage handle
     /// \param get<1> - swapchain image index
-    [[nodiscard]] std::tuple<VkImage, uint32_t> nextImage() const;
+    std::tuple<VkImage, uint32_t> aquireNextImage() const;
     /// Updates Swapchain according new SwapChainCreateInfo.
     /// Also can be used when Surface size was changed.
-    [[nodiscard]] bool update();
+    bool update();
+    /// Returns swapchain images count.
+    size_t imageCount()              const;
+    /// Returns swapchain images color format.
+    VkFormat colorFormat()           const;
+    /// Returns VkImageVeiw array for each swapchain image
+    std::vector<VkImageView> views() const;
+    /// Returns current surface width
+    uint32_t width()  const;
+    /// Returns current surface width
+    uint32_t height() const;
 
     /// Creates swapchain
     /// 
@@ -66,8 +82,10 @@ private:
     Device::Ptr                 mDevice;
     Surface::Ptr                mSurface;
     DESTROYABLE(VkSwapchainKHR) mHandle;
-    std::vector<VkImage>        mImages;
     DESTROYABLE(VkFence)        mFence;
+
+    std::vector<VkImage>                  mImages;
+    std::vector<DESTROYABLE(VkImageView)> mImageViews;
 };
 
 } // engine

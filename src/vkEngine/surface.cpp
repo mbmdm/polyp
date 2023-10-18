@@ -108,6 +108,14 @@ std::vector<VkPresentModeKHR> Surface::presentModes(PhysicalGpu gpu) const {
     return output;
 }
 
+uint32_t Surface::width(PhysicalGpu gpu) const {
+    return capabilities(gpu).currentExtent.width;
+}
+
+uint32_t Surface::height(PhysicalGpu gpu) const {
+    return capabilities(gpu).currentExtent.height;
+}
+
 bool Surface::init() {
     VkWin32SurfaceCreateInfoKHR createInfo = {
         VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, nullptr, 0, mInfo.mWindowsInstance, mInfo.mWindowsHandle };
