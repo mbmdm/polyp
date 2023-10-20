@@ -11,6 +11,10 @@ inline constexpr auto kMajorVersion = 99LU;
 inline constexpr auto kMinorVersion = 99LU;
 inline constexpr auto kPatchVersion = 99LU;
 
+// Vulkan constants
+inline constexpr auto kFenceTimeout = 2'000'000'000ULL;
+
+
 namespace camera { // Default camera values
 
 inline constexpr float kYaw = -90.0f;

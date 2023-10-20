@@ -1,10 +1,11 @@
 #include "common.h"
 #include "example.h"
 
-namespace {
-constexpr auto gFenceTimeout = 2'000'000'000;
+#include <constants.h>
 
+namespace {
 using namespace polyp::engine;
+using namespace polyp::constants;
 
 auto depthFormat(Device::ConstPtr device) {
     std::vector<VkFormat> dsDesiredFormats = {
@@ -189,6 +190,8 @@ std::vector<DESTROYABLE(VkFramebuffer)> createFrameBuffer(Swapchain::ConstPtr sw
         VkFramebuffer frameBuffer = VK_NULL_HANDLE;
         device->vk().CreateFramebuffer(device->native(), &createInfo, nullptr, &frameBuffer);
 
+        POLYPDEBUG("Created VkFrameBuffer %p", frameBuffer);
+
         frameBuffers[i] = { frameBuffer, device };
     }
 
@@ -214,7 +217,7 @@ void ExampleBase::preDraw() {
     CHECKRET(mDevice->vk().BeginCommandBuffer(mCmdBuffer, &beginInfo));
 
     currSwImBarrier.image = im;
-    currSwImBarrier.srcAccessMask = 0;
+    currSwImBarrier.srcAccessMask = VK_ACCESS_NONE;
     currSwImBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     currSwImBarrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
     currSwImBarrier.newLayout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -226,7 +229,7 @@ void ExampleBase::preDraw() {
 void ExampleBase::postDraw() {
     currSwImBarrier.srcAccessMask = currSwImBarrier.dstAccessMask;
     currSwImBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-    currSwImBarrier.oldLayout     = currSwImBarrier.newLayout;
+    currSwImBarrier.oldLayout     = /*VK_IMAGE_LAYOUT_UNDEFINED;*/currSwImBarrier.newLayout;
     currSwImBarrier.newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     mDevice->vk().CmdPipelineBarrier(mCmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -259,7 +262,7 @@ void ExampleBase::postDraw() {
     };
     CHECKRET(mDevice->vk().QueuePresentKHR(mQueue, &presentInfo));
 
-    CHECKRET(mDevice->vk().WaitForFences(mDevice->native(), 1, mSubmitFence.pNative(), VK_TRUE, gFenceTimeout));
+    CHECKRET(mDevice->vk().WaitForFences(mDevice->native(), 1, mSubmitFence.pNative(), VK_TRUE, kFenceTimeout));
     CHECKRET(mDevice->vk().GetFenceStatus(mDevice->native(), mSubmitFence.native()));
     CHECKRET(mDevice->vk().ResetFences(mDevice->native(), 1, mSubmitFence.pNative()));
 }
@@ -359,19 +362,21 @@ bool ExampleBase::onInit(WindowInstance inst, WindowHandle hwnd) {
       VK_REMAINING_ARRAY_LAYERS             // uint32_t                   layerCount
     } };
 
-    auto [memory, image, view] = createDepthStencil(mDevice, surface);
-    mDepthStencil = ImageResource{ {memory, mDevice}, {image, mDevice}, {view, mDevice} };
-
-    mRenderPass = { createRenderPass(mSwapchain), mDevice };
-
-    mFrameBuffers = createFrameBuffer(mSwapchain, *mDepthStencil.view, *mRenderPass);
+    onResize();
 
     return true;
 }
 
 bool ExampleBase::onResize() {
     POLYPDEBUG(__FUNCTION__);
-    return mSwapchain->update();
+
+    auto res = mSwapchain->update();
+    auto [memory, image, view] = createDepthStencil(mDevice, mSwapchain->surface());
+    mDepthStencil = ImageResource{ {memory, mDevice}, {image, mDevice}, {view, mDevice} };
+    mRenderPass = { createRenderPass(mSwapchain), mDevice };
+    mFrameBuffers = createFrameBuffer(mSwapchain, *mDepthStencil.view, *mRenderPass);
+    
+    return res;
 }
 
 void ExampleBase::draw() {

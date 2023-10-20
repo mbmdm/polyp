@@ -1,10 +1,13 @@
 #include <common.h>
 #include <example.h>
+#include <constants.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <array>
+#include <fstream>
+#include <memory>
 
 using namespace polyp;
 using namespace polyp::engine;
@@ -64,7 +67,7 @@ auto createVertexBuffer(Device::ConstPtr device)
         = createBuffer(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, indexBufferSize,
                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     BufferResource indexBufferGpu    
-        = createBuffer(device, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        = createBuffer(device, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                        indexBufferSize, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     CHECKRET(vk.MapMemory(dev, *indexBufferUpload.memory, 0, VK_WHOLE_SIZE, 0, (void**)&mapped));
@@ -192,6 +195,9 @@ auto updateDescriptorSets(Device::ConstPtr device, VkDescriptorSet dsSet, VkBuff
 }
 
 auto createPipeline(Device::ConstPtr device, VkPipelineLayout layout, VkRenderPass renderPass) {
+    auto vk = device->vk();
+    auto dev = device->native();
+
     VkGraphicsPipelineCreateInfo pipeCreateInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
     pipeCreateInfo.layout     = layout;
     pipeCreateInfo.renderPass = renderPass;
@@ -261,75 +267,89 @@ auto createPipeline(Device::ConstPtr device, VkPipelineLayout layout, VkRenderPa
     vertexInputBinding.stride = sizeof(Vertex);
     vertexInputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
- //   // Input attribute bindings describe shader attribute locations and memory layouts
- //   std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributs;
- //   // These match the following shader layout (see triangle.vert):
- //   //	layout (location = 0) in vec3 inPos;
- //   //	layout (location = 1) in vec3 inColor;
- //   // Attribute location 0: Position
- //   vertexInputAttributs[0].binding = 0;
- //   vertexInputAttributs[0].location = 0;
- //   // Position attribute is three 32 bit signed (SFLOAT) floats (R32 G32 B32)
- //   vertexInputAttributs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
- //   vertexInputAttributs[0].offset = offsetof(Vertex, position);
- //   // Attribute location 1: Color
- //   vertexInputAttributs[1].binding = 0;
- //   vertexInputAttributs[1].location = 1;
- //   // Color attribute is three 32 bit signed (SFLOAT) floats (R32 G32 B32)
- //   vertexInputAttributs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
- //   vertexInputAttributs[1].offset = offsetof(Vertex, color);
- //
- //   // Vertex input state used for pipeline creation
- //   VkPipelineVertexInputStateCreateInfo vertexInputStateCI{};
- //   vertexInputStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
- //   vertexInputStateCI.vertexBindingDescriptionCount = 1;
- //   vertexInputStateCI.pVertexBindingDescriptions = &vertexInputBinding;
- //   vertexInputStateCI.vertexAttributeDescriptionCount = 2;
- //   vertexInputStateCI.pVertexAttributeDescriptions = vertexInputAttributs.data();
- //
- //   // Shaders
- //   std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
- //
- //   // Vertex shader
- //   shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
- //   // Set pipeline stage for this shader
- //   shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
- //   // Load binary SPIR-V shader
- //   shaderStages[0].module = loadSPIRVShader(getShadersPath() + "triangle/triangle.vert.spv");
- //   // Main entry point for the shader
- //   shaderStages[0].pName = "main";
- //   assert(shaderStages[0].module != VK_NULL_HANDLE);
- //
- //   // Fragment shader
- //   shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
- //   // Set pipeline stage for this shader
- //   shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
- //   // Load binary SPIR-V shader
- //   shaderStages[1].module = loadSPIRVShader(getShadersPath() + "triangle/triangle.frag.spv");
- //   // Main entry point for the shader
- //   shaderStages[1].pName = "main";
- //   assert(shaderStages[1].module != VK_NULL_HANDLE);
- //
- //   // Set pipeline shader stage info
- //   pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
- //   pipelineCI.pStages = shaderStages.data();
- //
- //   // Assign the pipeline states to the pipeline creation info structure
- //   pipelineCI.pVertexInputState = &vertexInputStateCI;
- //   pipelineCI.pInputAssemblyState = &inputAssemblyStateCI;
- //   pipelineCI.pRasterizationState = &rasterizationStateCI;
- //   pipelineCI.pColorBlendState = &colorBlendStateCI;
- //   pipelineCI.pMultisampleState = &multisampleStateCI;
- //   pipelineCI.pViewportState = &viewportStateCI;
- //   pipelineCI.pDepthStencilState = &depthStencilStateCI;
- //   pipelineCI.pDynamicState = &dynamicStateCI;
- //
- //   // Create rendering pipeline using the specified states
- //   VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &pipeline));
- //
- //   // Shader modules are no longer needed once the graphics pipeline has been created
- //   vkDestroyShaderModule(device, shaderStages[0].module, nullptr);
- //   vkDestroyShaderModule(device, shaderStages[1].module, nullptr);
+    std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributs;
+    vertexInputAttributs[0].binding = 0;
+    vertexInputAttributs[0].location = 0;
+    vertexInputAttributs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    vertexInputAttributs[0].offset = offsetof(Vertex, position);
+    vertexInputAttributs[1].binding = 0;
+    vertexInputAttributs[1].location = 1;
+    vertexInputAttributs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    vertexInputAttributs[1].offset = offsetof(Vertex, color);
+
+    VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
+    vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+    vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBinding;
+    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 2;
+    vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributs.data();
+
+    // Shaders
+    auto loadSPIRV = [&device](std::string path) {
+        std::ifstream is(path, std::ios::binary | std::ios::in | std::ios::ate);
+
+        size_t size = 0;
+        std::unique_ptr<char> code{ nullptr };
+
+        if (is.is_open())
+        {
+            size = is.tellg();
+            is.seekg(0, std::ios::beg);
+            code.reset(new char[size]);
+            is.read(code.get(), size);
+            is.close();
+            POLYPASSERT(size > 0 && "Load shared SPIR-V failed");
+        }
+
+        if (!code) {
+            POLYPFATAL("Failed to load SPIR-V file");
+        }
+
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = size;
+        createInfo.pCode = (uint32_t*)code.get();
+
+        VkShaderModule shaderModule = VK_NULL_HANDLE;
+        CHECKRET(device->vk().CreateShaderModule(device->native(), &createInfo, nullptr, &shaderModule));
+
+        POLYPASSERTNOTEQUAL(shaderModule, VK_NULL_HANDLE);
+
+        return DESTROYABLE(VkShaderModule) {shaderModule, device};
+    };
+    
+    std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
+
+    auto vertShader = loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
+    auto indxShader = loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
+
+    shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    shaderStages[0].module = *vertShader;
+    shaderStages[0].pName = "main";
+
+    shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    shaderStages[1].module = *indxShader;
+    shaderStages[1].pName = "main";
+
+
+    pipeCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+    pipeCreateInfo.pStages = shaderStages.data();
+
+    pipeCreateInfo.pVertexInputState   = &vertexInputStateCreateInfo;
+    pipeCreateInfo.pInputAssemblyState = &inputAsmStateCreateInfo;
+    pipeCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
+    pipeCreateInfo.pColorBlendState    = &colorBlendStateCreateInfo;
+    pipeCreateInfo.pMultisampleState   = &multisampleStateCreateInfo;
+    pipeCreateInfo.pViewportState      = &viewportStateCreateInfo;
+    pipeCreateInfo.pDepthStencilState  = &depthStencilStateCreateInfo;
+    pipeCreateInfo.pDynamicState       = &dynamicStateCreateInfo;
+
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    CHECKRET(vk.CreateGraphicsPipelines(dev, VK_NULL_HANDLE, 1, &pipeCreateInfo, nullptr, &pipeline));
+
+    return DESTROYABLE(VkPipeline) { pipeline, device };
 }
 
 } // anonimus namespace
@@ -341,17 +361,17 @@ protected:
     DESTROYABLE(VkDescriptorSetLayout) mDsLayout;
     DESTROYABLE(VkDescriptorSet)       mDescriptorSet;
     DESTROYABLE(VkDescriptorPool)      mDesriptorPool;
-	utils::BufferResource              mIndexBuffer;
-	utils::BufferResource              mVertexBuffer;
+    utils::BufferResource              mIndexBuffer;
+    utils::BufferResource              mVertexBuffer;
     utils::BufferResource              mUniformBuffer;
-    void*                              mUniformMapped;
+    void* mUniformMapped;
 
 public:
     virtual bool onInit(WindowInstance inst, WindowHandle hwnd) override {
         if (!ExampleBase::onInit(inst, hwnd))
             return false;
 
-        auto vk  = mDevice->vk();
+        auto vk = mDevice->vk();
         auto dev = mDevice->native();
         auto gpu = mDevice->gpu();
 
@@ -359,16 +379,16 @@ public:
         auto [vertexBuffer, indexBuffer] = createVertexBuffer(mDevice);
         mVertexBuffer.buffer = std::move(vertexBuffer.buffer);
         mVertexBuffer.memory = std::move(vertexBuffer.memory);
-        mIndexBuffer.buffer  = std::move(indexBuffer.buffer);
-        mIndexBuffer.memory  = std::move(indexBuffer.memory);
+        mIndexBuffer.buffer = std::move(indexBuffer.buffer);
+        mIndexBuffer.memory = std::move(indexBuffer.memory);
 
         // create uniform buffer
         mUniformBuffer = utils::createBuffer(mDevice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(ShaderData),
-                                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         vk.MapMemory(dev, *mUniformBuffer.memory, 0, sizeof(ShaderData), 0, &mUniformMapped);
 
         // cretae ds and pipeline layouts
-        mDsLayout       = createDsLayout(mDevice);
+        mDsLayout = createDsLayout(mDevice);
         mPipelineLayout = createPipeLayout(mDevice, *mDsLayout);
 
         // create descriptor
@@ -377,14 +397,109 @@ public:
         updateDescriptorSets(mDevice, *mDescriptorSet, *mUniformBuffer.buffer);
 
         // create pipeline
-        createPipeline(mDevice, *mPipelineLayout, *mRenderPass);
-
-        printf("");
+        mPipeline = createPipeline(mDevice, *mPipelineLayout, *mRenderPass);
     }
-    //virtual void draw() override {
-    //    preDraw();
-    //    postDraw();
-    //}
+    virtual void draw() override {
+        //preDraw();
+        auto [im, imIdx] = mSwapchain->aquireNextImage();
+        if (im == VK_NULL_HANDLE) {
+            POLYPFATAL("Failed to get Swapchain images");
+        }
+
+        currSwImIndex = imIdx;
+
+        VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        CHECKRET(mDevice->vk().BeginCommandBuffer(mCmdBuffer, &beginInfo));
+
+        triangle();
+
+        //postDraw();
+        CHECKRET(mDevice->vk().EndCommandBuffer(mCmdBuffer));;
+
+        VkSubmitInfo submitIinfo = {
+            VK_STRUCTURE_TYPE_SUBMIT_INFO, // VkStructureType                sType
+            nullptr,                       // const void                   * pNext
+            0,                             // uint32_t                       waitSemaphoreCount
+            nullptr,                       // const VkSemaphore            * pWaitSemaphores
+            nullptr,                       // const VkPipelineStageFlags   * pWaitDstStageMask
+            1,                             // uint32_t                       commandBufferCount
+            &mCmdBuffer,                   // const VkCommandBuffer        * pCommandBuffers
+            1,                             // uint32_t                       signalSemaphoreCount
+            mReadyToPresent.pNative()      // const VkSemaphore            * pSignalSemaphores
+        };
+        CHECKRET(mDevice->vk().QueueSubmit(mQueue, 1, &submitIinfo, *mSubmitFence));
+
+        VkPresentInfoKHR presentInfo = {
+            VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, // VkStructureType          sType
+            nullptr,                            // const void*              pNext
+            1,                                  // uint32_t                 waitSemaphoreCount
+            mReadyToPresent.pNative(),          // const VkSemaphore      * pWaitSemaphores
+            1,                                  // uint32_t                 swapchainCount
+            mSwapchain->pNative(),              // const VkSwapchainKHR   * pSwapchains
+            &currSwImIndex,                     // const uint32_t         * pImageIndices
+            nullptr                             // VkResult*                pResults
+        };
+        CHECKRET(mDevice->vk().QueuePresentKHR(mQueue, &presentInfo));
+
+        CHECKRET(mDevice->vk().WaitForFences(mDevice->native(), 1, mSubmitFence.pNative(), VK_TRUE, constants::kFenceTimeout));
+        CHECKRET(mDevice->vk().GetFenceStatus(mDevice->native(), mSubmitFence.native()));
+        CHECKRET(mDevice->vk().ResetFences(mDevice->native(), 1, mSubmitFence.pNative()));
+    }
+private:
+    void triangle() {
+        const auto vk = mDevice->vk();
+        const auto dev = mDevice->native();
+        const auto width = mSwapchain->width();
+        const auto height = mSwapchain->height();
+
+        ShaderData shaderData{};
+        shaderData.projectionMatrix = glm::mat4(1.0f);
+        shaderData.viewMatrix = glm::mat4(1.0f);
+        shaderData.modelMatrix = glm::mat4(1.0f);
+
+        memcpy(mUniformMapped, &shaderData, sizeof(ShaderData));
+
+        VkClearValue clearValues[2];
+        clearValues[0].color = { { 0.0f, 0.0f, 0.2f, 1.0f } };
+        clearValues[1].depthStencil = { 1.0f, 0 };
+
+        VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+        renderPassBeginInfo.renderPass = *mRenderPass;
+        renderPassBeginInfo.renderArea.offset.x = 0;
+        renderPassBeginInfo.renderArea.offset.y = 0;
+        renderPassBeginInfo.renderArea.extent.width = width;
+        renderPassBeginInfo.renderArea.extent.height = height;
+        renderPassBeginInfo.clearValueCount = 2;
+        renderPassBeginInfo.pClearValues = clearValues;
+        renderPassBeginInfo.framebuffer = *mFrameBuffers[currSwImIndex];
+
+        vk.CmdBeginRenderPass(mCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        VkViewport viewport{};
+        viewport.height = (float)height;
+        viewport.width = (float)width;
+        viewport.minDepth = (float)0.0f;
+        viewport.maxDepth = (float)1.0f;
+        vk.CmdSetViewport(mCmdBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.extent.width = width;
+        scissor.extent.height = height;
+        scissor.offset.x = 0;
+        scissor.offset.y = 0;
+        vk.CmdSetScissor(mCmdBuffer, 0, 1, &scissor);
+
+        vk.CmdBindDescriptorSets(mCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, *mPipelineLayout, 0, 1, mDescriptorSet.pNative(), 0, nullptr);
+        vk.CmdBindPipeline(mCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, *mPipeline);
+
+        VkDeviceSize offset = { 0 };
+        vk.CmdBindVertexBuffers(mCmdBuffer, 0, 1, mVertexBuffer.buffer.pNative(), &offset);
+        vk.CmdBindIndexBuffer(mCmdBuffer, *mIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+        vk.CmdDrawIndexed(mCmdBuffer, 3, 1, 0, 0, 1);
+
+        vk.CmdEndRenderPass(mCmdBuffer);
+    }
 };
 
 int main() {
