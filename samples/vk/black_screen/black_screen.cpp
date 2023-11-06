@@ -2,7 +2,7 @@
 
 using namespace polyp;
 
-class BlackScreen : public engine::example::ExampleBase {
+class BlackScreen : public vk::example::ExampleBase {
 public:
     virtual void draw() override {
         preDraw();

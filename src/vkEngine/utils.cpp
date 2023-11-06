@@ -1,7 +1,7 @@
 #include "utils.h"
 
 namespace polyp {
-namespace engine {
+namespace vk {
 namespace utils {
 
 VkFence createFence(Device::ConstPtr device, bool signaled)

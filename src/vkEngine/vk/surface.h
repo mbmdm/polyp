@@ -8,7 +8,7 @@
 #include <polyp_window.h>
 
 namespace polyp {
-namespace engine {
+namespace vk {
 
 class Surface final {
 private:

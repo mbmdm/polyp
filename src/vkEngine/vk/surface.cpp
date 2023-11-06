@@ -1,7 +1,7 @@
 #include "surface.h"
 
 namespace polyp {
-namespace engine {
+namespace vk {
 
 Surface::Surface(Instance::Ptr instance, const SurfaceCreateInfo& info) : 
                  mInstance{ instance }, mInfo{ info }, mHandle{ } 

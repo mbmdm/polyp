@@ -9,7 +9,7 @@
 #include <functional>
 
 namespace polyp {
-namespace engine {
+namespace vk {
 
 #define DECLARE_VK_DESCTOYABLE(VkType)                                                     \
 class Vk##VkType##Destroyable                                                              \

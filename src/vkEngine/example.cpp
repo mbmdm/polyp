@@ -4,7 +4,7 @@
 #include <constants.h>
 
 namespace {
-using namespace polyp::engine;
+using namespace polyp::vk;
 using namespace polyp::constants;
 
 auto depthFormat(Device::ConstPtr device) {
@@ -165,15 +165,15 @@ auto createRenderPass(Swapchain::ConstPtr swapchain) {
 }
 
 /// Creates a frame buffer for every image in the swapchain
-std::vector<DESTROYABLE(VkFramebuffer)> createFrameBuffer(Swapchain::ConstPtr swapchain, 
-                                                          VkImageView depthStencilView,
-                                                          VkRenderPass renderPass) {
+std::vector<DestroyableHandle<VkFramebuffer>> createFrameBuffer(Swapchain::ConstPtr swapchain,
+                                                                VkImageView depthStencilView,
+                                                                VkRenderPass renderPass) {
     auto device = swapchain->device();
     
     auto views = swapchain->views();
-    std::vector<DESTROYABLE(VkFramebuffer)> frameBuffers(views.size());
+    std::vector<DestroyableHandle<VkFramebuffer>> frameBuffers;
 
-    for (size_t i = 0; i < frameBuffers.size(); ++i) {
+    for (size_t i = 0; i < views.size(); ++i) {
         std::array<VkImageView, 2> attachments;
         attachments[0] = views[i];
         attachments[1] = depthStencilView;
@@ -192,7 +192,7 @@ std::vector<DESTROYABLE(VkFramebuffer)> createFrameBuffer(Swapchain::ConstPtr sw
 
         POLYPDEBUG("Created VkFrameBuffer %p", frameBuffer);
 
-        frameBuffers[i] = { frameBuffer, device };
+        frameBuffers.emplace_back(frameBuffer, device);
     }
 
     return frameBuffers;
@@ -201,7 +201,7 @@ std::vector<DESTROYABLE(VkFramebuffer)> createFrameBuffer(Swapchain::ConstPtr sw
 } // anonimus namespace
 
 namespace polyp {
-namespace engine {
+namespace vk {
 namespace example {
 
 void ExampleBase::preDraw() {
@@ -246,7 +246,7 @@ void ExampleBase::postDraw() {
         1,                             // uint32_t                       commandBufferCount
         &mCmdBuffer,                   // const VkCommandBuffer        * pCommandBuffers
         1,                             // uint32_t                       signalSemaphoreCount
-        mReadyToPresent.pNative()      // const VkSemaphore            * pSignalSemaphores
+        &mReadyToPresent               // const VkSemaphore            * pSignalSemaphores
     };
     CHECKRET(mDevice->vk().QueueSubmit(mQueue, 1, &submitIinfo, *mSubmitFence));
 
@@ -254,7 +254,7 @@ void ExampleBase::postDraw() {
         VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, // VkStructureType          sType
         nullptr,                            // const void*              pNext
         1,                                  // uint32_t                 waitSemaphoreCount
-        mReadyToPresent.pNative(),          // const VkSemaphore      * pWaitSemaphores
+        &mReadyToPresent,                   // const VkSemaphore      * pWaitSemaphores
         1,                                  // uint32_t                 swapchainCount
         mSwapchain->pNative(),              // const VkSwapchainKHR   * pSwapchains
         &currSwImIndex,                     // const uint32_t         * pImageIndices
@@ -262,9 +262,9 @@ void ExampleBase::postDraw() {
     };
     CHECKRET(mDevice->vk().QueuePresentKHR(mQueue, &presentInfo));
 
-    CHECKRET(mDevice->vk().WaitForFences(mDevice->native(), 1, mSubmitFence.pNative(), VK_TRUE, kFenceTimeout));
-    CHECKRET(mDevice->vk().GetFenceStatus(mDevice->native(), mSubmitFence.native()));
-    CHECKRET(mDevice->vk().ResetFences(mDevice->native(), 1, mSubmitFence.pNative()));
+    CHECKRET(mDevice->vk().WaitForFences(mDevice->native(), 1, &mSubmitFence, VK_TRUE, kFenceTimeout));
+    CHECKRET(mDevice->vk().GetFenceStatus(mDevice->native(), *mSubmitFence));
+    CHECKRET(mDevice->vk().ResetFences(mDevice->native(), 1, &mSubmitFence));
 }
 
 bool ExampleBase::onInit(WindowInstance inst, WindowHandle hwnd) {
@@ -338,11 +338,12 @@ bool ExampleBase::onInit(WindowInstance inst, WindowHandle hwnd) {
 
     VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
     semaphoreCreateInfo.flags = 0;
-    CHECKRET(mDevice->vk().CreateSemaphore(**mDevice, &semaphoreCreateInfo, nullptr, mReadyToPresent.pNative()));
-    mReadyToPresent.initDestroyer(mDevice);
+    CHECKRET(mDevice->vk().CreateSemaphore(**mDevice, &semaphoreCreateInfo, nullptr, &mReadyToPresent));
+    mReadyToPresent.Dev(mDevice);
+    //mReadyToPresent.initDestroyer(mDevice);
 
-    *mSubmitFence = utils::createFence(mDevice);
-    mSubmitFence.initDestroyer(mDevice);
+    //*mSubmitFence = utils::createFence(mDevice);
+    mSubmitFence = { utils::createFence(mDevice), mDevice };
 
     currSwImBarrier = VkImageMemoryBarrier{
     VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // VkStructureType            sType

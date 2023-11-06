@@ -7,7 +7,7 @@
 #include <vulkan/vulkan.h>
 
 namespace polyp {
-namespace engine {
+namespace vk {
 
 struct DispatchTable {
 #define EXPORTED_VULKAN_FUNCTION( name ) PFN_vk##name name = nullptr;

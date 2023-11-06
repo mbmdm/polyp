@@ -6,7 +6,7 @@
 #include "instance.h"
 
 namespace polyp {
-namespace engine {
+namespace vk {
 
 /// Vulkan engin device.
 class Device final : public std::enable_shared_from_this<Device> {

@@ -1,26 +1,29 @@
 cmake_minimum_required(VERSION 3.6)
 
-set(sources 
-            ${CMAKE_CURRENT_SOURCE_DIR}/swapchain.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/device.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/instance.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/surface.cpp
+set(sources
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/destroyable_handle.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/swapchain.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/device.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/instance.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/surface.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/example.cpp)
 
 set(includes ${CMAKE_CURRENT_SOURCE_DIR}
+             ${CMAKE_CURRENT_SOURCE_DIR}/vk
              ${VULKANSDK_INCLUDE_DIR})
 
-set(headers 
-            swapchain.h
-            device.h
-            instance.h
-            surface.h
+set(headers
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/swapchain.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/device.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/instance.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/surface.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/dispatch_table.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/destroyable_handle.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk/common.h
             destroyer.h
-            common.h
             utils.h
             concepts.h
-            dispatch_table.h
             create_infos.h
             example.h)
 

@@ -1,6 +1,7 @@
 #include <common.h>
 #include <example.h>
 #include <constants.h>
+#include <destroyable_handle.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -10,7 +11,7 @@
 #include <memory>
 
 using namespace polyp;
-using namespace polyp::engine;
+using namespace polyp::vk;
 using namespace polyp::tools;
 
 namespace {
@@ -28,7 +29,7 @@ struct ShaderData {
 
 auto createVertexBuffer(Device::ConstPtr device)
 {
-    using namespace polyp::engine::utils;
+    using namespace polyp::vk::utils;
 
     auto vk  = device->vk();
     auto dev = device->native();
@@ -354,7 +355,7 @@ auto createPipeline(Device::ConstPtr device, VkPipelineLayout layout, VkRenderPa
 
 } // anonimus namespace
 
-class SimpleTriangle : public engine::example::ExampleBase {
+class SimpleTriangle : public vk::example::ExampleBase {
 protected:
     DESTROYABLE(VkPipeline)            mPipeline;
     DESTROYABLE(VkPipelineLayout)      mPipelineLayout;
@@ -426,7 +427,7 @@ public:
             1,                             // uint32_t                       commandBufferCount
             &mCmdBuffer,                   // const VkCommandBuffer        * pCommandBuffers
             1,                             // uint32_t                       signalSemaphoreCount
-            mReadyToPresent.pNative()      // const VkSemaphore            * pSignalSemaphores
+            &mReadyToPresent               // const VkSemaphore            * pSignalSemaphores
         };
         CHECKRET(mDevice->vk().QueueSubmit(mQueue, 1, &submitIinfo, *mSubmitFence));
 
@@ -434,7 +435,7 @@ public:
             VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, // VkStructureType          sType
             nullptr,                            // const void*              pNext
             1,                                  // uint32_t                 waitSemaphoreCount
-            mReadyToPresent.pNative(),          // const VkSemaphore      * pWaitSemaphores
+            &mReadyToPresent,                   // const VkSemaphore      * pWaitSemaphores
             1,                                  // uint32_t                 swapchainCount
             mSwapchain->pNative(),              // const VkSwapchainKHR   * pSwapchains
             &currSwImIndex,                     // const uint32_t         * pImageIndices
@@ -442,9 +443,9 @@ public:
         };
         CHECKRET(mDevice->vk().QueuePresentKHR(mQueue, &presentInfo));
 
-        CHECKRET(mDevice->vk().WaitForFences(mDevice->native(), 1, mSubmitFence.pNative(), VK_TRUE, constants::kFenceTimeout));
-        CHECKRET(mDevice->vk().GetFenceStatus(mDevice->native(), mSubmitFence.native()));
-        CHECKRET(mDevice->vk().ResetFences(mDevice->native(), 1, mSubmitFence.pNative()));
+        CHECKRET(mDevice->vk().WaitForFences(mDevice->native(), 1, &mSubmitFence, VK_TRUE, constants::kFenceTimeout));
+        CHECKRET(mDevice->vk().GetFenceStatus(mDevice->native(),   *mSubmitFence));
+        CHECKRET(mDevice->vk().ResetFences(mDevice->native(), 1,   &mSubmitFence));
     }
 private:
     void triangle() {
