@@ -7,6 +7,7 @@
 #include "device.h"
 #include "swapchain.h"
 #include "utils.h"
+#include "destroyable_handle.h"
 
 #include <polyp_window.h>
 #include <polyp_logs.h>
@@ -14,39 +15,39 @@
 #include <array>
 
 namespace polyp {
-namespace engine {
+namespace vk {
 namespace example {
 
 using namespace tools;
 
 struct ImageResource {
-    DESTROYABLE(VkDeviceMemory) memory { VK_NULL_HANDLE };
-    DESTROYABLE(VkImage)        image { VK_NULL_HANDLE };
-    DESTROYABLE(VkImageView)    view { VK_NULL_HANDLE };
+    DestroyableHandle<VkDeviceMemory> memory { VK_NULL_HANDLE };
+    DestroyableHandle<VkImage>        image { VK_NULL_HANDLE };
+    DestroyableHandle<VkImageView>    view { VK_NULL_HANDLE };
 };
 
 struct BufferResource {
-    DESTROYABLE(VkDeviceMemory) memory { VK_NULL_HANDLE };
-    DESTROYABLE(VkBuffer)       buffer { VK_NULL_HANDLE };
-    DESTROYABLE(VkBufferView)   view { VK_NULL_HANDLE };
+    DestroyableHandle<VkDeviceMemory> memory { VK_NULL_HANDLE };
+    DestroyableHandle<VkBuffer>       buffer { VK_NULL_HANDLE };
+    DestroyableHandle<VkBufferView>   view { VK_NULL_HANDLE };
     void* mapping = nullptr;
 };
 
 class ExampleBase : public tools::IRenderer {
 protected:
-    using FrameBufferArray = std::vector<DESTROYABLE(VkFramebuffer)>;
+    using FrameBufferArray = std::vector<DestroyableHandle<VkFramebuffer>>;
 
     Device::Ptr               mDevice;
     Swapchain::Ptr            mSwapchain;
     VkQueue                   mQueue;
     VkCommandBuffer           mCmdBuffer;
-    DESTROYABLE(VkSemaphore)  mReadyToPresent;
-    DESTROYABLE(VkFence)      mSubmitFence;
+    DestroyableHandle<VkSemaphore>  mReadyToPresent;
+    DestroyableHandle<VkFence>      mSubmitFence;
     VkImageMemoryBarrier      currSwImBarrier; // current swapchain image barrier
     uint32_t                  currSwImIndex;
     ImageResource             mDepthStencil;
     VkFormat                  mDepthStencilFormat = VK_FORMAT_UNDEFINED;
-    DESTROYABLE(VkRenderPass) mRenderPass;
+    DestroyableHandle<VkRenderPass> mRenderPass;
     FrameBufferArray          mFrameBuffers;
 
     void preDraw();

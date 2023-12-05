@@ -9,7 +9,7 @@
 #include <string>
 
 namespace polyp {
-namespace engine {
+namespace vk {
 
 struct InstanceCreateInfo {
     uint32_t mMajorVersion = constants::kMajorVersion;

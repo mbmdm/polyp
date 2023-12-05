@@ -8,7 +8,7 @@
 #include "platforms.h"
 
 namespace polyp {
-namespace engine {
+namespace vk {
 namespace utils {
 
 /// Creates a new VkFence

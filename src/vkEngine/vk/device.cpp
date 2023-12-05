@@ -1,7 +1,7 @@
 #include "device.h"
 
 namespace polyp {
-namespace engine {
+namespace vk {
 
 namespace {
 

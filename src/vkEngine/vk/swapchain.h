@@ -7,7 +7,7 @@
 #include "surface.h"
 
 namespace polyp {
-namespace engine {
+namespace vk {
 
 /// Vulkan engin swapchain.
 class Swapchain final : public std::enable_shared_from_this<Swapchain> {
