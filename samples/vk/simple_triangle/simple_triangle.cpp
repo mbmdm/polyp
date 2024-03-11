@@ -10,6 +10,8 @@
 #include <fstream>
 #include <memory>
 
+#include "vulkan/vulkan_raii.hpp"
+
 using namespace polyp;
 using namespace polyp::vk;
 using namespace polyp::tools;
@@ -355,7 +357,7 @@ auto createPipeline(Device::ConstPtr device, VkPipelineLayout layout, VkRenderPa
 
 } // anonimus namespace
 
-class SimpleTriangle : public vk::example::ExampleBase {
+class SimpleTriangle : public polyp::vk::example::ExampleBase {
 protected:
     DESTROYABLE(VkPipeline)            mPipeline;
     DESTROYABLE(VkPipelineLayout)      mPipelineLayout;
@@ -503,7 +505,27 @@ private:
     }
 };
 
+::vk::raii::Instance makeInstance(::vk::raii::Context const& context,
+    std::string const& appName,
+    std::string const& engineName,
+    std::vector<std::string> const& layers = {},
+    std::vector<std::string> const& extensions = {},
+    uint32_t                         apiVersion = VK_API_VERSION_1_0)
+{
+    ::vk::ApplicationInfo       applicationInfo(appName.c_str(), 1, engineName.c_str(), 1, apiVersion);
+    std::vector<char const*> enabledLayers{};
+    std::vector<char const*> enabledExtensions{};
+
+    ::vk::InstanceCreateInfo createInfo{};
+
+    return ::vk::raii::Instance(context, createInfo);
+}
+
 int main() {
+
+    ::vk::raii::Context  context;
+    ::vk::raii::Instance instance = makeInstance(context, "123", "456", {});
+
     std::string title{ constants::kWindowTitle };
     title += ": simple triangle";
 

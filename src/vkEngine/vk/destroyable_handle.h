@@ -95,17 +95,7 @@ public:
     bool operator!() const noexcept { return mInternal == VK_NULL_HANDLE; }
     operator bool()  const noexcept { return mInternal != VK_NULL_HANDLE; }
 
-    ~DestroyableHandle() 
-    {
-        auto device   = mDevice.lock();
-        auto instance = mInstance.lock();
-        if (!device && !instance)
-        {
-            POLYPERROR("Descroying of %s failed", typeid(VkHandle).name());
-            return;
-        }
-        Destroy();
-    }
+    ~DestroyableHandle() { Destroy(); }
 
 private:
     void Destroy();

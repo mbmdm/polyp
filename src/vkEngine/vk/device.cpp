@@ -1,5 +1,7 @@
 #include "device.h"
 
+#include <memory>
+
 namespace polyp {
 namespace vk {
 
