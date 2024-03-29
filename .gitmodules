@@ -16,3 +16,6 @@
 [submodule "3rdparty/3rdparty/vk_headers"]
 	path = 3rdparty/3rdparty/vk_headers
 	url = https://github.com/KhronosGroup/Vulkan-Headers.git
+[submodule "3rdparty/3rdparty/vulkan_headers"]
+	path = 3rdparty/3rdparty/vulkan_headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git
