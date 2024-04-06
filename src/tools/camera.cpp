@@ -10,9 +10,9 @@ Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) :
     mWorldUp(glm::normalize(up)),
     mYaw(yaw),
     mPitch(pitch),
-    mSpeed(constants::camera::kSpeed), 
-    mSensitivity(constants::camera::kSensitivity), 
-    mZoom(constants::camera::kZoom)
+    mSpeed(constants::kSpeed), 
+    mSensitivity(constants::kSensitivity), 
+    mZoom(constants::kZoom)
 {
     update();
 }
@@ -20,8 +20,8 @@ Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) :
 void Camera::reset(glm::vec3 position) {
     mPosition = position;
     mWorldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    mSensitivity = constants::camera::kSensitivity;
-    mSpeed = constants::camera::kSpeed;
+    mSensitivity = constants::kSensitivity;
+    mSpeed = constants::kSpeed;
     update();
 }
 

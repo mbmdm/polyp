@@ -4,6 +4,9 @@
 #include <cstdio>
 #include <cassert>
 #include <stdint.h>
+#include <cstdarg>
+#include <cstring>
+#include <cstdlib>
 
 enum class LogType
 {

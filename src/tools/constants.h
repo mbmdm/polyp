@@ -14,22 +14,16 @@ inline constexpr auto kPatchVersion = 99LU;
 // Vulkan constants
 inline constexpr auto kFenceTimeout = 2'000'000'000ULL;
 
-
-namespace camera { // Default camera values
-
+// Default camera values
 inline constexpr float kYaw = -90.0f;
 inline constexpr float kPitch = 0.0f;
 inline constexpr float kSpeed = 2.5f;
 inline constexpr float kSensitivity = 0.1f;
 inline constexpr float kZoom = 45.0f;
 
-} // namespace camera
-
-namespace vk { // specific vulkan constants
-
+// specific vulkan constants
 inline constexpr auto kVkLibraryName = "vulkan-1.dll";
 
-} // namespace vk
 
 } // namespace constants
 } // namespace polyp

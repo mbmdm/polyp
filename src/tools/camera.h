@@ -27,8 +27,8 @@ public:
     Camera(
         glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), 
         glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), 
-        float yaw = constants::camera::kYaw, 
-        float pitch = constants::camera::kPitch);
+        float yaw = constants::kYaw, 
+        float pitch = constants::kPitch);
 
     void process_keyboard(Direction direction, float deltaTime);
     void process_mouse(float xoffset, float yoffset, bool constrainPitch = true);

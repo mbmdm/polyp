@@ -1,13 +1,10 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include "dispatch_table.h"
-#include "destroyer.h"
-#include "create_infos.h"
-
 #include <polyp_logs.h>
 #include <constants.h>
 
+#include <array>
 #include <vector>
 #include <algorithm>
 #include <string>
