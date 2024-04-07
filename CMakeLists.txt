@@ -20,5 +20,4 @@ add_compile_options("$<$<CONFIG:DEBUG>:-DDEBUG>")
 
 add_subdirectory(3rdparty)
 add_subdirectory(samples/vk)
-add_subdirectory(samples/gl)
 add_subdirectory(src)

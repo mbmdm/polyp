@@ -12,13 +12,13 @@ namespace example {
 
 using namespace tools;
 
-struct ImageResourceRAII {
+struct ImageResource {
     vk::raii::DeviceMemory memory{ VK_NULL_HANDLE };
     vk::raii::Image        image { VK_NULL_HANDLE };
     vk::raii::ImageView    view  { VK_NULL_HANDLE };
 };
 
-struct BufferResourceRAII {
+struct BufferResource {
     vk::raii::DeviceMemory memory { VK_NULL_HANDLE };
     vk::raii::Image        buffer { VK_NULL_HANDLE };
     vk::raii::ImageView    view   { VK_NULL_HANDLE };
@@ -28,7 +28,9 @@ struct BufferResourceRAII {
 class ExampleBaseRAII : public tools::IRenderer {
 protected:
 
-    using FrameBufferArray = std::vector<::vk::raii::Framebuffer>;
+    using FrameBuffers = std::vector<vk::raii::Framebuffer>;
+    using Images       = std::vector<vk::Image>;
+    using Views        = std::vector<vk::raii::ImageView>;
 
     vk::raii::Context        mContext        = {};
     vk::raii::Instance       mInstance       = { VK_NULL_HANDLE };
@@ -41,15 +43,17 @@ protected:
     vk::raii::CommandBuffer  mCmdBuffer      = { VK_NULL_HANDLE };
     vk::raii::Semaphore      mReadyToPresent = { VK_NULL_HANDLE };
     vk::raii::Fence          mSubmitFence    = { VK_NULL_HANDLE };
+    vk::raii::Fence          mAqImageFence   = { VK_NULL_HANDLE };
+    vk::raii::RenderPass     mRenderPass     = { VK_NULL_HANDLE };
 
     vk::ImageMemoryBarrier   mCurrSwImBarrier;
- //   RenderPass    mRenderPass;
- //   FrameBufferArray          mFrameBuffers;
- //
- //   VkImageMemoryBarrier      currSwImBarrier; // current swapchain image barrier
- //   uint32_t                  currSwImIndex;
- //   ImageResourceRAII         mDepthStencil;
- //   VkFormat                  mDepthStencilFormat = VK_FORMAT_UNDEFINED;
+    uint32_t                 mCurrSwImIndex;
+
+    Images                   mSwapChainImages;
+    Views                    mSwapChainVeiews;
+    FrameBuffers             mFrameBuffers;
+
+    ImageResource            mDepthStencil;
 
     void preDraw();
     void postDraw();

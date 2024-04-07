@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 
 set(sources camera.cpp
-            error_codes.cpp
             polyp_window.cpp)
 
 set(includes ${CMAKE_CURRENT_SOURCE_DIR}
@@ -9,7 +8,6 @@ set(includes ${CMAKE_CURRENT_SOURCE_DIR}
 
 set(headers camera.h
             constants.h
-            error_codes.h
             polyp_window.h
             polyp_logs.h
             platforms.h
