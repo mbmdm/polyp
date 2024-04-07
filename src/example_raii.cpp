@@ -1,3 +1,5 @@
+#define VMA_IMPLEMENTATION
+
 #include "example_raii.h"
 
 //#include <vulkan/vulkan_core.h>
@@ -411,7 +413,10 @@ void ExampleBaseRAII::postDraw() {
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Present failed with result %s", vk::to_string(res).c_str());
 
-    mDevice.waitForFences(*mSubmitFence, VK_TRUE, constants::kFenceTimeout);
+    res = mDevice.waitForFences(*mSubmitFence, VK_TRUE, constants::kFenceTimeout);
+    if (res != vk::Result::eSuccess)
+        POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
+
     res = mSubmitFence.getStatus();
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
@@ -523,10 +528,6 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     }
     POLYPINFO("Graphics queue retrieved successfully");
 
-    //if (!update(mSwapchain, mSurface, mPhysDevice, mDevice))
-    //    POLYPFATAL("Failed to create vulkan swap chain.");
-    //POLYPINFO("Vulkan swap chain created successfully");
-
     vk::CommandPoolCreateInfo poolInfo{};
     poolInfo.queueFamilyIndex = queueCreateInfo.queueFamilyIndex;
     poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
@@ -581,6 +582,38 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     mCurrSwImBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
 
     onResize();
+
+    VmaVulkanFunctions vulkanFunctions = {};
+    vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+    vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+
+
+    VmaAllocatorCreateInfo allocatorCreateInfo = {};
+    allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    allocatorCreateInfo.physicalDevice = static_cast<VkPhysicalDevice>(*mPhysDevice);
+    allocatorCreateInfo.device = static_cast<VkDevice>(*mDevice);
+    allocatorCreateInfo.instance = static_cast<VkInstance>(*mInstance);;
+    allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+    
+    auto vkres = vk::Result(vmaCreateAllocator(&allocatorCreateInfo, &mVmaAllocator));
+    if (vkres != vk::Result::eSuccess) {
+        POLYPFATAL("Failed to create VMA allocator.");
+    }
+
+    //VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    //bufferInfo.size = 65536;
+    //bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+    //VmaAllocationCreateInfo vmaAllocInfo = {};
+    //vmaAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+
+    //VkBuffer buffer;
+    //VmaAllocation allocation;
+    //vkres = vk::Result(vmaCreateBuffer(mVmaAllocator, &bufferInfo, &vmaAllocInfo, &buffer, &allocation, nullptr));
+    //if (vkres != vk::Result::eSuccess) {
+    //    POLYPFATAL("Failed to create VkBuffer through VMA.");
+    //}
 
     return true;
 }

@@ -4,6 +4,7 @@
 #include "common.h"
 
 #include <vulkan/vulkan_raii.hpp>
+#include <vk_mem_alloc.h>
 
 #include <polyp_window.h>
 
@@ -45,6 +46,8 @@ protected:
     vk::raii::Fence          mSubmitFence    = { VK_NULL_HANDLE };
     vk::raii::Fence          mAqImageFence   = { VK_NULL_HANDLE };
     vk::raii::RenderPass     mRenderPass     = { VK_NULL_HANDLE };
+
+    VmaAllocator             mVmaAllocator   = { VK_NULL_HANDLE };
 
     vk::ImageMemoryBarrier   mCurrSwImBarrier;
     uint32_t                 mCurrSwImIndex;

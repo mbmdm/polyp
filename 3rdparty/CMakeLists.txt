@@ -33,3 +33,6 @@ find_package(VulkanSDK REQUIRED FATAL_ERROR)
 
 #Vulkan-Headers
 set(VULKAN_HEADERS_INCLUDE_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/vulkan_headers/include CACHE PATH "Path to Vulkan-Headers include")
+
+#Vulkan Memory Allocator (VMA)
+add_subdirectory(vma)
