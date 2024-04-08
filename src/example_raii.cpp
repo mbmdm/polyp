@@ -1,5 +1,3 @@
-#define VMA_IMPLEMENTATION
-
 #include "example_raii.h"
 
 //#include <vulkan/vulkan_core.h>
@@ -11,6 +9,7 @@
 //using namespace ::vk::raii;
 
 using namespace vk::raii;
+using polyp::vulkan::RHIContext;
 
 namespace {
 
@@ -354,7 +353,7 @@ void ExampleBaseRAII::preDraw() {
     if (res !=  vk::Result::eSuccess ) {
         POLYPFATAL("Failed to get Swapchain images");
     }
-    res = mDevice.waitForFences(*mAqImageFence, VK_TRUE, constants::kFenceTimeout);
+    res = vulkan::Context::get().device().waitForFences(*mAqImageFence, VK_TRUE, constants::kFenceTimeout);
     if (res != vk::Result::eSuccess) {
         POLYPFATAL("Failed get nex swapchain image with result %s", vk::to_string(res).c_str());
     }
@@ -362,7 +361,7 @@ void ExampleBaseRAII::preDraw() {
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
 
-    mDevice.resetFences(*mAqImageFence);
+    vulkan::Context::get().device().resetFences(*mAqImageFence);
 
     mCurrSwImIndex = imIdx;
 
@@ -413,7 +412,7 @@ void ExampleBaseRAII::postDraw() {
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Present failed with result %s", vk::to_string(res).c_str());
 
-    res = mDevice.waitForFences(*mSubmitFence, VK_TRUE, constants::kFenceTimeout);
+    res = vulkan::Context::get().device().waitForFences(*mSubmitFence, VK_TRUE, constants::kFenceTimeout);
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
 
@@ -421,7 +420,7 @@ void ExampleBaseRAII::postDraw() {
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
 
-    mDevice.resetFences(*mSubmitFence);
+    vulkan::Context::get().device().resetFences(*mSubmitFence);
 }
 
 bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
@@ -441,42 +440,39 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
 
     vk::InstanceCreateInfo instanceCreateInfo({}, &applicationInfo, layers, extensions);
 
-    mInstance = vk::raii::Instance(mContext, instanceCreateInfo);
-    if (*mInstance == VK_NULL_HANDLE) {
-        POLYPFATAL("Failed to create vulkan instance");
-        return false;
-    }
+    auto& ctx = vulkan::Context::get();
+    ctx.init(instanceCreateInfo);
 
-    auto gpus = mInstance.enumeratePhysicalDevices();
+    const auto& instance = ctx.instance();
+
+    auto gpus = instance.enumeratePhysicalDevices();
 
     if (gpus.empty()) {
         POLYPFATAL("Required GPU not found");
         return false;
     }
 
-    mPhysDevice = gpus[0];
-
-    auto test = isDiscrete(mPhysDevice);
-
-    auto memSize = memory(mPhysDevice);
-
+    auto currGpu = gpus[0];
     for (size_t i = 1; i < gpus.size(); i++) {
         auto gpu = gpus[i];
-        if (memory(gpu) > memory(mPhysDevice) && isDiscrete(gpu)) {
-            mPhysDevice = gpu;
+        if (memory(gpu) > memory(currGpu) && isDiscrete(gpu)) {
+            currGpu = gpu;
         }
     }
 
-    POLYPINFO("Selected device %s with local memory %d Mb\n", name(mPhysDevice).c_str(), memory(mPhysDevice) / 1024 / 1024);
+    ctx.init(std::move(currGpu));
+
+    const auto& physDevice = ctx.gpu();
+
+    POLYPINFO("Selected device %s with local memory %d Mb\n", name(physDevice).c_str(), memory(physDevice) / 1024 / 1024);
 
     vk::Win32SurfaceCreateInfoKHR surfaceInfo({}, inst, hwnd, nullptr);
-    mSurface = mInstance.createWin32SurfaceKHR(surfaceInfo);
+    mSurface = instance.createWin32SurfaceKHR(surfaceInfo);
 
     if (*mSurface == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create vulkan surface (WSI)");
         return false;
     }
-
 
     vk::DeviceCreateInfo deviceCreateInfo{};
     vk::DeviceQueueCreateInfo queueCreateInfo{};
@@ -492,8 +488,8 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     {
         auto queReqFlags = ::vk::QueueFlagBits::eGraphics | ::vk::QueueFlagBits::eCompute;
 
-        auto availableGraphicsQueue = checkSupport(mPhysDevice, queReqFlags, quePriorities.size());
-        auto availableWSIQueue = checkSupport(mSurface, mPhysDevice);
+        auto availableGraphicsQueue = checkSupport(physDevice, queReqFlags, quePriorities.size());
+        auto availableWSIQueue = checkSupport(mSurface, physDevice);
 
         for (uint32_t i = 0; i < availableGraphicsQueue.size(); i++) {
             if (availableGraphicsQueue[i] && availableWSIQueue[i]) {
@@ -515,14 +511,16 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     vk::PhysicalDeviceFeatures deviceFeatures{};
     deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
 
-    mDevice = mPhysDevice.createDevice(deviceCreateInfo);
-    if (*mDevice == VK_NULL_HANDLE) {
+    ctx.init(physDevice.createDevice(deviceCreateInfo));
+
+    const auto& device = ctx.device();
+    if (*device == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create vulkan logical device");
         return false;
     }
     POLYPINFO("Vulkan device created successfully");
 
-    mQueue = mDevice.getQueue(queueCreateInfo.queueFamilyIndex, 0);
+    mQueue = device.getQueue(queueCreateInfo.queueFamilyIndex, 0);
     if (*mQueue == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create vulkan graphics queue");
     }
@@ -531,7 +529,7 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     vk::CommandPoolCreateInfo poolInfo{};
     poolInfo.queueFamilyIndex = queueCreateInfo.queueFamilyIndex;
     poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-    mCmdPool = mDevice.createCommandPool(poolInfo);
+    mCmdPool = device.createCommandPool(poolInfo);
     if (*mCmdPool == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create command pool");
     }
@@ -541,7 +539,7 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     allocInfo.level = vk::CommandBufferLevel::ePrimary;
     allocInfo.commandBufferCount = 1;
 
-   auto cmds = mDevice.allocateCommandBuffers(allocInfo);
+   auto cmds = device.allocateCommandBuffers(allocInfo);
     if (cmds.empty()) {
         POLYPFATAL("Failed to allocate command buffers.");
         return false;
@@ -551,14 +549,14 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     POLYPINFO("Primary command buffer created successfully");
 
     vk::SemaphoreCreateInfo semaphoreCreateInfo{};
-    mReadyToPresent = mDevice.createSemaphore(semaphoreCreateInfo);
+    mReadyToPresent = device.createSemaphore(semaphoreCreateInfo);
     if (*mReadyToPresent == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create image available semaphore.");
     }
 
     vk::FenceCreateInfo fenceCreateInfo{/*vk::FenceCreateFlagBits::eSignaled*/};
-    mSubmitFence = mDevice.createFence(fenceCreateInfo);
-    mAqImageFence = mDevice.createFence(fenceCreateInfo);
+    mSubmitFence = device.createFence(fenceCreateInfo);
+    mAqImageFence = device.createFence(fenceCreateInfo);
     if (*mSubmitFence == VK_NULL_HANDLE || *mAqImageFence == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create fence.");
     }
@@ -591,9 +589,9 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
     allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
     allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
-    allocatorCreateInfo.physicalDevice = static_cast<VkPhysicalDevice>(*mPhysDevice);
-    allocatorCreateInfo.device = static_cast<VkDevice>(*mDevice);
-    allocatorCreateInfo.instance = static_cast<VkInstance>(*mInstance);;
+    allocatorCreateInfo.physicalDevice = static_cast<VkPhysicalDevice>(*physDevice);
+    allocatorCreateInfo.device = static_cast<VkDevice>(*device);
+    allocatorCreateInfo.instance = static_cast<VkInstance>(*instance);;
     allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
     
     auto vkres = vk::Result(vmaCreateAllocator(&allocatorCreateInfo, &mVmaAllocator));
@@ -601,19 +599,19 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
         POLYPFATAL("Failed to create VMA allocator.");
     }
 
-    //VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-    //bufferInfo.size = 65536;
-    //bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    bufferInfo.size = 65536;
+    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
-    //VmaAllocationCreateInfo vmaAllocInfo = {};
-    //vmaAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    VmaAllocationCreateInfo vmaAllocInfo = {};
+    vmaAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 
-    //VkBuffer buffer;
-    //VmaAllocation allocation;
-    //vkres = vk::Result(vmaCreateBuffer(mVmaAllocator, &bufferInfo, &vmaAllocInfo, &buffer, &allocation, nullptr));
-    //if (vkres != vk::Result::eSuccess) {
-    //    POLYPFATAL("Failed to create VkBuffer through VMA.");
-    //}
+    VkBuffer buffer;
+    VmaAllocation allocation;
+    vkres = vk::Result(vmaCreateBuffer(mVmaAllocator, &bufferInfo, &vmaAllocInfo, &buffer, &allocation, nullptr));
+    if (vkres != vk::Result::eSuccess) {
+        POLYPFATAL("Failed to create VkBuffer through VMA.");
+    }
 
     return true;
 }
@@ -621,13 +619,13 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
 bool ExampleBaseRAII::onResize() {
     POLYPDEBUG(__FUNCTION__);
 
-    mDevice.waitIdle();
-    if (!update(mSwapchain, mSurface, mPhysDevice, mDevice))
+    vulkan::Context::get().device().waitIdle();
+    if (!update(mSwapchain, mSurface, vulkan::Context::get().gpu(), vulkan::Context::get().device()))
         POLYPFATAL("Failed to create vulkan swap chain.");
 
-    auto [memory, image, view] = createDepthStencil(mDevice, mPhysDevice, mSurface);
+    auto [memory, image, view] = createDepthStencil(vulkan::Context::get().device(), vulkan::Context::get().gpu(), mSurface);
     mDepthStencil = ImageResource{ std::move(memory), std::move(image), std::move(view) };
-    mRenderPass   = createRenderPass(mSwapchain, mPhysDevice, mDevice);
+    mRenderPass   = createRenderPass(mSwapchain, vulkan::Context::get().gpu(), vulkan::Context::get().device());
 
     mSwapChainImages = mSwapchain.getImages();
     mSwapChainVeiews.clear();
@@ -651,14 +649,14 @@ bool ExampleBaseRAII::onResize() {
             viewCreateInfo.flags = {};
             viewCreateInfo.image = mSwapChainImages[i];
 
-            auto view = mDevice.createImageView(viewCreateInfo);
+            auto view = vulkan::Context::get().device().createImageView(viewCreateInfo);
             mSwapChainVeiews.push_back(std::move(view));
 
             std::array<vk::ImageView, 2> attachments;
             attachments[0] = *mSwapChainVeiews[i];
             attachments[1] = *mDepthStencil.view;
 
-            auto capabilities = mPhysDevice.getSurfaceCapabilitiesKHR(*mSurface);
+            auto capabilities = vulkan::Context::get().gpu().getSurfaceCapabilitiesKHR(*mSurface);
 
             vk::FramebufferCreateInfo fbCreateInfo{};
             fbCreateInfo.renderPass = *mRenderPass;
@@ -668,7 +666,7 @@ bool ExampleBaseRAII::onResize() {
             fbCreateInfo.height = capabilities.currentExtent.height;
             fbCreateInfo.layers = 1;
 
-            auto fb = mDevice.createFramebuffer(fbCreateInfo);
+            auto fb = vulkan::Context::get().device().createFramebuffer(fbCreateInfo);
             mFrameBuffers.push_back(std::move(fb));
         }
     }
@@ -684,7 +682,7 @@ void ExampleBaseRAII::draw() {
 
 void ExampleBaseRAII::onShoutDown() {
     POLYPDEBUG(__FUNCTION__);
-    mDevice.waitIdle();
+    vulkan::Context::get().device().waitIdle();
     POLYPTODO(
         "Need association cmdBuffer and cmdPool to have an ability to release cmdBuffer with vkFreeCommandBuffers()"
         "Seems I should move such login in device class and someway point out that native handles shouldn't be "
