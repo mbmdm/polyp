@@ -6,6 +6,9 @@
 //#include <vulkan/vulkan.h>
 //#include <vulkan/vulkan_win32.h>
 
+#include "vk_utils.h"
+#include "vk_stringise.h"
+
 //using namespace ::vk::raii;
 
 using namespace vk::raii;
@@ -353,7 +356,7 @@ void ExampleBaseRAII::preDraw() {
     if (res !=  vk::Result::eSuccess ) {
         POLYPFATAL("Failed to get Swapchain images");
     }
-    res = vulkan::Context::get().device().waitForFences(*mAqImageFence, VK_TRUE, constants::kFenceTimeout);
+    res = vulkan::RHIContext::get().device().waitForFences(*mAqImageFence, VK_TRUE, constants::kFenceTimeout);
     if (res != vk::Result::eSuccess) {
         POLYPFATAL("Failed get nex swapchain image with result %s", vk::to_string(res).c_str());
     }
@@ -361,7 +364,7 @@ void ExampleBaseRAII::preDraw() {
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
 
-    vulkan::Context::get().device().resetFences(*mAqImageFence);
+    vulkan::RHIContext::get().device().resetFences(*mAqImageFence);
 
     mCurrSwImIndex = imIdx;
 
@@ -412,7 +415,7 @@ void ExampleBaseRAII::postDraw() {
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Present failed with result %s", vk::to_string(res).c_str());
 
-    res = vulkan::Context::get().device().waitForFences(*mSubmitFence, VK_TRUE, constants::kFenceTimeout);
+    res = vulkan::RHIContext::get().device().waitForFences(*mSubmitFence, VK_TRUE, constants::kFenceTimeout);
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
 
@@ -420,114 +423,34 @@ void ExampleBaseRAII::postDraw() {
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
 
-    vulkan::Context::get().device().resetFences(*mSubmitFence);
+    vulkan::RHIContext::get().device().resetFences(*mSubmitFence);
 }
 
 bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     POLYPDEBUG(__FUNCTION__);
 
-    ::vk::ApplicationInfo applicationInfo(constants::kInternalApplicationName, 1, constants::kInternalApplicationName, 1, VK_API_VERSION_1_2);
+    auto& ctx = vulkan::RHIContext::get();
 
-    std::vector<const char*> extensions{ 
-        VK_KHR_SURFACE_EXTENSION_NAME,
-        VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
+    ctx.init({ {__FILE__, 1}, {inst, hwnd}, {1, vk::QueueFlagBits::eGraphics} });
 
-    std::vector<const char*> layers{};
-
-#if defined(DEBUG)
-    layers.push_back("VK_LAYER_KHRONOS_validation");
-#endif
-
-    vk::InstanceCreateInfo instanceCreateInfo({}, &applicationInfo, layers, extensions);
-
-    auto& ctx = vulkan::Context::get();
-    ctx.init(instanceCreateInfo);
-
-    const auto& instance = ctx.instance();
-
-    auto gpus = instance.enumeratePhysicalDevices();
-
-    if (gpus.empty()) {
-        POLYPFATAL("Required GPU not found");
-        return false;
-    }
-
-    auto currGpu = gpus[0];
-    for (size_t i = 1; i < gpus.size(); i++) {
-        auto gpu = gpus[i];
-        if (memory(gpu) > memory(currGpu) && isDiscrete(gpu)) {
-            currGpu = gpu;
-        }
-    }
-
-    ctx.init(std::move(currGpu));
-
-    const auto& physDevice = ctx.gpu();
-
-    POLYPINFO("Selected device %s with local memory %d Mb\n", name(physDevice).c_str(), memory(physDevice) / 1024 / 1024);
-
-    vk::Win32SurfaceCreateInfoKHR surfaceInfo({}, inst, hwnd, nullptr);
-    mSurface = instance.createWin32SurfaceKHR(surfaceInfo);
-
-    if (*mSurface == VK_NULL_HANDLE) {
-        POLYPFATAL("Failed to create vulkan surface (WSI)");
-        return false;
-    }
-
-    vk::DeviceCreateInfo deviceCreateInfo{};
-    vk::DeviceQueueCreateInfo queueCreateInfo{};
-
-    deviceCreateInfo.queueCreateInfoCount = 1;
-    deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
-    
-    std::vector<float> quePriorities = { 1./*, 0.5 */ };
-    queueCreateInfo.pQueuePriorities = quePriorities.data();
-    queueCreateInfo.queueCount = quePriorities.size();
-    queueCreateInfo.queueFamilyIndex = UINT32_MAX;
-
+    if (!ctx.ready())
     {
-        auto queReqFlags = ::vk::QueueFlagBits::eGraphics | ::vk::QueueFlagBits::eCompute;
-
-        auto availableGraphicsQueue = checkSupport(physDevice, queReqFlags, quePriorities.size());
-        auto availableWSIQueue = checkSupport(mSurface, physDevice);
-
-        for (uint32_t i = 0; i < availableGraphicsQueue.size(); i++) {
-            if (availableGraphicsQueue[i] && availableWSIQueue[i]) {
-                queueCreateInfo.queueFamilyIndex = i;
-                break;
-            }
-        }
-        if (queueCreateInfo.queueFamilyIndex == UINT32_MAX) {
-            POLYPFATAL("Failed to find the reqired queue family");
-            return false;
-        }
+        POLYPFATAL("Failed to initialize Vulkan infrastructure.");
+        return false;
     }
 
-    std::vector<const char*> extansions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-
-    deviceCreateInfo.ppEnabledExtensionNames = extansions.data();
-    deviceCreateInfo.enabledExtensionCount = extansions.size();
-
-    vk::PhysicalDeviceFeatures deviceFeatures{};
-    deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
-
-    ctx.init(physDevice.createDevice(deviceCreateInfo));
+    POLYPINFO("Device %s will be used", vulkan::to_string(ctx.gpu()).c_str());
 
     const auto& device = ctx.device();
-    if (*device == VK_NULL_HANDLE) {
-        POLYPFATAL("Failed to create vulkan logical device");
-        return false;
-    }
-    POLYPINFO("Vulkan device created successfully");
 
-    mQueue = device.getQueue(queueCreateInfo.queueFamilyIndex, 0);
+    mQueue = ctx.queue(0);
     if (*mQueue == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create vulkan graphics queue");
     }
     POLYPINFO("Graphics queue retrieved successfully");
 
     vk::CommandPoolCreateInfo poolInfo{};
-    poolInfo.queueFamilyIndex = queueCreateInfo.queueFamilyIndex;
+    poolInfo.queueFamilyIndex = 0 /*queueCreateInfo.queueFamilyIndex*/;
     poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
     mCmdPool = device.createCommandPool(poolInfo);
     if (*mCmdPool == VK_NULL_HANDLE) {
@@ -589,9 +512,9 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
     allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
     allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
-    allocatorCreateInfo.physicalDevice = static_cast<VkPhysicalDevice>(*physDevice);
+    allocatorCreateInfo.physicalDevice = static_cast<VkPhysicalDevice>(*ctx.gpu());
     allocatorCreateInfo.device = static_cast<VkDevice>(*device);
-    allocatorCreateInfo.instance = static_cast<VkInstance>(*instance);;
+    allocatorCreateInfo.instance = static_cast<VkInstance>(*ctx.instance());;
     allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
     
     auto vkres = vk::Result(vmaCreateAllocator(&allocatorCreateInfo, &mVmaAllocator));
@@ -619,13 +542,15 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
 bool ExampleBaseRAII::onResize() {
     POLYPDEBUG(__FUNCTION__);
 
-    vulkan::Context::get().device().waitIdle();
-    if (!update(mSwapchain, mSurface, vulkan::Context::get().gpu(), vulkan::Context::get().device()))
+    auto& ctx = vulkan::RHIContext::get();
+
+    vulkan::RHIContext::get().device().waitIdle();
+    if (!update(mSwapchain, ctx.surface(), vulkan::RHIContext::get().gpu(), vulkan::RHIContext::get().device()))
         POLYPFATAL("Failed to create vulkan swap chain.");
 
-    auto [memory, image, view] = createDepthStencil(vulkan::Context::get().device(), vulkan::Context::get().gpu(), mSurface);
+    auto [memory, image, view] = createDepthStencil(vulkan::RHIContext::get().device(), vulkan::RHIContext::get().gpu(), ctx.surface());
     mDepthStencil = ImageResource{ std::move(memory), std::move(image), std::move(view) };
-    mRenderPass   = createRenderPass(mSwapchain, vulkan::Context::get().gpu(), vulkan::Context::get().device());
+    mRenderPass   = createRenderPass(mSwapchain, vulkan::RHIContext::get().gpu(), vulkan::RHIContext::get().device());
 
     mSwapChainImages = mSwapchain.getImages();
     mSwapChainVeiews.clear();
@@ -649,14 +574,14 @@ bool ExampleBaseRAII::onResize() {
             viewCreateInfo.flags = {};
             viewCreateInfo.image = mSwapChainImages[i];
 
-            auto view = vulkan::Context::get().device().createImageView(viewCreateInfo);
+            auto view = vulkan::RHIContext::get().device().createImageView(viewCreateInfo);
             mSwapChainVeiews.push_back(std::move(view));
 
             std::array<vk::ImageView, 2> attachments;
             attachments[0] = *mSwapChainVeiews[i];
             attachments[1] = *mDepthStencil.view;
 
-            auto capabilities = vulkan::Context::get().gpu().getSurfaceCapabilitiesKHR(*mSurface);
+            auto capabilities = vulkan::RHIContext::get().gpu().getSurfaceCapabilitiesKHR(*ctx.surface());
 
             vk::FramebufferCreateInfo fbCreateInfo{};
             fbCreateInfo.renderPass = *mRenderPass;
@@ -666,7 +591,7 @@ bool ExampleBaseRAII::onResize() {
             fbCreateInfo.height = capabilities.currentExtent.height;
             fbCreateInfo.layers = 1;
 
-            auto fb = vulkan::Context::get().device().createFramebuffer(fbCreateInfo);
+            auto fb = vulkan::RHIContext::get().device().createFramebuffer(fbCreateInfo);
             mFrameBuffers.push_back(std::move(fb));
         }
     }
@@ -682,7 +607,7 @@ void ExampleBaseRAII::draw() {
 
 void ExampleBaseRAII::onShoutDown() {
     POLYPDEBUG(__FUNCTION__);
-    vulkan::Context::get().device().waitIdle();
+    vulkan::RHIContext::get().device().waitIdle();
     POLYPTODO(
         "Need association cmdBuffer and cmdPool to have an ability to release cmdBuffer with vkFreeCommandBuffers()"
         "Seems I should move such login in device class and someway point out that native handles shouldn't be "

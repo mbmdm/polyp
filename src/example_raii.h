@@ -37,7 +37,7 @@ protected:
     //vk::raii::Context        mContext        = {};
     //vk::raii::Instance       mInstance       = { VK_NULL_HANDLE };
     //vk::raii::PhysicalDevice mPhysDevice     = { VK_NULL_HANDLE };
-    vk::raii::SurfaceKHR     mSurface        = { VK_NULL_HANDLE };
+    //vk::raii::SurfaceKHR     mSurface        = { VK_NULL_HANDLE };
     //vk::raii::Device         mDevice         = { VK_NULL_HANDLE };
     vk::raii::SwapchainKHR   mSwapchain      = { VK_NULL_HANDLE };
     vk::raii::Queue          mQueue          = { VK_NULL_HANDLE };

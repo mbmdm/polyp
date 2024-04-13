@@ -396,8 +396,10 @@ public:
         if (!ExampleBaseRAII::onInit(inst, hwnd))
             return false;
 
+
+
         // create vertex and index buffers
-        /*auto [vertexBuffer, indexBuffer] = */createVertexBuffer(vulkan::Context::get().device(), vulkan::Context::get().gpu(), mQueue, mCmdPool);
+        /*auto [vertexBuffer, indexBuffer] = */createVertexBuffer(vulkan::RHIContext::get().device(), vulkan::RHIContext::get().gpu(), mQueue, mCmdPool);
 //        mVertexBuffer.buffer = std::move(vertexBuffer.buffer);
 //        mVertexBuffer.memory = std::move(vertexBuffer.memory);
 //        mIndexBuffer.buffer = std::move(indexBuffer.buffer);
