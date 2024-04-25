@@ -3,6 +3,8 @@
 
 #include <sstream>
 
+using namespace polyp::vulkan::utils;
+
 namespace polyp {
 namespace vulkan {
 

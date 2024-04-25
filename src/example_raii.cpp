@@ -431,7 +431,7 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
 
     auto& ctx = vulkan::RHIContext::get();
 
-    ctx.init({ {__FILE__, 1}, {inst, hwnd}, {1, vk::QueueFlagBits::eGraphics} });
+    ctx.init({ {__FILE__, 1}, RHIContext::CreateInfo::GPU::Powerful, {inst, hwnd}, {1, vk::QueueFlagBits::eGraphics} });
 
     if (!ctx.ready())
     {

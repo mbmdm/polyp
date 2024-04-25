@@ -2,6 +2,7 @@
 
 namespace polyp {
 namespace vulkan {
+namespace utils {
 
 bool isDiscrete(const vk::raii::PhysicalDevice& gpu)
 {
@@ -94,5 +95,6 @@ std::vector<bool> getSupportedQueueFamilies(const vk::raii::PhysicalDevice& gpu,
     return output;
 }
 
+}
 }
 }

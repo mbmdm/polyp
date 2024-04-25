@@ -3,11 +3,13 @@
 #include "polyp_logs.h"
 #include "vk_utils.h"
 
+using namespace polyp::vulkan::utils;
 
-void polyp::vulkan::RHIContext::init(const CreateInfo::Application& info)
+namespace polyp {
+namespace vulkan {
+
+void RHIContext::init(const CreateInfo::Application& info)
 {
-    clear();
-
     vk::ApplicationInfo applicationInfo(info.name.c_str(), info.version, ENGINE_NAME, (ENGINE_MAJOR_VERSION << 16 + ENGINE_MINOR_VERSION), ENGINE_VK_VERSION);
 
     std::vector<const char*> extensions{
@@ -25,42 +27,46 @@ void polyp::vulkan::RHIContext::init(const CreateInfo::Application& info)
     mInstance = vk::raii::Instance(mContext, instanceCreateInfo);
 }
 
-void polyp::vulkan::RHIContext::init(const CreateInfo& info)
+void RHIContext::init(const CreateInfo::GPU info)
 {
-    init(info.app);
-
     auto gpus = mInstance.enumeratePhysicalDevices();
-    
-    auto mGPU  = getPowerfullGPU(gpus);
-    if (*mGPU == VK_NULL_HANDLE) {
-        POLYPFATAL("Required GPU not found");
-        return;
-    }
 
-    vk::Win32SurfaceCreateInfoKHR surfaceInfo({}, info.win.instance, info.win.handle, nullptr);
+    switch (info)
+    {
+    case CreateInfo::GPU::Powerful:
+        mGPU = getPowerfullGPU(gpus);
+        break;
+    default:
+        break;
+    }
+}
+
+void RHIContext::init(const CreateInfo::Surface& info)
+{
+    vk::Win32SurfaceCreateInfoKHR surfaceInfo({}, info.instance, info.handle, nullptr);
     mSurface = mInstance.createWin32SurfaceKHR(surfaceInfo);
+}
 
-    if (*mSurface == VK_NULL_HANDLE) {
-        POLYPFATAL("Failed to create vulkan surface (WSI)");
-        return;
-    }
-
+void RHIContext::init(const CreateInfo::Device& deviceInfo)
+{
     vk::DeviceCreateInfo      deviceCreateInfo{};
     vk::DeviceQueueCreateInfo queueCreateInfo{};
 
-    if (info.queue.count == 0) {
-        POLYPFATAL("Zero queue were requested");
-        return;
+    const auto& queInfo = deviceInfo.queue;
+
+    if (queInfo.count == 0) {
+       POLYPERROR("Zero queue were requested");
+       return;
     }
 
-    std::vector<float> quePriorities(info.queue.count, 1.);
+    std::vector<float> quePriorities(queInfo.count, 1.);
 
     queueCreateInfo.pQueuePriorities = quePriorities.data();
     queueCreateInfo.queueCount       = quePriorities.size();
     queueCreateInfo.queueFamilyIndex = UINT32_MAX;
 
     {
-        auto queReqFlags = (info.queue.flags) ? info.queue.flags : vk::QueueFlagBits::eGraphics;
+        auto queReqFlags = (queInfo.flags) ? queInfo.flags : vk::QueueFlagBits::eGraphics;
 
         auto availableQueue    = getSupportedQueueFamilies(mGPU, queReqFlags, quePriorities.size());
         auto availableWSIQueue = getSupportedQueueFamilies(mGPU, mSurface);
@@ -74,7 +80,7 @@ void polyp::vulkan::RHIContext::init(const CreateInfo& info)
     }
 
     if (queueCreateInfo.queueFamilyIndex == UINT32_MAX) {
-        POLYPFATAL("Failed to find the reqired queue family");
+        POLYPERROR("Failed to find the reqired queue family");
         return;
     }
 
@@ -94,17 +100,14 @@ void polyp::vulkan::RHIContext::init(const CreateInfo& info)
         sort(extansions.begin(), extansions.end(), strcmp);
 
         uint32_t foundCount = 0;
-        for (size_t i = 0, j = 0; i < extansions.size() && j < available.size(); j++)
-        {
-            if (strcmp(extansions[i], available[j].extensionName.data()) == 0)
-            {
+        for (size_t i = 0, j = 0; i < extansions.size() && j < available.size(); j++) {
+            if (strcmp(extansions[i], available[j].extensionName.data()) == 0) {
                 foundCount++;
                 i++;
             }
         }
 
-        if (foundCount != extansions.size())
-        {
+        if (foundCount != extansions.size()) {
             POLYPERROR("Physical GPU doesn't support all the requrested extansions. All the avalalble Vulkan extansions will be turned on.");
             extansions.clear();
             std::transform(available.begin(), available.end(), std::back_inserter(extansions), [](const auto& ext) {
@@ -113,12 +116,12 @@ void polyp::vulkan::RHIContext::init(const CreateInfo& info)
         }
     }
 
-    vk::PhysicalDeviceFeatures deviceFeatures = info.device.features;
-    deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+    vk::PhysicalDeviceFeatures deviceFeatures = deviceInfo.features;
+    deviceCreateInfo.pEnabledFeatures         = &deviceFeatures;
 
     {
         auto availableFeatures = static_cast<VkPhysicalDeviceFeatures>(mGPU.getFeatures());
-        auto requestedFeatures = static_cast<VkPhysicalDeviceFeatures>(info.device.features);
+        auto requestedFeatures = static_cast<VkPhysicalDeviceFeatures>(deviceInfo.features);
 
         VkBool32* available = (VkBool32*)&availableFeatures;
         VkBool32* requested = (VkBool32*)&requestedFeatures;
@@ -136,10 +139,36 @@ void polyp::vulkan::RHIContext::init(const CreateInfo& info)
     }
 
     mDevice = mGPU.createDevice(deviceCreateInfo);
-    if (*mDevice == VK_NULL_HANDLE) {
-        POLYPFATAL("Failed to create vulkan logical device");
+}
+
+void RHIContext::init(const CreateInfo& info)
+{
+    clear();
+
+    init(info.app);
+    if (*mInstance == VK_NULL_HANDLE) {
+        POLYPERROR("Failed to initialize Vulkan instance");
         return;
     }
 
+    init(info.gpu);
+    if (*mGPU == VK_NULL_HANDLE) {
+        POLYPERROR("Required GPU not found");
+        return;
+    }
 
+    init(info.win);
+    if (*mSurface == VK_NULL_HANDLE) {
+        POLYPERROR("Failed to initialize Vulkan surface (WSI)");
+        return;
+    }
+
+    init(info.device);
+    if (*mDevice == VK_NULL_HANDLE) {
+        POLYPERROR("Failed to initialize Vulkan logical device");
+        return;
+    }
+}
+
+}
 }
