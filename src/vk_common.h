@@ -37,6 +37,8 @@ public:
     bool isDiscretePLP() const;
 
     uint64_t getPerformanceRatioPLP() const;
+
+    bool supportPLP(const SurfaceKHR& surface, PresentModeKHR mode);
 };
 
 class Instance : public vk::raii::Instance

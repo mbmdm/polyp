@@ -3,6 +3,8 @@
 #include "polyp_logs.h"
 #include "vk_utils.h"
 
+#include "vk_stringise.h"
+
 using namespace polyp::vulkan::utils;
 
 namespace polyp {
@@ -73,7 +75,7 @@ void RHIContext::init(const CreateInfo::GPU info)
 
     POLYPTODO("CHeck this code")
     std::sort(gpus.begin(), gpus.end(), [](const auto& lhv, const auto& rhv) {
-        return lhv.getPerformanceRatioPLP() < rhv.getPerformanceRatioPLP(); 
+        return lhv.getPerformanceRatioPLP() > rhv.getPerformanceRatioPLP();
         });
 
     if (gpus.empty())
@@ -220,15 +222,17 @@ void RHIContext::init(const CreateInfo::SwapChain& info)
     createInfo.clipped          = true; // enable clipping
     createInfo.oldSwapchain     = *mSwapchain;
 
-    if (!checkSupport(mGPU, mSurface, createInfo.presentMode)) {
-        POLYPERROR("The swapchain creation parameters are not consistent with the physical device and the surface.");
-        return;
-    }
+    if (!mGPU.supportPLP(mSurface, createInfo.presentMode)) {
+        auto modes = mGPU.getSurfacePresentModesKHR(*mSurface);
+        if (modes.empty()) {
+            POLYPFATAL("Internal error");
+            return;
+        }
 
-    if (reqPresentMode != createInfo.presentMode) {
-        POLYPWARN("Requested presentation %s mode is not found. Will be used %s", 
-                  to_string(reqPresentMode).c_str(),
-                  to_string(createInfo.presentMode).c_str());
+        createInfo.presentMode = modes[0];
+        POLYPWARN("Requested presentation %s mode is not found. Will be used %s",
+                   to_string(reqPresentMode).c_str(),
+                   to_string(createInfo.presentMode).c_str());
     }
 
     mSwapchain = mDevice.createSwapchainKHR(createInfo);

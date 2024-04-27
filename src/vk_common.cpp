@@ -58,11 +58,34 @@ bool PhysicalDevice::isDiscretePLP() const
 
 uint64_t PhysicalDevice::getPerformanceRatioPLP() const
 {
-    auto ratio = getDeviceMemoryPLP() >> 16;
-    if (isDiscretePLP())
-        ratio += 1 << 48;
+    uint64_t ratio = getDeviceMemoryPLP() >> 20;
+    if (!isDiscretePLP())
+        ratio |= 1ULL << 32;
     
     return ratio;
+}
+
+bool PhysicalDevice::supportPLP(const SurfaceKHR& surface, PresentModeKHR mode)
+{
+    auto capabilities = getSurfaceCapabilitiesKHR(*surface);
+    if (capabilities.currentExtent.width == UINT32_MAX ||
+        capabilities.currentExtent.height == UINT32_MAX) {
+        return false;
+    }
+    else if (capabilities.currentExtent.width == 0 ||
+        capabilities.currentExtent.height == 0) {
+        return false;
+    }
+
+    auto presentModes = getSurfacePresentModesKHR(*surface);
+    for (size_t i = 0; i < presentModes.size(); ++i) {
+        if (presentModes[i] == mode) {
+            return true;
+            break;
+        }
+    }
+
+    return false;
 }
 
 }
