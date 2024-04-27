@@ -5,7 +5,6 @@
 #include "vma.h"
 #include "vk_context.h"
 
-
 #include <vulkan/vulkan_raii.hpp>
 #include <polyp_window.h>
 
@@ -34,12 +33,6 @@ protected:
     using Images       = std::vector<vk::Image>;
     using Views        = std::vector<vk::raii::ImageView>;
 
-    //vk::raii::Context        mContext        = {};
-    //vk::raii::Instance       mInstance       = { VK_NULL_HANDLE };
-    //vk::raii::PhysicalDevice mPhysDevice     = { VK_NULL_HANDLE };
-    //vk::raii::SurfaceKHR     mSurface        = { VK_NULL_HANDLE };
-    //vk::raii::Device         mDevice         = { VK_NULL_HANDLE };
-    vk::raii::SwapchainKHR   mSwapchain      = { VK_NULL_HANDLE };
     vk::raii::Queue          mQueue          = { VK_NULL_HANDLE };
     vk::raii::CommandPool    mCmdPool        = { VK_NULL_HANDLE };
     vk::raii::CommandBuffer  mCmdBuffer      = { VK_NULL_HANDLE };

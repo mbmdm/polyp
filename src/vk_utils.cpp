@@ -1,52 +1,54 @@
 #include "vk_utils.h"
 
+//using namespace vk::raii;
+
 namespace polyp {
 namespace vulkan {
 namespace utils {
 
-bool isDiscrete(const vk::raii::PhysicalDevice& gpu)
-{
-    ::vk::PhysicalDeviceProperties props = gpu.getProperties();
-    return props.deviceType == ::vk::PhysicalDeviceType::eDiscreteGpu;
-}
+//bool isDiscrete(const PhysicalDevice& gpu)
+//{
+//    vk::PhysicalDeviceProperties props = gpu.getProperties();
+//    return props.deviceType == vk::PhysicalDeviceType::eDiscreteGpu;
+//}
 
-VkDeviceSize getMemorySize(const ::vk::raii::PhysicalDevice& gpu) {
+//VkDeviceSize getMemorySize(const PhysicalDevice& gpu) {
+//
+//    VkDeviceSize output = 0;
+//
+//    vk::PhysicalDeviceMemoryProperties memProperties = gpu.getMemoryProperties();
+//
+//    std::vector<size_t> targetHeapsIdx;
+//    for (size_t heapTypeIdx = 0; heapTypeIdx < memProperties.memoryTypeCount; ++heapTypeIdx) {
+//        if (memProperties.memoryTypes[heapTypeIdx].propertyFlags & vk::MemoryPropertyFlagBits::eDeviceLocal) {
+//            targetHeapsIdx.push_back(memProperties.memoryTypes[heapTypeIdx].heapIndex);
+//        }
+//    }
+//
+//    if (targetHeapsIdx.empty()) {
+//        return output;
+//    }
+//
+//    //remove the same indexes if exist
+//    std::sort(targetHeapsIdx.begin(), targetHeapsIdx.end(), std::less<size_t>());
+//    auto currItr = targetHeapsIdx.begin() + 1;
+//    while (currItr != targetHeapsIdx.end()) {
+//        if (*currItr == *(currItr - 1)) {
+//            currItr = targetHeapsIdx.erase(currItr);
+//        }
+//        else {
+//            currItr++;
+//        }
+//    }
+//
+//    for (size_t i = 0; i < targetHeapsIdx.size(); i++) {
+//        output += memProperties.memoryHeaps[targetHeapsIdx[i]].size;
+//    }
+//
+//    return output;
+//}
 
-    VkDeviceSize output = 0;
-
-    vk::PhysicalDeviceMemoryProperties memProperties = gpu.getMemoryProperties();
-
-    std::vector<size_t> targetHeapsIdx;
-    for (size_t heapTypeIdx = 0; heapTypeIdx < memProperties.memoryTypeCount; ++heapTypeIdx) {
-        if (memProperties.memoryTypes[heapTypeIdx].propertyFlags & ::vk::MemoryPropertyFlagBits::eDeviceLocal) {
-            targetHeapsIdx.push_back(memProperties.memoryTypes[heapTypeIdx].heapIndex);
-        }
-    }
-
-    if (targetHeapsIdx.empty()) {
-        return output;
-    }
-
-    //remove the same indexes if exist
-    std::sort(targetHeapsIdx.begin(), targetHeapsIdx.end(), std::less<size_t>());
-    auto currItr = targetHeapsIdx.begin() + 1;
-    while (currItr != targetHeapsIdx.end()) {
-        if (*currItr == *(currItr - 1)) {
-            currItr = targetHeapsIdx.erase(currItr);
-        }
-        else {
-            currItr++;
-        }
-    }
-
-    for (size_t i = 0; i < targetHeapsIdx.size(); i++) {
-        output += memProperties.memoryHeaps[targetHeapsIdx[i]].size;
-    }
-
-    return output;
-}
-
-vk::raii::PhysicalDevice getPowerfullGPU(const std::vector<vk::raii::PhysicalDevice>& gpus)
+PhysicalDevice getPowerfullGPU(const std::vector<PhysicalDevice>& gpus)
 {
     if (gpus.empty())
         return VK_NULL_HANDLE;
@@ -55,7 +57,7 @@ vk::raii::PhysicalDevice getPowerfullGPU(const std::vector<vk::raii::PhysicalDev
 
     for (size_t i = 1; i < gpus.size(); i++) {
         auto gpu = gpus[i];
-        if (getMemorySize(gpu) > getMemorySize(output) && isDiscrete(gpu)) {
+        if (gpu.getDeviceMemoryPLP() > output.getDeviceMemoryPLP() && gpu.isDiscretePLP()) {
             output = gpu;
         }
     }
@@ -63,36 +65,66 @@ vk::raii::PhysicalDevice getPowerfullGPU(const std::vector<vk::raii::PhysicalDev
     return output;
 }
 
-std::vector<bool> getSupportedQueueFamilies(const vk::raii::PhysicalDevice& gpu, vk::QueueFlags flags, uint32_t count)
+//bool checkSupport(const vk::raii::PhysicalDevice& gpu, vk::Format format)
+//{
+//    auto props = gpu.getFormatProperties(format);
+//    if (props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment)
+//        return true;
+//
+//    return false;
+//}
+
+//vk::Format getDepthFormat(const PhysicalDevice& gpu)
+//{
+//    std::vector<vk::Format> dsDesiredFormats = {
+//        vk::Format::eD32SfloatS8Uint,
+//        vk::Format::eD32Sfloat,
+//        vk::Format::eD24UnormS8Uint,
+//        vk::Format::eD16UnormS8Uint,
+//        vk::Format::eD16Unorm
+//    };
+//
+//    auto depthFormat = vk::Format::eUndefined;
+//
+//    for (const auto& format : dsDesiredFormats) {
+//        auto props = gpu.getFormatProperties(format);
+//        if (props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment) {
+//            depthFormat = format;
+//            break;
+//        }
+//    }
+//
+//    return depthFormat;
+//}
+
+bool checkSupport(const PhysicalDevice& device, const SurfaceKHR& surface, vk::PresentModeKHR mode)
 {
-    auto queFamilyProps = gpu.getQueueFamilyProperties();
-    std::vector<bool> output(queFamilyProps.size(), false);
+    auto capabilities = device.getSurfaceCapabilitiesKHR(*surface);
+    if (capabilities.currentExtent.width  == UINT32_MAX ||
+        capabilities.currentExtent.height == UINT32_MAX) {
+        return false;
+    }
+    else if (capabilities.currentExtent.width == 0 ||
+        capabilities.currentExtent.height == 0) {
+        return false;
+    }
 
-    uint32_t graphicsQueueFamilyIndex = UINT32_MAX;
+    bool result = false;
+    auto presentModes = device.getSurfacePresentModesKHR(*surface);
 
-    for (uint32_t i = 0; i < queFamilyProps.size(); i++)
-    {
-        if ((queFamilyProps[i].queueFlags & flags) &&
-            (queFamilyProps[i].queueCount >= count))
-        {
-            output[i] = true;
+    for (size_t i = 0; i < presentModes.size(); ++i) {
+        if (presentModes[i] == mode) {
+            result = true;
+            break;
         }
     }
-
-    return output;
-}
-
-std::vector<bool> getSupportedQueueFamilies(const vk::raii::PhysicalDevice& gpu, const vk::raii::SurfaceKHR& surface)
-{
-    auto queFamilyProps = gpu.getQueueFamilyProperties();
-
-    std::vector<bool> output(queFamilyProps.size());
-    for (size_t i = 0; i < output.size(); i++)
+    if (!result && !presentModes.empty())
     {
-        output[i] = (gpu.getSurfaceSupportKHR(i, *surface) == VK_TRUE);
+        mode = presentModes[0];
+        result = true;
     }
 
-    return output;
+    return result;
 }
 
 }

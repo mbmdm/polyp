@@ -8,14 +8,14 @@ using namespace polyp::vulkan::utils;
 namespace polyp {
 namespace vulkan {
 
-std::string to_string(const vk::raii::PhysicalDevice& gpu)
+std::string to_string(const PhysicalDevice& gpu)
 {
     vk::PhysicalDeviceProperties props = gpu.getProperties();
 
     std::stringstream ss; 
     ss << props.deviceName;
 
-    auto memory = getMemorySize(gpu);
+    auto memory = gpu.getDeviceMemoryPLP();
     ss << ", memory " << memory / 1024 / 1024 << " Mb";
 
     return ss.str();

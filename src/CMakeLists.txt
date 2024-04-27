@@ -10,6 +10,7 @@ set(sources
             #${CMAKE_CURRENT_SOURCE_DIR}/vk/surface.cpp
             #${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp
             #${CMAKE_CURRENT_SOURCE_DIR}/example.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_stringise.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.cpp
@@ -28,6 +29,7 @@ set(headers
             #${CMAKE_CURRENT_SOURCE_DIR}/vk/surface.h
             #${CMAKE_CURRENT_SOURCE_DIR}/vk/dispatch_table.h
             #${CMAKE_CURRENT_SOURCE_DIR}/vk/destroyable_handle.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.h
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_stringise.h
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.h
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.h

@@ -8,9 +8,47 @@ using namespace polyp::vulkan::utils;
 namespace polyp {
 namespace vulkan {
 
+namespace {
+
+std::vector<bool> getSupportedQueueFamilies(const PhysicalDevice& gpu, QueueFlags flags, uint32_t queueCount)
+{
+    auto queFamilyProps = gpu.getQueueFamilyProperties();
+    std::vector<bool> output(queFamilyProps.size(), false);
+
+    uint32_t graphicsQueueFamilyIndex = UINT32_MAX;
+
+    for (uint32_t i = 0; i < queFamilyProps.size(); i++)
+    {
+        if ((queFamilyProps[i].queueFlags & flags) &&
+            (queFamilyProps[i].queueCount >= queueCount))
+        {
+            output[i] = true;
+        }
+    }
+
+    return output;
+}
+
+std::vector<bool> getSupportedQueueFamilies(const PhysicalDevice& gpu, const SurfaceKHR& surface)
+{
+    auto queFamilyProps = gpu.getQueueFamilyProperties();
+
+    std::vector<bool> output(queFamilyProps.size());
+    for (size_t i = 0; i < output.size(); i++)
+    {
+        output[i] = (gpu.getSurfaceSupportKHR(i, *surface) == VK_TRUE);
+    }
+
+    return output;
+}
+
+}
+
 void RHIContext::init(const CreateInfo::Application& info)
 {
-    vk::ApplicationInfo applicationInfo(info.name.c_str(), info.version, ENGINE_NAME, (ENGINE_MAJOR_VERSION << 16 + ENGINE_MINOR_VERSION), ENGINE_VK_VERSION);
+    mCreateInfo.app = info;
+
+    ApplicationInfo applicationInfo(info.name.c_str(), info.version, ENGINE_NAME, (ENGINE_MAJOR_VERSION << 16 + ENGINE_MINOR_VERSION), ENGINE_VK_VERSION);
 
     std::vector<const char*> extensions{
         VK_KHR_SURFACE_EXTENSION_NAME,
@@ -22,19 +60,29 @@ void RHIContext::init(const CreateInfo::Application& info)
     layers.push_back("VK_LAYER_KHRONOS_validation");
 #endif
 
-    vk::InstanceCreateInfo instanceCreateInfo({}, &applicationInfo, layers, extensions);
+    InstanceCreateInfo instanceCreateInfo({}, &applicationInfo, layers, extensions);
 
-    mInstance = vk::raii::Instance(mContext, instanceCreateInfo);
+    mInstance = Instance(mContext, instanceCreateInfo);
 }
 
 void RHIContext::init(const CreateInfo::GPU info)
 {
-    auto gpus = mInstance.enumeratePhysicalDevices();
+    mCreateInfo.gpu = info;
+
+    auto gpus = mInstance.enumeratePhysicalDevicesPLP();
+
+    POLYPTODO("CHeck this code")
+    std::sort(gpus.begin(), gpus.end(), [](const auto& lhv, const auto& rhv) {
+        return lhv.getPerformanceRatioPLP() < rhv.getPerformanceRatioPLP(); 
+        });
+
+    if (gpus.empty())
+        return;
 
     switch (info)
     {
     case CreateInfo::GPU::Powerful:
-        mGPU = getPowerfullGPU(gpus);
+        mGPU = *gpus.begin();
         break;
     default:
         break;
@@ -43,48 +91,58 @@ void RHIContext::init(const CreateInfo::GPU info)
 
 void RHIContext::init(const CreateInfo::Surface& info)
 {
-    vk::Win32SurfaceCreateInfoKHR surfaceInfo({}, info.instance, info.handle, nullptr);
+    mCreateInfo.win = info;
+
+    Win32SurfaceCreateInfoKHR surfaceInfo({}, info.instance, info.handle, nullptr);
     mSurface = mInstance.createWin32SurfaceKHR(surfaceInfo);
 }
 
-void RHIContext::init(const CreateInfo::Device& deviceInfo)
+void RHIContext::init(const CreateInfo::Device& info)
 {
-    vk::DeviceCreateInfo      deviceCreateInfo{};
-    vk::DeviceQueueCreateInfo queueCreateInfo{};
+    mCreateInfo.device = info;
 
-    const auto& queInfo = deviceInfo.queue;
+    DeviceCreateInfo                   deviceCreateInfo{};
+    std::vector<DeviceQueueCreateInfo> queueCreateInfos(info.pQueueInfos.size());
 
-    if (queInfo.count == 0) {
+    deviceCreateInfo.pQueueCreateInfos    = queueCreateInfos.data();
+    deviceCreateInfo.queueCreateInfoCount = queueCreateInfos.size();
+
+    if (info.pQueueInfos.empty()) {
        POLYPERROR("Zero queue were requested");
        return;
     }
 
-    std::vector<float> quePriorities(queInfo.count, 1.);
+    std::vector<std::vector<float>> quePriorities(info.pQueueInfos.size());
 
-    queueCreateInfo.pQueuePriorities = quePriorities.data();
-    queueCreateInfo.queueCount       = quePriorities.size();
-    queueCreateInfo.queueFamilyIndex = UINT32_MAX;
-
+    for (size_t i = 0; i < info.pQueueInfos.size(); i++)
     {
-        auto queReqFlags = (queInfo.flags) ? queInfo.flags : vk::QueueFlagBits::eGraphics;
+        const auto& queInfo = info.pQueueInfos[i];
 
-        auto availableQueue    = getSupportedQueueFamilies(mGPU, queReqFlags, quePriorities.size());
+        quePriorities[i] = std::vector<float>(queInfo.count, 1.);
+
+        queueCreateInfos[i].pQueuePriorities = quePriorities[i].data();
+        queueCreateInfos[i].queueCount       = quePriorities[i].size();
+        queueCreateInfos[i].queueFamilyIndex = UINT32_MAX;
+
+        auto queReqFlags = (queInfo.flags) ? queInfo.flags : QueueFlagBits::eGraphics;
+
+        auto availableQueue    = getSupportedQueueFamilies(mGPU, queReqFlags, quePriorities[i].size());
         auto availableWSIQueue = getSupportedQueueFamilies(mGPU, mSurface);
 
         for (uint32_t i = 0; i < availableQueue.size(); i++) {
             if (availableQueue[i] && availableWSIQueue[i]) {
-                queueCreateInfo.queueFamilyIndex = i;
+                queueCreateInfos[i].queueFamilyIndex = i;
                 break;
             }
         }
-    }
 
-    if (queueCreateInfo.queueFamilyIndex == UINT32_MAX) {
-        POLYPERROR("Failed to find the reqired queue family");
-        return;
-    }
+        if (queueCreateInfos[i].queueFamilyIndex == UINT32_MAX) {
+            POLYPERROR("Failed to find the reqired queue family");
+            return;
+        }
 
-    mQueueFamilyIndex = queueCreateInfo.queueFamilyIndex;
+        mQueueFamilies[queInfo.flags] = queueCreateInfos[i].queueFamilyIndex;
+    }
 
     std::vector<const char*> extansions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
@@ -116,12 +174,12 @@ void RHIContext::init(const CreateInfo::Device& deviceInfo)
         }
     }
 
-    vk::PhysicalDeviceFeatures deviceFeatures = deviceInfo.features;
-    deviceCreateInfo.pEnabledFeatures         = &deviceFeatures;
+    PhysicalDeviceFeatures deviceFeatures = info.features;
+    deviceCreateInfo.pEnabledFeatures     = &deviceFeatures;
 
     {
         auto availableFeatures = static_cast<VkPhysicalDeviceFeatures>(mGPU.getFeatures());
-        auto requestedFeatures = static_cast<VkPhysicalDeviceFeatures>(deviceInfo.features);
+        auto requestedFeatures = static_cast<VkPhysicalDeviceFeatures>(info.features);
 
         VkBool32* available = (VkBool32*)&availableFeatures;
         VkBool32* requested = (VkBool32*)&requestedFeatures;
@@ -139,6 +197,52 @@ void RHIContext::init(const CreateInfo::Device& deviceInfo)
     }
 
     mDevice = mGPU.createDevice(deviceCreateInfo);
+}
+
+void RHIContext::init(const CreateInfo::SwapChain& info)
+{
+    mCreateInfo.swapchain = info;
+
+    PresentModeKHR reqPresentMode = PresentModeKHR::eMailbox;
+
+    SwapchainCreateInfoKHR createInfo{};
+    createInfo.surface          = *mSurface;
+    createInfo.minImageCount    = info.count;
+    createInfo.imageFormat      = Format::eR8G8B8A8Unorm;
+    createInfo.imageColorSpace  = ColorSpaceKHR::eSrgbNonlinear;
+    createInfo.presentMode      = reqPresentMode;
+    createInfo.imageUsage       = ImageUsageFlagBits::eColorAttachment;
+    createInfo.imageExtent      = mGPU.getSurfaceCapabilitiesKHR(*mSurface).currentExtent;
+    createInfo.imageArrayLayers = 1; // single layer, no stereoscopic-3D
+    createInfo.imageSharingMode = SharingMode::eExclusive; // image is owned by one queue family at a time
+    createInfo.preTransform     = SurfaceTransformFlagBitsKHR::eIdentity;
+    createInfo.compositeAlpha   = CompositeAlphaFlagBitsKHR::eOpaque;
+    createInfo.clipped          = true; // enable clipping
+    createInfo.oldSwapchain     = *mSwapchain;
+
+    if (!checkSupport(mGPU, mSurface, createInfo.presentMode)) {
+        POLYPERROR("The swapchain creation parameters are not consistent with the physical device and the surface.");
+        return;
+    }
+
+    if (reqPresentMode != createInfo.presentMode) {
+        POLYPWARN("Requested presentation %s mode is not found. Will be used %s", 
+                  to_string(reqPresentMode).c_str(),
+                  to_string(createInfo.presentMode).c_str());
+    }
+
+    mSwapchain = mDevice.createSwapchainKHR(createInfo);
+}
+
+uint32_t RHIContext::queueFamily(QueueFlags flags) const
+{
+    auto familyIt = mQueueFamilies.find(flags);
+    if (familyIt == mQueueFamilies.end()) {
+        POLYPERROR("Queue family index is absent for provided QueueFlags %s", to_string(flags).c_str());
+        return UINT32_MAX;
+    }
+
+    return familyIt->second;
 }
 
 void RHIContext::init(const CreateInfo& info)
@@ -166,6 +270,12 @@ void RHIContext::init(const CreateInfo& info)
     init(info.device);
     if (*mDevice == VK_NULL_HANDLE) {
         POLYPERROR("Failed to initialize Vulkan logical device");
+        return;
+    }
+
+    init(info.swapchain);
+    if (*mSwapchain == VK_NULL_HANDLE) {
+        POLYPERROR("Failed to initialize Vulkan swapchain");
         return;
     }
 }

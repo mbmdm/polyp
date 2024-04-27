@@ -1,10 +1,10 @@
 #pragma once
 
 #include "platforms.h"
-
-#include <vulkan/vulkan_raii.hpp>
+#include "vk_common.h"
 
 #include <string>
+#include <map>
 
 namespace polyp {
 namespace vulkan {
@@ -33,15 +33,20 @@ public:
 
         struct Queue
         {
-            uint32_t       count;
-            vk::QueueFlags flags;
+            uint32_t   count;
+            QueueFlags flags;
         };
 
         struct Device
         {
-            Queue                      queue;
-            vk::PhysicalDeviceFeatures features;
+            std::vector<Queue>     pQueueInfos;
+            PhysicalDeviceFeatures features;
         } device;
+
+        struct SwapChain
+        {
+            uint32_t count; // image count
+        } swapchain;
     };
 
     static RHIContext& get()
@@ -53,18 +58,20 @@ public:
     RHIContext(const RHIContext&)            = delete;
     RHIContext& operator=(const RHIContext&) = delete;
 
-    const vk::raii::Instance&       instance() const { return mInstance; }
-    const vk::raii::PhysicalDevice&      gpu() const { return mGPU; }
-    const vk::raii::SurfaceKHR&      surface() const { return mSurface; }
-    const vk::raii::Device&           device() const { return mDevice; }
+    const Instance&       instance() const { return mInstance; }
+    const PhysicalDevice&      gpu() const { return mGPU; }
+    const SurfaceKHR&      surface() const { return mSurface; }
+    const Device&           device() const { return mDevice; }
+    const SwapchainKHR&  swapchain() const { return mSwapchain; }
 
-    vk::raii::Queue queue(uint32_t index) const { return mDevice.getQueue(mQueueFamilyIndex, index); }
+    uint32_t queueFamily(QueueFlags flags) const;
 
     void init(const CreateInfo& info);
     void init(const CreateInfo::Application& info);
     void init(const CreateInfo::GPU info);
     void init(const CreateInfo::Surface& info);
-    void init(const CreateInfo::Device& deviceInfo);
+    void init(const CreateInfo::Device& info);
+    void init(const CreateInfo::SwapChain& info);
 
     void clear()
     {
@@ -83,17 +90,20 @@ public:
                 *mSwapchain != VK_NULL_HANDLE);
     }
 
+    void onResize() { init(mCreateInfo.swapchain); }
+
 private:
     RHIContext() = default;
 
-    vk::raii::Context         mContext = {};
-    vk::raii::Instance       mInstance = { VK_NULL_HANDLE };
-    vk::raii::PhysicalDevice      mGPU = { VK_NULL_HANDLE };
-    vk::raii::Device           mDevice = { VK_NULL_HANDLE };
-    vk::raii::SurfaceKHR      mSurface = { VK_NULL_HANDLE };
-    vk::raii::SwapchainKHR  mSwapchain = { VK_NULL_HANDLE };
+    Context         mContext = {};
+    Instance       mInstance = { VK_NULL_HANDLE };
+    PhysicalDevice      mGPU = { VK_NULL_HANDLE };
+    Device           mDevice = { VK_NULL_HANDLE };
+    SurfaceKHR      mSurface = { VK_NULL_HANDLE };
+    SwapchainKHR  mSwapchain = { VK_NULL_HANDLE };
 
-    uint32_t mQueueFamilyIndex         = {};
+    std::map<QueueFlags, uint32_t> mQueueFamilies = {};
+    CreateInfo                     mCreateInfo    = {};
 };
 
 }

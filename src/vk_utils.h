@@ -1,4 +1,5 @@
-#include "vulkan/vulkan_raii.hpp"
+//#include <vulkan/vulkan_raii.hpp>
+#include "vk_common.h"
 
 #include <vector>
 
@@ -6,15 +7,15 @@ namespace polyp {
 namespace vulkan {
 namespace utils {
 
-bool isDiscrete(const vk::raii::PhysicalDevice& gpu);
+//bool isDiscrete(const PhysicalDevice& gpu);
 
-VkDeviceSize getMemorySize(const vk::raii::PhysicalDevice& gpu);
+//VkDeviceSize getMemorySize(const PhysicalDevice& gpu);
 
-vk::raii::PhysicalDevice getPowerfullGPU(const std::vector<vk::raii::PhysicalDevice>& gpus);
+PhysicalDevice getPowerfullGPU(const std::vector<PhysicalDevice>& gpus);
 
-std::vector<bool> getSupportedQueueFamilies(const vk::raii::PhysicalDevice& gpu, vk::QueueFlags flags, uint32_t count);
+//bool checkSupport(const vk::raii::PhysicalDevice& gpu, vk::Format format);
 
-std::vector<bool> getSupportedQueueFamilies(const vk::raii::PhysicalDevice& gpu, const vk::raii::SurfaceKHR& surface);
+bool checkSupport(const PhysicalDevice& device, const SurfaceKHR& surface, PresentModeKHR mode);
 
 }
 }

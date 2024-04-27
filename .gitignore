@@ -33,3 +33,5 @@
 
 # Build location
 _build/*
+
+.vscode

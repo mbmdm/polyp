@@ -177,174 +177,6 @@ auto createRenderPass(const SwapchainKHR &swapchain, const PhysicalDevice& physD
     return device.createRenderPass(renderPassInfo);
 }
 
-VkDeviceSize memory(const ::vk::raii::PhysicalDevice& device) {
-
-    VkDeviceSize output = 0;
-
-    ::vk::PhysicalDeviceMemoryProperties memProperties = device.getMemoryProperties();
-
-    std::vector<size_t> targetHeapsIdx;
-    for (size_t heapTypeIdx = 0; heapTypeIdx < memProperties.memoryTypeCount; ++heapTypeIdx) {
-        if (memProperties.memoryTypes[heapTypeIdx].propertyFlags & ::vk::MemoryPropertyFlagBits::eDeviceLocal) {
-            targetHeapsIdx.push_back(memProperties.memoryTypes[heapTypeIdx].heapIndex);
-        }
-    }
-
-    if (targetHeapsIdx.empty()) {
-        return output;
-    }
-
-    //remove the same indexes if exist
-    std::sort(targetHeapsIdx.begin(), targetHeapsIdx.end(), std::less<size_t>());
-    auto currItr = targetHeapsIdx.begin() + 1;
-    while (currItr != targetHeapsIdx.end()) {
-        if (*currItr == *(currItr - 1)) {
-            currItr = targetHeapsIdx.erase(currItr);
-        }
-        else {
-            currItr++;
-        }
-    }
-
-    for (size_t i = 0; i < targetHeapsIdx.size(); i++) {
-        output += memProperties.memoryHeaps[targetHeapsIdx[i]].size;
-    }
-
-    return output;
-}
-
-bool isDiscrete(const ::vk::raii::PhysicalDevice& device)
-{
-    ::vk::PhysicalDeviceProperties props = device.getProperties();
-    return props.deviceType == ::vk::PhysicalDeviceType::eDiscreteGpu;
-}
-
-std::string name(const ::vk::raii::PhysicalDevice& device)
-{
-    ::vk::PhysicalDeviceProperties props = device.getProperties();
-    return props.deviceName;
-}
-
-std::vector<bool> checkSupport(const ::vk::raii::PhysicalDevice& device, ::vk::QueueFlags flags, uint32_t count)
-{
-    auto queFamilyProps = device.getQueueFamilyProperties();
-    std::vector<bool> output(queFamilyProps.size(), false);
-
-    uint32_t graphicsQueueFamilyIndex = UINT32_MAX;
-
-    for (uint32_t i = 0; i < output.size(); i++)
-    {
-        if ((queFamilyProps[i].queueFlags & flags) &&
-            (queFamilyProps[i].queueCount >= count))
-        {
-            output[i] = true;
-        }
-    }
-
-    return output;
-}
-
-
-std::vector<bool> checkSupport(const SurfaceKHR& surface, const PhysicalDevice& device) {
-
-    auto queFamilyProps = device.getQueueFamilyProperties();
-
-    std::vector<bool> output(queFamilyProps.size());
-    for (size_t i = 0; i < output.size(); i++)
-    {
-        output[i] = device.getSurfaceSupportKHR(i, *surface) == VK_TRUE;
-    }
-    return output;
-}
-
-bool checkSupport(const ::vk::raii::PhysicalDevice& device, const vk::raii::SurfaceKHR& surface, vk::SwapchainCreateInfoKHR& info)
-{
-    auto capabilities = device.getSurfaceCapabilitiesKHR(*surface);
-    if (capabilities.currentExtent.width == UINT32_MAX ||
-        capabilities.currentExtent.height == UINT32_MAX) {
-        return false;
-    }
-    else if (capabilities.currentExtent.width == 0 ||
-        capabilities.currentExtent.height == 0) {
-        return false;
-    }
-
-    bool marker = false;
-    auto presentModes = device.getSurfacePresentModesKHR(*surface);
-    for (size_t i = 0; i < presentModes.size(); ++i) {
-        if (presentModes[i] == info.presentMode)
-            marker = true;
-    }
-    if (!marker && !presentModes.empty())
-    {
-        POLYPWARN("Requested presentation %s mode is not found. Will be used %s", vk::to_string(info.presentMode).c_str(), vk::to_string(presentModes[0]).c_str());
-        info.presentMode = presentModes[0];
-        marker = true;
-    }
-    if (!marker)
-        return false;
-
-
-
-
-    return true;
-}
-
-bool checkSupport(const ::vk::raii::PhysicalDevice& device, const vk::raii::SurfaceKHR& surface)
-{
-    auto capabilities = device.getSurfaceCapabilitiesKHR(*surface);
-    if (capabilities.currentExtent.width == UINT32_MAX ||
-        capabilities.currentExtent.height == UINT32_MAX) {
-        return false;
-    }
-    else if (capabilities.currentExtent.width == 0 ||
-        capabilities.currentExtent.height == 0) {
-        return false;
-    }
-    return true;
-}
-
-bool checkSupport(const PhysicalDevice& device, const SurfaceKHR& surface, vk::PresentModeKHR &mode)
-{
-    auto presentModes = device.getSurfacePresentModesKHR(*surface);
-    for (size_t i = 0; i < presentModes.size(); ++i) {
-        presentModes[i] = mode;
-        return true;
-    }
-
-    if (presentModes.empty())
-        return false;
-
-    mode = presentModes[0];
-}
-
-bool update(SwapchainKHR& swapchain, const SurfaceKHR& surface, const PhysicalDevice& device, const Device& logicDevice)
-{
-    vk::SwapchainCreateInfoKHR swCreateInfo{};
-    swCreateInfo.surface = *surface;
-    swCreateInfo.minImageCount = 3;  // Double buffering
-    swCreateInfo.imageFormat = vk::Format::eR8G8B8A8Unorm; // Commonly supported format
-    swCreateInfo.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;; // Standard color space
-    swCreateInfo.presentMode = vk::PresentModeKHR::eMailbox;
-    swCreateInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment; // Use images as color attachments
-    swCreateInfo.imageExtent = device.getSurfaceCapabilitiesKHR(*surface).currentExtent;
-    swCreateInfo.imageArrayLayers = 1; // Single layer, no stereoscopic-3D
-    swCreateInfo.imageSharingMode = vk::SharingMode::eExclusive; // Image is owned by one queue family at a time
-    swCreateInfo.preTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity;
-    swCreateInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-    swCreateInfo.clipped = true; // Enable clipping
-    swCreateInfo.oldSwapchain = *swapchain;
-
-    if (!checkSupport(device, surface, swCreateInfo))
-        return false;
-
-    swapchain = logicDevice.createSwapchainKHR(swCreateInfo);
-    if (*swapchain == VK_NULL_HANDLE)
-        return false;
-
-    return true;
-}
-
 } // anonimus namespace
 
 namespace polyp {
@@ -352,7 +184,9 @@ namespace example {
 
 void ExampleBaseRAII::preDraw() {
 
-    auto [res, imIdx] = mSwapchain.acquireNextImage(constants::kFenceTimeout, VK_NULL_HANDLE, *mAqImageFence);
+    const auto& swapchain = RHIContext::get().swapchain();
+
+    auto [res, imIdx] = swapchain.acquireNextImage(constants::kFenceTimeout, VK_NULL_HANDLE, *mAqImageFence);
     if (res !=  vk::Result::eSuccess ) {
         POLYPFATAL("Failed to get Swapchain images");
     }
@@ -384,6 +218,8 @@ void ExampleBaseRAII::preDraw() {
 }
 
 void ExampleBaseRAII::postDraw() {
+    const auto& swapchain = RHIContext::get().swapchain();
+
     vk::Result res = vk::Result::eSuccess;
 
     mCurrSwImBarrier.srcAccessMask = mCurrSwImBarrier.dstAccessMask;
@@ -409,7 +245,7 @@ void ExampleBaseRAII::postDraw() {
     presentInfo.waitSemaphoreCount = 1;
     presentInfo.pWaitSemaphores = &*mReadyToPresent;
     presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &*mSwapchain;
+    presentInfo.pSwapchains = &*swapchain;
     presentInfo.pImageIndices = &mCurrSwImIndex;
     res = mQueue.presentKHR(presentInfo);
     if (res != vk::Result::eSuccess)
@@ -431,10 +267,19 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
 
     auto& ctx = vulkan::RHIContext::get();
 
-    ctx.init({ {__FILE__, 1}, RHIContext::CreateInfo::GPU::Powerful, {inst, hwnd}, {1, vk::QueueFlagBits::eGraphics} });
+    std::vector<RHIContext::CreateInfo::Queue> queInfos{ {1, vk::QueueFlagBits::eGraphics} };
 
-    if (!ctx.ready())
-    {
+    RHIContext::CreateInfo ctxInfo {
+         {__FILE__, 1},                         // CreateInfo::Application
+         RHIContext::CreateInfo::GPU::Powerful, // CreateInfo::GPU
+         {inst, hwnd},                          // CreateInfo::Surface
+         {queInfos, {}},                        // CreateInfo::Device
+         {3},                                   // CreateInfo::SwapChain
+    };
+
+    ctx.init(ctxInfo);
+
+    if (!ctx.ready()) {
         POLYPFATAL("Failed to initialize Vulkan infrastructure.");
         return false;
     }
@@ -443,27 +288,29 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
 
     const auto& device = ctx.device();
 
-    mQueue = ctx.queue(0);
+    auto familyIdx = ctx.queueFamily(vk::QueueFlagBits::eGraphics);
+
+    mQueue = ctx.device().getQueue(familyIdx, 0);
     if (*mQueue == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create vulkan graphics queue");
     }
     POLYPINFO("Graphics queue retrieved successfully");
 
-    vk::CommandPoolCreateInfo poolInfo{};
-    poolInfo.queueFamilyIndex = 0 /*queueCreateInfo.queueFamilyIndex*/;
-    poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-    mCmdPool = device.createCommandPool(poolInfo);
+    vk::CommandPoolCreateInfo cmdPoolCreateInfo{};
+    cmdPoolCreateInfo.queueFamilyIndex = familyIdx;
+    cmdPoolCreateInfo.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+    mCmdPool = ctx.device().createCommandPool(cmdPoolCreateInfo);
     if (*mCmdPool == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create command pool");
     }
 
     vk::CommandBufferAllocateInfo allocInfo{};
-    allocInfo.commandPool = *mCmdPool;
-    allocInfo.level = vk::CommandBufferLevel::ePrimary;
+    allocInfo.commandPool        = *mCmdPool;
+    allocInfo.level              = vk::CommandBufferLevel::ePrimary;
     allocInfo.commandBufferCount = 1;
 
-   auto cmds = device.allocateCommandBuffers(allocInfo);
-    if (cmds.empty()) {
+    auto cmds = device.allocateCommandBuffers(allocInfo);
+    if (cmds.empty() && *cmds[0] != VK_NULL_HANDLE) {
         POLYPFATAL("Failed to allocate command buffers.");
         return false;
     }
@@ -478,7 +325,7 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     }
 
     vk::FenceCreateInfo fenceCreateInfo{/*vk::FenceCreateFlagBits::eSignaled*/};
-    mSubmitFence = device.createFence(fenceCreateInfo);
+    mSubmitFence  = device.createFence(fenceCreateInfo);
     mAqImageFence = device.createFence(fenceCreateInfo);
     if (*mSubmitFence == VK_NULL_HANDLE || *mAqImageFence == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create fence.");
@@ -507,7 +354,6 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
     VmaVulkanFunctions vulkanFunctions = {};
     vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
     vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
-
 
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
     allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
@@ -544,15 +390,19 @@ bool ExampleBaseRAII::onResize() {
 
     auto& ctx = vulkan::RHIContext::get();
 
-    vulkan::RHIContext::get().device().waitIdle();
-    if (!update(mSwapchain, ctx.surface(), vulkan::RHIContext::get().gpu(), vulkan::RHIContext::get().device()))
-        POLYPFATAL("Failed to create vulkan swap chain.");
+    const auto& device    = ctx.device();
+    const auto& gpu       = ctx.gpu();
+    const auto& surface   = ctx.surface();
+    const auto& swapchain = ctx.swapchain();
 
-    auto [memory, image, view] = createDepthStencil(vulkan::RHIContext::get().device(), vulkan::RHIContext::get().gpu(), ctx.surface());
+    device.waitIdle();
+    ctx.onResize();
+
+    auto [memory, image, view] = createDepthStencil(device, gpu, surface);
     mDepthStencil = ImageResource{ std::move(memory), std::move(image), std::move(view) };
-    mRenderPass   = createRenderPass(mSwapchain, vulkan::RHIContext::get().gpu(), vulkan::RHIContext::get().device());
+    mRenderPass   = createRenderPass(swapchain, gpu, device);
 
-    mSwapChainImages = mSwapchain.getImages();
+    mSwapChainImages = swapchain.getImages();
     mSwapChainVeiews.clear();
     mFrameBuffers.clear();
     {
@@ -591,7 +441,7 @@ bool ExampleBaseRAII::onResize() {
             fbCreateInfo.height = capabilities.currentExtent.height;
             fbCreateInfo.layers = 1;
 
-            auto fb = vulkan::RHIContext::get().device().createFramebuffer(fbCreateInfo);
+            auto fb = device.createFramebuffer(fbCreateInfo);
             mFrameBuffers.push_back(std::move(fb));
         }
     }
