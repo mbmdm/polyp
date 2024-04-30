@@ -4,6 +4,10 @@ namespace polyp {
 namespace vulkan {
 namespace utils {
 
+std::tuple<Image, ImageView> createDepthStencil();
+
+RenderPass createRenderPass();
+
 }
 }
 }

@@ -1,4 +1,7 @@
+#define VMA_IMPLEMENTATION
+
 #include "vk_common.h"
+#include "vk_context.h"
 
 namespace polyp {
 namespace vulkan {
@@ -56,6 +59,41 @@ bool PhysicalDevice::isDiscretePLP() const
     return props.deviceType == PhysicalDeviceType::eDiscreteGpu;
 }
 
+Format PhysicalDevice::getDepthFormatPLP() const
+{
+    std::vector<vk::Format> dsDesiredFormats = {
+        vk::Format::eD32SfloatS8Uint,
+        vk::Format::eD32Sfloat,
+        vk::Format::eD24UnormS8Uint,
+        vk::Format::eD16UnormS8Uint,
+        vk::Format::eD16Unorm
+    };
+
+    auto depthFormat = vk::Format::eUndefined;
+    for (const auto& format : dsDesiredFormats) {
+        auto props = getFormatProperties(format);
+        if (props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment) {
+            depthFormat = format;
+            break;
+        }
+    }
+
+    return depthFormat;
+}
+
+std::string PhysicalDevice::toStringPLP() const
+{
+    auto props = getProperties();
+
+    std::stringstream ss;
+    ss << props.deviceName;
+
+    auto memory = getDeviceMemoryPLP();
+    ss << ", memory " << memory / 1024 / 1024 << " Mb";
+
+    return ss.str();
+}
+
 uint64_t PhysicalDevice::getPerformanceRatioPLP() const
 {
     uint64_t ratio = getDeviceMemoryPLP() >> 20;
@@ -65,7 +103,7 @@ uint64_t PhysicalDevice::getPerformanceRatioPLP() const
     return ratio;
 }
 
-bool PhysicalDevice::supportPLP(const SurfaceKHR& surface, PresentModeKHR mode)
+bool PhysicalDevice::supportPLP(const SurfaceKHR& surface, PresentModeKHR mode) const
 {
     auto capabilities = getSurfaceCapabilitiesKHR(*surface);
     if (capabilities.currentExtent.width == UINT32_MAX ||
@@ -86,6 +124,57 @@ bool PhysicalDevice::supportPLP(const SurfaceKHR& surface, PresentModeKHR mode)
     }
 
     return false;
+}
+
+Image::~Image()
+{
+    if (mAllocationVMA != VK_NULL_HANDLE)
+    {
+        auto image = release();
+        auto allocator = RHIContext::get().device().vmaAlocator();
+
+        vmaDestroyImage(allocator, static_cast<VkImage>(image), mAllocationVMA);
+    }
+}
+
+Image Device::createImagePLP(const ImageCreateInfo& createInfo, const VmaAllocationCreateInfo& allocationCreateInfo) const
+{
+    vk::Image         image;
+    VmaAllocation     allocation;
+    VmaAllocationInfo allocationInfo;
+    
+    auto res = vmaCreateImage(mAllocatorVMA, reinterpret_cast<const VkImageCreateInfo*>(&createInfo), 
+                              &allocationCreateInfo, reinterpret_cast<VkImage*>(&image), &allocation, &allocationInfo);
+    if (res != VK_SUCCESS) {
+        detail::throwResultException(static_cast<vk::Result>(res), __FUNCTION__);
+    }
+
+    return Image(*this, *reinterpret_cast<VkImage*>(&image), allocation, allocationInfo);
+}
+
+void Device::init()
+{
+    if (static_cast<VkDevice>(**this) == VK_NULL_HANDLE)
+        return;
+
+    VmaVulkanFunctions vulkanFunctions = {};
+
+    vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+    vulkanFunctions.vkGetDeviceProcAddr   = &vkGetDeviceProcAddr;
+
+    VmaAllocatorCreateInfo allocatorCreateInfo = {};
+    allocatorCreateInfo.flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    allocatorCreateInfo.physicalDevice   = static_cast<VkPhysicalDevice>(*RHIContext::get().gpu());
+    allocatorCreateInfo.device           = static_cast<VkDevice>(**this);
+    allocatorCreateInfo.instance         = static_cast<VkInstance>(*RHIContext::get().instance());;
+    allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+    
+    auto vkres = vk::Result(vmaCreateAllocator(&allocatorCreateInfo, &mAllocatorVMA));
+    if (vkres != vk::Result::eSuccess) {
+        POLYPERROR("Failed to create VMA allocator.");
+        mAllocatorVMA = VK_NULL_HANDLE;
+    }
 }
 
 }

@@ -1,56 +1,39 @@
 #ifndef EXAMPLERAII_H
 #define EXAMPLERAII_H
 
-#include "common.h"
-#include "vma.h"
 #include "vk_context.h"
 
-#include <vulkan/vulkan_raii.hpp>
 #include <polyp_window.h>
 
 namespace polyp {
 namespace example {
 
-using namespace tools;
-
-struct ImageResource {
-    vk::raii::DeviceMemory memory{ VK_NULL_HANDLE };
-    vk::raii::Image        image { VK_NULL_HANDLE };
-    vk::raii::ImageView    view  { VK_NULL_HANDLE };
-};
-
-struct BufferResource {
-    vk::raii::DeviceMemory memory { VK_NULL_HANDLE };
-    vk::raii::Image        buffer { VK_NULL_HANDLE };
-    vk::raii::ImageView    view   { VK_NULL_HANDLE };
-    void* mapping = nullptr;
-};
-
 class ExampleBaseRAII : public tools::IRenderer {
 protected:
 
-    using FrameBuffers = std::vector<vk::raii::Framebuffer>;
+    using FrameBuffers = std::vector<vulkan::Framebuffer>;
     using Images       = std::vector<vk::Image>;
-    using Views        = std::vector<vk::raii::ImageView>;
+    using Views        = std::vector<vulkan::ImageView>;
 
-    vk::raii::Queue          mQueue          = { VK_NULL_HANDLE };
-    vk::raii::CommandPool    mCmdPool        = { VK_NULL_HANDLE };
-    vk::raii::CommandBuffer  mCmdBuffer      = { VK_NULL_HANDLE };
-    vk::raii::Semaphore      mReadyToPresent = { VK_NULL_HANDLE };
-    vk::raii::Fence          mSubmitFence    = { VK_NULL_HANDLE };
-    vk::raii::Fence          mAqImageFence   = { VK_NULL_HANDLE };
-    vk::raii::RenderPass     mRenderPass     = { VK_NULL_HANDLE };
-
-    VmaAllocator             mVmaAllocator   = { VK_NULL_HANDLE };
+    vulkan::Queue          mQueue          = { VK_NULL_HANDLE };
+    vulkan::CommandPool    mCmdPool        = { VK_NULL_HANDLE };
+    vulkan::CommandBuffer  mCmdBuffer      = { VK_NULL_HANDLE };
+    vulkan::Semaphore      mReadyToPresent = { VK_NULL_HANDLE };
+    vulkan::Fence          mSubmitFence    = { VK_NULL_HANDLE };
+    vulkan::Fence          mAqImageFence   = { VK_NULL_HANDLE };
+    vulkan::RenderPass     mRenderPass     = { VK_NULL_HANDLE };
 
     vk::ImageMemoryBarrier   mCurrSwImBarrier;
-    uint32_t                 mCurrSwImIndex;
+    uint32_t                 mCurrSwImIndex = {};
 
     Images                   mSwapChainImages;
     Views                    mSwapChainVeiews;
     FrameBuffers             mFrameBuffers;
 
-    ImageResource            mDepthStencil;
+    struct {
+        vulkan::Image    image = VK_NULL_HANDLE;
+        vulkan::ImageView view = VK_NULL_HANDLE;
+    } mDepthStencil;
 
     void preDraw();
     void postDraw();

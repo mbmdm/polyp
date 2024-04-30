@@ -1,186 +1,15 @@
 #include "example_raii.h"
 
-//#include <vulkan/vulkan_core.h>
-
-//#include "windows.h"
-//#include <vulkan/vulkan.h>
-//#include <vulkan/vulkan_win32.h>
-
+#include "vk_common.h"
 #include "vk_utils.h"
 #include "vk_stringise.h"
 
-//using namespace ::vk::raii;
-
-using namespace vk::raii;
 using polyp::vulkan::RHIContext;
-
-namespace {
-
-using namespace polyp::constants;
-
-auto depthFormat(const PhysicalDevice& physDevice) {
-
-    std::vector<vk::Format> dsDesiredFormats = {
-        vk::Format::eD32SfloatS8Uint,
-        vk::Format::eD32Sfloat,
-        vk::Format::eD24UnormS8Uint,
-        vk::Format::eD16UnormS8Uint,
-        vk::Format::eD16Unorm
-    };
-
-    auto depthFormat = vk::Format::eUndefined;
-    for (const auto& format : dsDesiredFormats) {
-        auto props = physDevice.getFormatProperties(format);
-        if (props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment) {
-            depthFormat = format;
-            break;
-        }
-    }
-    POLYPASSERTNOTEQUAL(depthFormat, vk::Format::eUndefined);
-
-    return depthFormat;
-}
-
-uint32_t memTypeIndex(const vk::PhysicalDeviceMemoryProperties& memProps, 
-                      const vk::MemoryRequirements& memReq, 
-                      vk::MemoryPropertyFlags flags) {
-    auto typeBits = memReq.memoryTypeBits;
-    for (uint32_t i = 0; i < memProps.memoryTypeCount; ++i) {
-        if ((typeBits & 1) == 1) {
-            if ((memProps.memoryTypes[i].propertyFlags & flags) == flags) {
-                return i;
-            }
-        }
-        typeBits >>= 1;
-    }
-    return UINT32_MAX;
-}
-
-auto createDepthStencil(const Device& device, const PhysicalDevice& physDevice, const SurfaceKHR& surface) {
-
-    Image image = VK_NULL_HANDLE;
-    ImageView view = VK_NULL_HANDLE;
-    DeviceMemory memory = VK_NULL_HANDLE;
-
-
-    auto capabilities = physDevice.getSurfaceCapabilitiesKHR(*surface);
-    const auto width = capabilities.currentExtent.width;
-    const auto height = capabilities.currentExtent.height;
-
-    vk::ImageCreateInfo imCreateInfo{};
-    imCreateInfo.imageType = vk::ImageType::e2D;
-    imCreateInfo.format = depthFormat(physDevice);
-    imCreateInfo.extent = vk::Extent3D(width, height, 1);
-    imCreateInfo.mipLevels = 1;
-    imCreateInfo.arrayLayers = 1;
-    imCreateInfo.samples = vk::SampleCountFlagBits::e1;
-    imCreateInfo.tiling = vk::ImageTiling::eOptimal;
-    imCreateInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-
-    image = device.createImage(imCreateInfo);
-
-    auto memReqs = image.getMemoryRequirements();
-    auto memProps = physDevice.getMemoryProperties();
-
-    vk::MemoryAllocateInfo memAllocInfo{};
-    memAllocInfo.allocationSize = memReqs.size;
-    memAllocInfo.memoryTypeIndex = memTypeIndex(memProps, memReqs, vk::MemoryPropertyFlagBits::eDeviceLocal);
-    memory = device.allocateMemory(memAllocInfo);
-
-    image.bindMemory(*memory, 0);
-
-    vk::ImageViewCreateInfo viewCreateInfo{};
-    viewCreateInfo.viewType = vk::ImageViewType::e2D;
-    viewCreateInfo.image = *image;
-    viewCreateInfo.format = imCreateInfo.format;
-    viewCreateInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
-    if (viewCreateInfo.format >= vk::Format::eD16UnormS8Uint) {
-        viewCreateInfo.subresourceRange.aspectMask |= vk::ImageAspectFlagBits::eStencil;
-    }
-    viewCreateInfo.subresourceRange.baseMipLevel = 0;
-    viewCreateInfo.subresourceRange.levelCount = 1;
-    viewCreateInfo.subresourceRange.baseArrayLayer = 0;
-    viewCreateInfo.subresourceRange.layerCount = 1;
-
-    view = device.createImageView(viewCreateInfo);
-
-    return std::make_tuple(std::move(memory), std::move(image), std::move(view));
-}
-
-auto createRenderPass(const SwapchainKHR &swapchain, const PhysicalDevice& physDevice, const Device& device) {
-
-    std::array<vk::AttachmentDescription, 2> attachments = {};
-    // Color attachment
-    attachments[0].format         = vk::Format::eR8G8B8A8Unorm;
-    attachments[0].samples        = vk::SampleCountFlagBits::e1;
-    attachments[0].loadOp         = vk::AttachmentLoadOp::eClear;
-    attachments[0].storeOp        = vk::AttachmentStoreOp::eStore;
-    attachments[0].stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;
-    attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-    attachments[0].initialLayout  = vk::ImageLayout::eUndefined;
-    attachments[0].finalLayout    = vk::ImageLayout::ePresentSrcKHR;
-    // Depth attachment
-    attachments[1].format         = depthFormat(physDevice);
-    attachments[1].samples        = vk::SampleCountFlagBits::e1;
-    attachments[1].loadOp         = vk::AttachmentLoadOp::eClear;
-    attachments[1].storeOp        = vk::AttachmentStoreOp::eStore;
-    attachments[1].stencilLoadOp  = vk::AttachmentLoadOp::eClear;
-    attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-    attachments[1].initialLayout  = vk::ImageLayout::eUndefined;
-    attachments[1].finalLayout    = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-
-    vk::AttachmentReference colorReference = {};
-    colorReference.attachment = 0;
-    colorReference.layout = vk::ImageLayout::eColorAttachmentOptimal;
-
-    vk::AttachmentReference depthReference = {};
-    depthReference.attachment = 1;
-    depthReference.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-
-    vk::SubpassDescription subpassDescription = {};
-    subpassDescription.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-    subpassDescription.colorAttachmentCount = 1;
-    subpassDescription.pColorAttachments = &colorReference;
-    subpassDescription.pDepthStencilAttachment = &depthReference;
-    subpassDescription.inputAttachmentCount = 0;
-    subpassDescription.pInputAttachments = nullptr;
-    subpassDescription.preserveAttachmentCount = 0;
-    subpassDescription.pPreserveAttachments = nullptr;
-    subpassDescription.pResolveAttachments = nullptr;
-
-    std::array<vk::SubpassDependency, 2> dependencies;
-
-    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[0].dstSubpass = 0;
-    dependencies[0].srcStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests;
-    dependencies[0].dstStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests;
-    dependencies[0].srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-    dependencies[0].dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead;
-    dependencies[0].dependencyFlags = {};
-
-    dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[1].dstSubpass = 0;
-    dependencies[1].srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    dependencies[1].dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    dependencies[1].srcAccessMask = vk::AccessFlags();
-    dependencies[1].dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead;
-    dependencies[0].dependencyFlags = {};
-
-    vk::RenderPassCreateInfo renderPassInfo = {};
-    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    renderPassInfo.pAttachments = attachments.data();
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpassDescription;
-    renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
-    renderPassInfo.pDependencies = dependencies.data();
-
-    return device.createRenderPass(renderPassInfo);
-}
-
-} // anonimus namespace
 
 namespace polyp {
 namespace example {
+
+using namespace polyp::vulkan;
 
 void ExampleBaseRAII::preDraw() {
 
@@ -284,7 +113,7 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
         return false;
     }
 
-    POLYPINFO("Device %s will be used", vulkan::to_string(ctx.gpu()).c_str());
+    POLYPINFO("Device %s will be used", ctx.gpu().toStringPLP().c_str());
 
     const auto& device = ctx.device();
 
@@ -351,37 +180,6 @@ bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
 
     onResize();
 
-    VmaVulkanFunctions vulkanFunctions = {};
-    vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
-    vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
-
-    VmaAllocatorCreateInfo allocatorCreateInfo = {};
-    allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
-    allocatorCreateInfo.physicalDevice = static_cast<VkPhysicalDevice>(*ctx.gpu());
-    allocatorCreateInfo.device = static_cast<VkDevice>(*device);
-    allocatorCreateInfo.instance = static_cast<VkInstance>(*ctx.instance());;
-    allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
-    
-    auto vkres = vk::Result(vmaCreateAllocator(&allocatorCreateInfo, &mVmaAllocator));
-    if (vkres != vk::Result::eSuccess) {
-        POLYPFATAL("Failed to create VMA allocator.");
-    }
-
-    VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-    bufferInfo.size = 65536;
-    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-    VmaAllocationCreateInfo vmaAllocInfo = {};
-    vmaAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-
-    VkBuffer buffer;
-    VmaAllocation allocation;
-    vkres = vk::Result(vmaCreateBuffer(mVmaAllocator, &bufferInfo, &vmaAllocInfo, &buffer, &allocation, nullptr));
-    if (vkres != vk::Result::eSuccess) {
-        POLYPFATAL("Failed to create VkBuffer through VMA.");
-    }
-
     return true;
 }
 
@@ -397,53 +195,56 @@ bool ExampleBaseRAII::onResize() {
 
     device.waitIdle();
     ctx.onResize();
+    
+    auto [image, view] = utils::createDepthStencil();
+    mDepthStencil.image = std::move(image);
+    mDepthStencil.view  = std::move(view);
 
-    auto [memory, image, view] = createDepthStencil(device, gpu, surface);
-    mDepthStencil = ImageResource{ std::move(memory), std::move(image), std::move(view) };
-    mRenderPass   = createRenderPass(swapchain, gpu, device);
+    mRenderPass = utils::createRenderPass();
 
     mSwapChainImages = swapchain.getImages();
+
     mSwapChainVeiews.clear();
     mFrameBuffers.clear();
+
+    for (auto i = 0; i < mSwapChainImages.size(); ++i)
     {
-        for (auto i = 0; i < mSwapChainImages.size(); ++i) {
-            vk::ImageViewCreateInfo viewCreateInfo{};
-            viewCreateInfo.format = vk::Format::eR8G8B8A8Unorm;
-            viewCreateInfo.components = {
-                VK_COMPONENT_SWIZZLE_R,
-                VK_COMPONENT_SWIZZLE_G,
-                VK_COMPONENT_SWIZZLE_B,
-                VK_COMPONENT_SWIZZLE_A
-            };
-            viewCreateInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-            viewCreateInfo.subresourceRange.baseMipLevel = 0;
-            viewCreateInfo.subresourceRange.levelCount = 1;
-            viewCreateInfo.subresourceRange.baseArrayLayer = 0;
-            viewCreateInfo.subresourceRange.layerCount = 1;
-            viewCreateInfo.viewType = vk::ImageViewType::e2D;
-            viewCreateInfo.flags = {};
-            viewCreateInfo.image = mSwapChainImages[i];
+        vk::ImageViewCreateInfo viewCreateInfo{};
+        viewCreateInfo.format = vk::Format::eR8G8B8A8Unorm;
+        viewCreateInfo.components = {
+            VK_COMPONENT_SWIZZLE_R,
+            VK_COMPONENT_SWIZZLE_G,
+            VK_COMPONENT_SWIZZLE_B,
+            VK_COMPONENT_SWIZZLE_A
+        };
+        viewCreateInfo.subresourceRange.aspectMask     = vk::ImageAspectFlagBits::eColor;
+        viewCreateInfo.subresourceRange.baseMipLevel   = 0;
+        viewCreateInfo.subresourceRange.levelCount     = 1;
+        viewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        viewCreateInfo.subresourceRange.layerCount     = 1;
+        viewCreateInfo.viewType                        = vk::ImageViewType::e2D;
+        viewCreateInfo.flags                           = {};
+        viewCreateInfo.image                           = mSwapChainImages[i];
 
-            auto view = vulkan::RHIContext::get().device().createImageView(viewCreateInfo);
-            mSwapChainVeiews.push_back(std::move(view));
+        auto view = vulkan::RHIContext::get().device().createImageView(viewCreateInfo);
+        mSwapChainVeiews.push_back(std::move(view));
 
-            std::array<vk::ImageView, 2> attachments;
-            attachments[0] = *mSwapChainVeiews[i];
-            attachments[1] = *mDepthStencil.view;
+        std::array<vk::ImageView, 2> attachments;
+        attachments[0] = *mSwapChainVeiews[i];
+        attachments[1] = *mDepthStencil.view;
 
-            auto capabilities = vulkan::RHIContext::get().gpu().getSurfaceCapabilitiesKHR(*ctx.surface());
+        auto capabilities = vulkan::RHIContext::get().gpu().getSurfaceCapabilitiesKHR(*ctx.surface());
 
-            vk::FramebufferCreateInfo fbCreateInfo{};
-            fbCreateInfo.renderPass = *mRenderPass;
-            fbCreateInfo.attachmentCount = attachments.size();
-            fbCreateInfo.pAttachments = attachments.data();
-            fbCreateInfo.width = capabilities.currentExtent.width;
-            fbCreateInfo.height = capabilities.currentExtent.height;
-            fbCreateInfo.layers = 1;
+        vk::FramebufferCreateInfo fbCreateInfo{};
+        fbCreateInfo.renderPass      = *mRenderPass;
+        fbCreateInfo.attachmentCount = attachments.size();
+        fbCreateInfo.pAttachments    = attachments.data();
+        fbCreateInfo.width           = capabilities.currentExtent.width;
+        fbCreateInfo.height          = capabilities.currentExtent.height;
+        fbCreateInfo.layers          = 1;
 
-            auto fb = device.createFramebuffer(fbCreateInfo);
-            mFrameBuffers.push_back(std::move(fb));
-        }
+        auto fb = device.createFramebuffer(fbCreateInfo);
+        mFrameBuffers.push_back(std::move(fb));
     }
 
     return true;
@@ -458,17 +259,6 @@ void ExampleBaseRAII::draw() {
 void ExampleBaseRAII::onShoutDown() {
     POLYPDEBUG(__FUNCTION__);
     vulkan::RHIContext::get().device().waitIdle();
-    POLYPTODO(
-        "Need association cmdBuffer and cmdPool to have an ability to release cmdBuffer with vkFreeCommandBuffers()"
-        "Seems I should move such login in device class and someway point out that native handles shouldn't be "
-        "desctoyed manually. I can also have logic of recreatiion objects with different flags"
-    );
-    POLYPTODO(
-        "Command buffers allocated from a given pool are implicitly freed when we destroy a"
-        "command pool. So when we want to destroy a pool, we don't need to separately free all"
-        "command buffers allocated from it. ((c) VulkanCookBook)."
-    );
-    POLYPTODO("Seems I shouldn't descroy them, but it can be useful in recreation approach");
 }
 
 } // example

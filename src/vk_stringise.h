@@ -6,7 +6,5 @@
 namespace polyp {
 namespace vulkan {
 
-std::string to_string(const PhysicalDevice& gpu);
-
 }
 }

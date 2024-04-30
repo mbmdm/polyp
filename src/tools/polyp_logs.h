@@ -53,7 +53,7 @@ inline void polyp_direct(LogType type, const char* project, const char* file, un
 polyp_direct(type, POLYPLOG_PROJECT, __FILE__, __LINE__, __VA_ARGS__)
 
 #define POLYPINFO(...)   polyplog(LogType::Log,     __VA_ARGS__)
-#define POLYPDEBUG(...)  //polyplog(LogType::Debug,   __VA_ARGS__)
+#define POLYPDEBUG(...)  polyplog(LogType::Debug,   __VA_ARGS__)
 #define POLYPWARN(...)   polyplog(LogType::Warning, __VA_ARGS__)
 #define POLYPERROR(...)  polyplog(LogType::Error,   __VA_ARGS__)
 #define POLYPFATAL(...)  polyplog(LogType::Fatal,   __VA_ARGS__)

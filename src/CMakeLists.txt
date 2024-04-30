@@ -14,7 +14,6 @@ set(sources
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_stringise.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/vma.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/example_raii.cpp)
 
 set(includes ${CMAKE_CURRENT_SOURCE_DIR}/
@@ -34,7 +33,6 @@ set(headers
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.h
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.h
             ${CMAKE_CURRENT_SOURCE_DIR}/common.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/vma.h
             #destroyer.h
             #utils.h
             #concepts.h
