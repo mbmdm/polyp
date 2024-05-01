@@ -10,6 +10,7 @@ set(sources
             #${CMAKE_CURRENT_SOURCE_DIR}/vk/surface.cpp
             #${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp
             #${CMAKE_CURRENT_SOURCE_DIR}/example.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/common/application.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_stringise.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.cpp
@@ -19,6 +20,7 @@ set(sources
 set(includes ${CMAKE_CURRENT_SOURCE_DIR}/
              ${CMAKE_CURRENT_SOURCE_DIR}
              ${CMAKE_CURRENT_SOURCE_DIR}/vk
+             ${CMAKE_CURRENT_SOURCE_DIR}/common
              ${VULKANSDK_INCLUDE_DIR})
 
 set(headers

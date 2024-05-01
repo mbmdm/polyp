@@ -7,6 +7,8 @@
 #include <atomic>
 #include <cstring>
 
+namespace polyp {
+
 template <typename TFunc>
 class Event;
 
@@ -261,38 +263,44 @@ public:
         std::memcpy(closure.Functor, (void*)&function, sizeof(function));
         closure.Object = object;
 
-        while (true)
-        {
-            if (removeClosure(closure))
+        while (true) {
+            if (removeClosure(closure)) {
                 break;
+            }
         }
     }
 
     void operator()()
     {
         auto events = std::atomic_load(&m_events);
-        if (events == nullptr)
+        if (events == nullptr) {
             return;
+        }
 
         auto count = events->Count;
         auto closures = events->Closures;
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++) {
             closures[i].Callable();
+        }
     }
 
     template <typename TArg0, typename ...Args2>
     void operator()(TArg0 a1, Args2... tail)
     {
         auto events = std::atomic_load(&m_events);
-        if (events == nullptr)
+        if (events == nullptr) {
             return;
+        }
 
         auto count = events->Count;
         auto closures = events->Closures;
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++) {
             closures[i].Callable(a1, tail...);
+        }
     }
 };
+
+}
 
 /*
  * //How to use

@@ -110,9 +110,12 @@ void PolypWindow::run() {
     MSG message;
     bool stopRenderLoop = false;
 
-    while (!stopRenderLoop) {
-        if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
-            switch (message.message) {
+    while (!stopRenderLoop)
+    {
+        if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
+        {
+            switch (message.message)
+            {
             case UserMessage::kMouseClick:
                 mRenderer->onMouseClick(static_cast<size_t>(message.wParam), message.lParam > 0);
                 break;
