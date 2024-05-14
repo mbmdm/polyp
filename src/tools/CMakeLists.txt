@@ -1,17 +1,13 @@
 cmake_minimum_required(VERSION 3.6)
 
-set(sources camera.cpp
-            polyp_window.cpp)
+set(sources camera.cpp)
 
-set(includes ${CMAKE_CURRENT_SOURCE_DIR}
-             ${CMAKE_CURRENT_SOURCE_DIR}/interfaces)
+set(includes ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(headers camera.h
             constants.h
-            polyp_window.h
             polyp_logs.h
-            platforms.h
-            interfaces/renderer.h)
+            platforms.h)
 
 set(sources ${sources} ${headers})
 

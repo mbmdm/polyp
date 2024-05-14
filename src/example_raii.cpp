@@ -91,8 +91,12 @@ void ExampleBaseRAII::postDraw() {
     vulkan::RHIContext::get().device().resetFences(*mSubmitFence);
 }
 
-bool ExampleBaseRAII::onInit(WindowInstance inst, WindowHandle hwnd) {
+bool ExampleBaseRAII::onInit(const WindowInitializedEventArgs& args)
+{
     POLYPDEBUG(__FUNCTION__);
+
+    WindowInstance inst = args.windowInstance;
+    WindowHandle hwnd   = args.windowHandle;
 
     auto& ctx = vulkan::RHIContext::get();
 

@@ -3,23 +3,14 @@
 
 using namespace polyp;
 
-class BlackScreenRAII : public example::ExampleBaseRAII
-{
-public:
-    virtual void draw() override {
-        preDraw();
-        postDraw();
-    }
-};
-
 int main()
 {
     std::string title{ constants::kWindowTitle };
     title += ": black screen";
 
-    BlackScreenRAII sample{};
+    example::ExampleBaseRAII sample{};
 
-    Application::get().onWindowInitialized += [&sample](const WindowInitializedEventArgs& args) { sample.onInit(args.windowInstance, args.windowHandle); };
+    Application::get().onWindowInitialized += [&sample](const auto& args) {sample.onInit(args); };
     Application::get().onWindowResized     += [&sample](const auto& args) {sample.onResize(); };
     Application::get().onFrameRender       += [&sample]() {sample.draw(); };
 

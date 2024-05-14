@@ -2,13 +2,12 @@
 #define EXAMPLERAII_H
 
 #include "vk_context.h"
-
-#include <polyp_window.h>
+#include "application.h"
 
 namespace polyp {
 namespace example {
 
-class ExampleBaseRAII : public tools::IRenderer {
+class ExampleBaseRAII {
 protected:
 
     using FrameBuffers = std::vector<vulkan::Framebuffer>;
@@ -42,17 +41,17 @@ public:
 
     ExampleBaseRAII() {};
 
-    virtual ~ExampleBaseRAII() override { }
+    ~ExampleBaseRAII() { }
 
-    virtual bool onInit(WindowInstance inst, WindowHandle hwnd) override;
+    bool onInit(const WindowInitializedEventArgs& args);
 
-    virtual bool onResize() override;
+    bool onResize();
 
-    virtual void draw() override;
+    void draw();
 
-    virtual void onShoutDown() override;
+    void onShoutDown();
 
-    virtual bool isReady() override { return true; }
+    bool isReady() { return true; }
 };
 
 } // example

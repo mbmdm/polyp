@@ -6,7 +6,6 @@
 #include <fstream>
 
 using namespace polyp;
-using namespace polyp::tools;
 using namespace vk::raii;
 
 namespace {
@@ -392,8 +391,8 @@ protected:
     void* mUniformMapped{};
 
 public:
-    virtual bool onInit(WindowInstance inst, WindowHandle hwnd) override {
-        if (!ExampleBaseRAII::onInit(inst, hwnd))
+     bool onInit(const WindowInitializedEventArgs& args) {
+        if (!ExampleBaseRAII::onInit(args))
             return false;
 
 
@@ -542,11 +541,11 @@ private:
 //}
 
 int main() {
-    std::string title{ constants::kWindowTitle };
-    title += ": simple triangle";
+    //std::string title{ constants::kWindowTitle };
+    //title += ": simple triangle";
 
-    tools::IRenderer::Ptr sample = std::make_shared<SimpleTriangle>();
-    tools::PolypWindow win{ title.c_str(), 0, 0, 1024, 600, sample };
+    //tools::IRenderer::Ptr sample = std::make_shared<SimpleTriangle>();
+    //tools::PolypWindow win{ title.c_str(), 0, 0, 1024, 600, sample };
 
-    win.run();
+    //win.run();
 }
