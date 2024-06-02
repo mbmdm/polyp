@@ -21,6 +21,8 @@ using CommandBuffer = vk::raii::CommandBuffer;
 using Semaphore     = vk::raii::Semaphore;
 using Fence         = vk::raii::Fence;
 using Framebuffer   = vk::raii::Framebuffer;
+using Pipeline      = vk::raii::Pipeline;
+using DeviceMemory  = vk::raii::DeviceMemory;
 
 class PhysicalDevice;
 class Instance;
@@ -143,29 +145,10 @@ private:
     void init();
 };
 
-class Image : public vk::raii::Image
+class Image : protected vk::raii::Image
 {
 public:
-    Image(vk::raii::Device const&             device,
-          ImageCreateInfo const&              createInfo,
-          Optional<const AllocationCallbacks> allocator = nullptr) :
-        vk::raii::Image(device, createInfo, allocator)
-    { }
-
-    Image(Device const& device, VkImage image, Optional<const AllocationCallbacks> allocator = nullptr) :
-        vk::raii::Image(device, image, allocator)
-    { }
-
-    Image(Device const&                       device, 
-          VkImage                             image, 
-          VmaAllocation                       vmaAllocation, 
-          VmaAllocationInfo const&            vmaAllocationInfo, 
-          Optional<const AllocationCallbacks> allocator = nullptr) :
-        vk::raii::Image(device, image, allocator)
-    {
-        mAllocationVMA     = vmaAllocation;
-        mAllocationVMAInfo = vmaAllocationInfo;
-    }
+    friend class Device;
 
     Image(std::nullptr_t ptr) :
         vk::raii::Image(ptr)
@@ -194,34 +177,31 @@ public:
 
     ~Image();
 
+    vk::Image const& operator*() const noexcept
+    {
+        return vk::raii::Image::operator*();
+    }
+
 private:
+    Image(Device const& device,
+          VkImage                             image,
+          VmaAllocation                       vmaAllocation,
+          VmaAllocationInfo const& vmaAllocationInfo,
+          Optional<const AllocationCallbacks> allocator = nullptr) :
+        vk::raii::Image(device, image, allocator)
+    {
+        mAllocationVMA = vmaAllocation;
+        mAllocationVMAInfo = vmaAllocationInfo;
+    }
+
     VmaAllocation         mAllocationVMA = VK_NULL_HANDLE;
     VmaAllocationInfo mAllocationVMAInfo = {};
 };
 
-class Buffer : public vk::raii::Buffer
+class Buffer : protected vk::raii::Buffer
 {
 public:
-    Buffer(vk::raii::Device const&             device,
-           vk::BufferCreateInfo const&         createInfo,
-           Optional<const AllocationCallbacks> allocator = nullptr):
-        vk::raii::Buffer(device, createInfo, allocator)
-    { }
-
-    Buffer(Device const& device, VkBuffer buffer, Optional<const AllocationCallbacks> allocator = nullptr) :
-        vk::raii::Buffer(device, buffer, allocator)
-    { }
-
-    Buffer(Device const&                       device,
-           VkBuffer                            buffer,
-           VmaAllocation                       vmaAllocation,
-           VmaAllocationInfo const&            vmaAllocationInfo,
-           Optional<const AllocationCallbacks> allocator = nullptr) :
-        vk::raii::Buffer(device, buffer, allocator)
-    {
-        mAllocationVMA     = vmaAllocation;
-        mAllocationVMAInfo = vmaAllocationInfo;
-    }
+    friend class Device;
 
     Buffer(std::nullptr_t ptr) :
         vk::raii::Buffer(ptr)
@@ -250,26 +230,26 @@ public:
 
     ~Buffer();
 
+    vk::Buffer const& operator*() const noexcept
+    {
+        return vk::raii::Buffer::operator*();
+    }
+
 private:
+    Buffer(Device const& device,
+           VkBuffer                            buffer,
+           VmaAllocation                       vmaAllocation,
+           VmaAllocationInfo const& vmaAllocationInfo,
+           Optional<const AllocationCallbacks> allocator = nullptr) :
+        vk::raii::Buffer(device, buffer, allocator)
+    {
+        mAllocationVMA = vmaAllocation;
+        mAllocationVMAInfo = vmaAllocationInfo;
+    }
+
     VmaAllocation         mAllocationVMA = VK_NULL_HANDLE;
     VmaAllocationInfo mAllocationVMAInfo = {};
 };
-
-//
-//    VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-//    bufferInfo.size = 65536;
-//    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-//
-//    VmaAllocationCreateInfo vmaAllocInfo = {};
-//    vmaAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-//
-//    VkBuffer buffer;
-//    VmaAllocation allocation;
-//    vkres = vk::Result(vmaCreateBuffer(mVmaAllocator, &bufferInfo, &vmaAllocInfo, &buffer, &allocation, nullptr));
-//    if (vkres != vk::Result::eSuccess) {
-//        POLYPFATAL("Failed to create VkBuffer through VMA.");
-//    }
-
 
 }
 }

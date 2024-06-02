@@ -130,7 +130,7 @@ Image::~Image()
 {
     if (mAllocationVMA != VK_NULL_HANDLE)
     {
-        auto resource = release();
+        auto resource  = release();
         auto allocator = RHIContext::get().device().vmaAlocator();
 
         vmaDestroyImage(allocator, static_cast<VkImage>(resource), mAllocationVMA);
@@ -196,7 +196,7 @@ Buffer::~Buffer()
 {
     if (mAllocationVMA != VK_NULL_HANDLE)
     {
-        auto resource = release();
+        auto resource  = release();
         auto allocator = RHIContext::get().device().vmaAlocator();
 
         vmaDestroyBuffer(allocator, static_cast<VkBuffer>(resource), mAllocationVMA);

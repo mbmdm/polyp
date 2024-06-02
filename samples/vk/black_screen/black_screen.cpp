@@ -16,4 +16,6 @@ int main()
 
     Application::get().init(title.c_str(), 1024, 600);
     Application::get().run();
+
+    return EXIT_SUCCESS;
 }

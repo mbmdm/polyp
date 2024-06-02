@@ -91,6 +91,12 @@ void RHIContext::init(const CreateInfo::Surface& info)
 {
     mCreateInfo.win = info;
 
+    if (info.handle == NULL || info.instance == NULL)
+    {
+        POLYPERROR("Empty surface info provided. WSI will no be created.");
+        return;
+    }
+
     Win32SurfaceCreateInfoKHR surfaceInfo({}, info.instance, info.handle, nullptr);
     mSurface = mInstance.createWin32SurfaceKHR(surfaceInfo);
 }
