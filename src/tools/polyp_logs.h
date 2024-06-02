@@ -57,7 +57,7 @@ polyp_direct(type, POLYPLOG_PROJECT, __FILE__, __LINE__, __VA_ARGS__)
 #define POLYPWARN(...)   polyplog(LogType::Warning, __VA_ARGS__)
 #define POLYPERROR(...)  polyplog(LogType::Error,   __VA_ARGS__)
 #define POLYPFATAL(...)  polyplog(LogType::Fatal,   __VA_ARGS__)
-#define POLYPTODO(...)   polyplog(LogType::ToDo,    __VA_ARGS__);
+#define POLYPTODO(...)   polyplog(LogType::ToDo,    __VA_ARGS__)
 
 #define POLYPASSERT(...)                     \
 if (!__VA_ARGS__)                            \

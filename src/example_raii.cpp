@@ -11,7 +11,7 @@ namespace example {
 
 using namespace polyp::vulkan;
 
-void ExampleBaseRAII::preDraw() {
+void ExampleBase::preDraw() {
 
     const auto& swapchain = RHIContext::get().swapchain();
 
@@ -46,7 +46,7 @@ void ExampleBaseRAII::preDraw() {
         vk::DependencyFlags(), nullptr, nullptr, mCurrSwImBarrier);
 }
 
-void ExampleBaseRAII::postDraw() {
+void ExampleBase::postDraw() {
     const auto& swapchain = RHIContext::get().swapchain();
 
     vk::Result res = vk::Result::eSuccess;
@@ -91,7 +91,7 @@ void ExampleBaseRAII::postDraw() {
     vulkan::RHIContext::get().device().resetFences(*mSubmitFence);
 }
 
-bool ExampleBaseRAII::onInit(const WindowInitializedEventArgs& args)
+bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
 {
     POLYPDEBUG(__FUNCTION__);
 
@@ -187,7 +187,7 @@ bool ExampleBaseRAII::onInit(const WindowInitializedEventArgs& args)
     return true;
 }
 
-bool ExampleBaseRAII::onResize() {
+bool ExampleBase::onResize() {
     POLYPDEBUG(__FUNCTION__);
 
     auto& ctx = vulkan::RHIContext::get();
@@ -254,13 +254,13 @@ bool ExampleBaseRAII::onResize() {
     return true;
 }
 
-void ExampleBaseRAII::draw() {
+void ExampleBase::draw() {
     preDraw();
     POLYPDEBUG(__FUNCTION__);
     postDraw();
 }
 
-void ExampleBaseRAII::onShoutDown() {
+void ExampleBase::onShoutDown() {
     POLYPDEBUG(__FUNCTION__);
     vulkan::RHIContext::get().device().waitIdle();
 }

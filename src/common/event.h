@@ -9,47 +9,55 @@
 
 namespace polyp {
 
-template <typename TFunc>
+template <typename FuncType>
 class Event;
 
 template <class RetType, class... Args>
 class Event<RetType(Args ...)> final
 {
 private:
-    typedef typename std::function<RetType(Args ...)> Closure;
+    struct ComparableClosure;
+    struct ClosureList;
+
+    using Closure        = std::function<RetType(Args ...)>;
+    using ClosureListPtr = std::shared_ptr<ClosureList>;
 
     struct ComparableClosure
     {
-        Closure Callable;
-        void *Object;
-        uint8_t *Functor;
-        int FunctorSize;
+        Closure  mExecutable;
+
+        struct
+        {
+            void*      object = nullptr;
+            uint8_t* function = nullptr;
+            int          size = 0;
+        } mBound;
 
         ComparableClosure(const ComparableClosure &) = delete;
 
-        ComparableClosure() : Object(nullptr), Functor(nullptr), FunctorSize(0) { }
-
-        ComparableClosure(Closure &&closure) : Callable(std::move(closure)), Object(nullptr), Functor(nullptr), FunctorSize(0) { }
+        ComparableClosure() { }
+         
+        ComparableClosure(Closure &&closure) : mExecutable(std::move(closure)) { }
 
         ~ComparableClosure()
         {
-            if (Functor != nullptr)
-                delete[] Functor;
+            if (mBound.function != nullptr)
+                delete[] mBound.function;
         }
 
         ComparableClosure & operator=(const ComparableClosure &closure)
         {
-            Callable = closure.Callable;
-            Object = closure.Object;
-            FunctorSize = closure.FunctorSize;
-            if (closure.FunctorSize == 0)
+            mExecutable   = closure.mExecutable;
+            mBound.object = closure.mBound.object;
+            mBound.size   = closure.mBound.size;
+            if (closure.mBound.size == 0)
             {
-                Functor = nullptr;
+                mBound.function = nullptr;
             }
             else
             {
-                Functor = new uint8_t[closure.FunctorSize];
-                std::memcpy(Functor, closure.Functor, closure.FunctorSize);
+                mBound.function = new uint8_t[closure.mBound.size];
+                std::memcpy(mBound.function, closure.mBound.function, closure.mBound.size);
             }
 
             return *this;
@@ -57,14 +65,14 @@ private:
 
         bool operator==(const ComparableClosure &closure)
         {
-            if (Object == nullptr && closure.Object == nullptr)
+            if (mBound.object == nullptr && closure.mBound.object == nullptr)
             {
-                return Callable.target_type() == closure.Callable.target_type();
+                return mExecutable.target_type() == closure.mExecutable.target_type();
             }
             else
             {
-                return Object == closure.Object && FunctorSize == closure.FunctorSize
-                    && std::memcmp(Functor, closure.Functor, FunctorSize) == 0;
+                return mBound.object == closure.mBound.object && mBound.size == closure.mBound.size
+                    && std::memcmp(mBound.function, closure.mBound.function, mBound.size) == 0;
             }
         }
     };
@@ -86,13 +94,11 @@ private:
         }
     };
 
-    typedef std::shared_ptr<ClosureList> ClosureListPtr;
-
 private:
     ClosureListPtr m_events;
 
 private:
-    bool addClosure(const ComparableClosure &closure)
+    bool add(const ComparableClosure &closure)
     {
         auto events = std::atomic_load(&m_events);
         int count;
@@ -124,7 +130,7 @@ private:
         return false;
     }
 
-    bool removeClosure(const ComparableClosure &closure)
+    bool remove(const ComparableClosure &closure)
     {
         auto events = std::atomic_load(&m_events);
         if (events == nullptr)
@@ -147,7 +153,7 @@ private:
 
         auto newCount = count - 1;
         ClosureListPtr newEvents;
-        if (newCount == 0)
+        if (newCount == 0) 
         {
             newEvents = nullptr;
         }
@@ -170,19 +176,16 @@ private:
     }
 
 public:
-    Event()
-    {
-        std::atomic_store(&m_events, ClosureListPtr());
-    }
+    Event() = default;
 
     Event(const Event &event)
     {
-        std::atomic_store(&m_events, std::atomic_load(&event.m_events));
+        *this = event;
     }
 
     ~Event()
     {
-        (*this) = nullptr;
+        *this = nullptr;
     }
 
     void operator =(const Event &event)
@@ -214,57 +217,57 @@ public:
         return events != nullptr;
     }
 
-    void operator +=(Closure f)
+    void operator+=(Closure f)
     {
         ComparableClosure closure(std::move(f));
         while (true)
         {
-            if (addClosure(closure))
+            if (add(closure))
                 break;
         }
     }
 
-    void operator -=(Closure f)
+    void operator-=(Closure f)
     {
         ComparableClosure closure(std::move(f));
         while (true)
         {
-            if (removeClosure(closure))
+            if (remove(closure))
                 break;
         }
     }
 
     template <typename TObject>
-    void Bind(RetType(TObject::*function)(Args...), TObject *object)
+    void bind(RetType(TObject::*function)(Args...), TObject *object)
     {
         ComparableClosure closure;
-        closure.Callable = [object, function](Args&&...args)
+        closure.mExecutable = [object, function](Args&&...args)
         {
             return (object->*function)(std::forward<Args>(args)...);
         };
-        closure.FunctorSize = sizeof(function);
-        closure.Functor = new uint8_t[closure.FunctorSize];
-        std::memcpy(closure.Functor, (void*)&function, sizeof(function));
-        closure.Object = object;
+        closure.mBound.size = sizeof(function);
+        closure.mBound.function = new uint8_t[closure.mBound.size];
+        std::memcpy(closure.mBound.function, (void*)&function, sizeof(function));
+        closure.mBound.object = object;
 
         while (true)
         {
-            if (addClosure(closure))
+            if (add(closure))
                 break;
         }
     }
 
     template <typename TObject>
-    void Unbind(RetType(TObject::*function)(Args...), TObject *object)
+    void unbind(RetType(TObject::*function)(Args...), TObject *object)
     {
         ComparableClosure closure;
-        closure.FunctorSize = sizeof(function);
-        closure.Functor = new uint8_t[closure.FunctorSize];
-        std::memcpy(closure.Functor, (void*)&function, sizeof(function));
-        closure.Object = object;
+        closure.mBound.size       = sizeof(function);
+        closure.mBound.function = new uint8_t[closure.mBound.size];
+        std::memcpy(closure.mBound.function, (void*)&function, sizeof(function));
+        closure.mBound.object = object;
 
         while (true) {
-            if (removeClosure(closure)) {
+            if (remove(closure)) {
                 break;
             }
         }
@@ -280,7 +283,7 @@ public:
         auto count = events->Count;
         auto closures = events->Closures;
         for (int i = 0; i < count; i++) {
-            closures[i].Callable();
+            closures[i].mExecutable();
         }
     }
 
@@ -295,64 +298,9 @@ public:
         auto count = events->Count;
         auto closures = events->Closures;
         for (int i = 0; i < count; i++) {
-            closures[i].Callable(a1, tail...);
+            closures[i].mExecutable(a1, tail...);
         }
     }
 };
 
 }
-
-/*
- * //How to use
- * 
- * #include <iostream>
- * using namespace std;
- * 
- * class Test
- * {
- * public:
- *     void foo() { cout << "Test::foo()" << endl; }
- *     void foo1(int arg1, double arg2) { cout << "Test::foo1(" << arg1 << ", " << arg2 << ") " << endl; }
- * };
- * 
- * class Test2
- * {
- * public:
- * 
- *     Event<void()> Event1;
- *     Event<void(int, double)> Event2;
- *     void foo() { cout << "Test2::foo()" << endl; }
- *     Test2()
- *     {
- *         Event1.Bind(&Test2::foo, this);
- *     }
- *     void foo2()
- *     {
- *         Event1();
- *         Event2(1, 2.2);
- *     }
- *     ~Test2()
- *     {
- *         Event1.Unbind(&Test2::foo, this);
- *     }
- * };
- * 
- * int main(int argc, char* argv[])
- * {
- *     (void)argc;
- *     (void)argv;
- * 
- *     Test2 t2;
- *     Test t1;
- * 
- *     t2.Event1.Bind(&Test::foo, &t1);
- *     t2.Event2 += [](int arg1, double arg2) { cout << "Lambda(" << arg1 << ", " << arg2 << ") " << endl; };
- *     t2.Event2.Bind(&Test::foo1, &t1);
- *     t2.Event2.Unbind(&Test::foo1, &t1);
- *     function<void(int, double)> stdfunction = [](int arg1, double arg2) { cout << "stdfunction(" << arg1 << ", " << arg2 << ") " << endl;  };
- *     t2.Event2 += stdfunction;
- *     t2.Event2 -= stdfunction;
- *     t2.foo2();
- *     t2.Event2 = nullptr;
- * }
-*/

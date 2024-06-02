@@ -378,7 +378,7 @@ auto createVertexBuffer(const Device& device, const PhysicalDevice& gpu, const Q
 //
 } // anonimus namespace
 
-class SimpleTriangle : public polyp::example::ExampleBaseRAII {
+class SimpleTriangle : public polyp::example::ExampleBase {
 protected:
     Pipeline            mPipeline       { VK_NULL_HANDLE };
     PipelineLayout      mPipelineLayout { VK_NULL_HANDLE };
@@ -391,8 +391,9 @@ protected:
     void* mUniformMapped{};
 
 public:
-     bool onInit(const WindowInitializedEventArgs& args) {
-        if (!ExampleBaseRAII::onInit(args))
+     bool onInit(const WindowInitializedEventArgs& args)
+     {
+        if (!ExampleBase::onInit(args))
             return false;
 
 

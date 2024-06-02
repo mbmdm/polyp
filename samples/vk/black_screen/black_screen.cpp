@@ -8,7 +8,7 @@ int main()
     std::string title{ constants::kWindowTitle };
     title += ": black screen";
 
-    example::ExampleBaseRAII sample{};
+    example::ExampleBase sample{};
 
     Application::get().onWindowInitialized += [&sample](const auto& args) {sample.onInit(args); };
     Application::get().onWindowResized     += [&sample](const auto& args) {sample.onResize(); };

@@ -73,7 +73,7 @@ void RHIContext::init(const CreateInfo::GPU info)
 
     auto gpus = mInstance.enumeratePhysicalDevicesPLP();
 
-    POLYPTODO("CHeck this code")
+    POLYPTODO("Check this code");
     std::sort(gpus.begin(), gpus.end(), [](const auto& lhv, const auto& rhv) {
         return lhv.getPerformanceRatioPLP() > rhv.getPerformanceRatioPLP();
         });

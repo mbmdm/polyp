@@ -7,7 +7,7 @@
 namespace polyp {
 namespace example {
 
-class ExampleBaseRAII {
+class ExampleBase {
 protected:
 
     using FrameBuffers = std::vector<vulkan::Framebuffer>;
@@ -39,9 +39,9 @@ protected:
 
 public:
 
-    ExampleBaseRAII() {};
+    ExampleBase() {};
 
-    ~ExampleBaseRAII() { }
+    ~ExampleBase() { }
 
     bool onInit(const WindowInitializedEventArgs& args);
 
