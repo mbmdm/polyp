@@ -2,7 +2,6 @@
 
 #include "vk_common.h"
 #include "vk_utils.h"
-#include "vk_stringise.h"
 
 using polyp::vulkan::RHIContext;
 

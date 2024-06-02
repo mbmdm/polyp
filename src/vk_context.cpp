@@ -3,8 +3,6 @@
 #include "polyp_logs.h"
 #include "vk_utils.h"
 
-#include "vk_stringise.h"
-
 using namespace polyp::vulkan::utils;
 
 namespace polyp {

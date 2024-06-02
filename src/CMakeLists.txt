@@ -5,7 +5,6 @@ add_subdirectory(tools)
 set(sources
             ${CMAKE_CURRENT_SOURCE_DIR}/common/application.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/vk_stringise.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/example_base.cpp)
@@ -18,7 +17,6 @@ set(includes
 
 set(headers
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/vk_stringise.h
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.h
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.h
             ${CMAKE_CURRENT_SOURCE_DIR}/common.h
