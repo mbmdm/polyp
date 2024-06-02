@@ -1,6 +1,4 @@
 #include "vk_context.h"
-#include "polyp_config.h"
-#include "polyp_logs.h"
 #include "vk_utils.h"
 
 using namespace polyp::vulkan::utils;
