@@ -26,6 +26,7 @@ class PhysicalDevice;
 class Instance;
 class Device;
 class Image;
+class Buffer;
 
 class PhysicalDevice : public vk::raii::PhysicalDevice
 {
@@ -134,6 +135,8 @@ public:
 
     Image createImagePLP(const ImageCreateInfo& createInfo, const VmaAllocationCreateInfo& allocationCreateInfo) const;
 
+    Buffer createBufferPLP(const BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocationCreateInfo) const;
+
 private:
     VmaAllocator mAllocatorVMA = { VK_NULL_HANDLE };
 
@@ -175,7 +178,7 @@ public:
     Image(Image&& rhv) noexcept :
         vk::raii::Image(static_cast<vk::raii::Image&&>(rhv))
     {
-        std::swap(mAllocationVMA, rhv.mAllocationVMA);
+        std::swap(mAllocationVMA,     rhv.mAllocationVMA);
         std::swap(mAllocationVMAInfo, rhv.mAllocationVMAInfo);
     }
 
@@ -183,7 +186,7 @@ public:
     {
         vk::raii::Image::operator=(static_cast<vk::raii::Image&&>(rhv));
 
-        std::swap(mAllocationVMA, rhv.mAllocationVMA);
+        std::swap(mAllocationVMA,     rhv.mAllocationVMA);
         std::swap(mAllocationVMAInfo, rhv.mAllocationVMAInfo);
 
         return *this;
@@ -196,95 +199,62 @@ private:
     VmaAllocationInfo mAllocationVMAInfo = {};
 };
 
-//class Buffer : public vk::raii::Buffer
-//{
-//    //public:
-//    //  using CType   = VkBuffer;
-//    //  using CppType = vk::Buffer;
-//
-//      //static VULKAN_HPP_CONST_OR_CONSTEXPR VULKAN_HPP_NAMESPACE::ObjectType objectType = VULKAN_HPP_NAMESPACE::ObjectType::eBuffer;
-//      //static VULKAN_HPP_CONST_OR_CONSTEXPR VULKAN_HPP_NAMESPACE::DebugReportObjectTypeEXT debugReportObjectType = VULKAN_HPP_NAMESPACE::DebugReportObjectTypeEXT::eBuffer;
-//
-//public:
-//    Buffer(std::nullptr_t) {}
-//
-//    ~Buffer()
-//    {
-//        destroy();
-//    }
-//
-//    Buffer() = delete;
-//    Buffer(Buffer const&) = delete;
-//
-//    //need to implement
-//    //Buffer( Buffer && rhs ) noexcept
-//    //  : m_device( VULKAN_HPP_NAMESPACE::VULKAN_HPP_RAII_NAMESPACE::exchange( rhs.m_device, {} ) )
-//    //  , m_buffer( VULKAN_HPP_NAMESPACE::VULKAN_HPP_RAII_NAMESPACE::exchange( rhs.m_buffer, {} ) )
-//    //  , m_allocator( VULKAN_HPP_NAMESPACE::VULKAN_HPP_RAII_NAMESPACE::exchange( rhs.m_allocator, {} ) )
-//    //  , m_dispatcher( VULKAN_HPP_NAMESPACE::VULKAN_HPP_RAII_NAMESPACE::exchange( rhs.m_dispatcher, nullptr ) )
-//    //{
-//    //}
-//
-//    Buffer& operator=(Buffer const&) = delete;
-//
-//    // to implement
-//    //Buffer & operator=( Buffer && rhs ) noexcept
-//    //{
-//    //  if ( this != &rhs )
-//    //  {
-//    //    std::swap( m_device, rhs.m_device );
-//    //    std::swap( m_buffer, rhs.m_buffer );
-//    //    std::swap( m_allocator, rhs.m_allocator );
-//    //    std::swap( m_dispatcher, rhs.m_dispatcher );
-//    //  }
-//    //  return *this;
-//    //}
-//
-//    vk::Buffer const& operator*() const noexcept
-//    {
-//        return mBuffer;
-//    }
-//
-//    void destroy() noexcept
-//    {
-//        //POLYPTODO("implement resource destroying");
-//        //if ( m_buffer )
-//        //{
-//        //  getDispatcher()->vkDestroyBuffer(
-//        //    static_cast<VkDevice>( m_device ), static_cast<VkBuffer>( m_buffer ), reinterpret_cast<const VkAllocationCallbacks *>( m_allocator ) );
-//        //}
-//        //m_device     = nullptr;
-//        //m_buffer     = nullptr;
-//        //m_allocator  = nullptr;
-//        //m_dispatcher = nullptr;
-//    }
-//
-//    [[nodiscard]] vk::MemoryRequirements getMemoryRequirements() const noexcept;
-//
-//private:
-//    vk::Device   mDevice = {};
-//    vk::Buffer   mBuffer = {};
-//    VmaAllocator mVmaAllocator = {};
-//};
+class Buffer : public vk::raii::Buffer
+{
+public:
+    Buffer(vk::raii::Device const&             device,
+           vk::BufferCreateInfo const&         createInfo,
+           Optional<const AllocationCallbacks> allocator = nullptr):
+        vk::raii::Buffer(device, createInfo, allocator)
+    { }
 
+    Buffer(Device const& device, VkBuffer buffer, Optional<const AllocationCallbacks> allocator = nullptr) :
+        vk::raii::Buffer(device, buffer, allocator)
+    { }
 
+    Buffer(Device const&                       device,
+           VkBuffer                            buffer,
+           VmaAllocation                       vmaAllocation,
+           VmaAllocationInfo const&            vmaAllocationInfo,
+           Optional<const AllocationCallbacks> allocator = nullptr) :
+        vk::raii::Buffer(device, buffer, allocator)
+    {
+        mAllocationVMA     = vmaAllocation;
+        mAllocationVMAInfo = vmaAllocationInfo;
+    }
 
-//    VmaVulkanFunctions vulkanFunctions = {};
-//    vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
-//    vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
-//
-//    VmaAllocatorCreateInfo allocatorCreateInfo = {};
-//    allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-//    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
-//    allocatorCreateInfo.physicalDevice = static_cast<VkPhysicalDevice>(*ctx.gpu());
-//    allocatorCreateInfo.device = static_cast<VkDevice>(*device);
-//    allocatorCreateInfo.instance = static_cast<VkInstance>(*ctx.instance());;
-//    allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
-//    
-//    auto vkres = vk::Result(vmaCreateAllocator(&allocatorCreateInfo, &mVmaAllocator));
-//    if (vkres != vk::Result::eSuccess) {
-//        POLYPFATAL("Failed to create VMA allocator.");
-//    }
+    Buffer(std::nullptr_t ptr) :
+        vk::raii::Buffer(ptr)
+    { }
+
+    Buffer() = delete;
+    Buffer(const Buffer&) = delete;
+    Buffer& operator=(const Buffer&) = delete;
+
+    Buffer(Buffer&& rhv) noexcept :
+        vk::raii::Buffer(static_cast<vk::raii::Buffer&&>(rhv))
+    {
+        std::swap(mAllocationVMA,     rhv.mAllocationVMA);
+        std::swap(mAllocationVMAInfo, rhv.mAllocationVMAInfo);
+    }
+
+    Buffer& operator=(Buffer&& rhv) noexcept
+    {
+        vk::raii::Buffer::operator=(static_cast<vk::raii::Buffer&&>(rhv));
+
+        std::swap(mAllocationVMA,     rhv.mAllocationVMA);
+        std::swap(mAllocationVMAInfo, rhv.mAllocationVMAInfo);
+
+        return *this;
+    }
+
+    ~Buffer();
+
+private:
+    VmaAllocation         mAllocationVMA = VK_NULL_HANDLE;
+    VmaAllocationInfo mAllocationVMAInfo = {};
+};
+
 //
 //    VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 //    bufferInfo.size = 65536;

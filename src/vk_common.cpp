@@ -130,26 +130,41 @@ Image::~Image()
 {
     if (mAllocationVMA != VK_NULL_HANDLE)
     {
-        auto image = release();
+        auto resource = release();
         auto allocator = RHIContext::get().device().vmaAlocator();
 
-        vmaDestroyImage(allocator, static_cast<VkImage>(image), mAllocationVMA);
+        vmaDestroyImage(allocator, static_cast<VkImage>(resource), mAllocationVMA);
     }
 }
 
 Image Device::createImagePLP(const ImageCreateInfo& createInfo, const VmaAllocationCreateInfo& allocationCreateInfo) const
 {
-    vk::Image         image;
+    vk::Image         resource;
     VmaAllocation     allocation;
     VmaAllocationInfo allocationInfo;
     
     auto res = vmaCreateImage(mAllocatorVMA, reinterpret_cast<const VkImageCreateInfo*>(&createInfo), 
-                              &allocationCreateInfo, reinterpret_cast<VkImage*>(&image), &allocation, &allocationInfo);
+                              &allocationCreateInfo, reinterpret_cast<VkImage*>(&resource), &allocation, &allocationInfo);
     if (res != VK_SUCCESS) {
         detail::throwResultException(static_cast<vk::Result>(res), __FUNCTION__);
     }
 
-    return Image(*this, *reinterpret_cast<VkImage*>(&image), allocation, allocationInfo);
+    return Image(*this, *reinterpret_cast<VkImage*>(&resource), allocation, allocationInfo);
+}
+
+Buffer Device::createBufferPLP(const BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocationCreateInfo) const
+{
+    vk::Buffer        resource;
+    VmaAllocation     allocation;
+    VmaAllocationInfo allocationInfo;
+
+    auto res = vmaCreateBuffer(mAllocatorVMA, reinterpret_cast<const VkBufferCreateInfo*>(&createInfo),
+        &allocationCreateInfo, reinterpret_cast<VkBuffer*>(&resource), &allocation, &allocationInfo);
+    if (res != VK_SUCCESS) {
+        detail::throwResultException(static_cast<vk::Result>(res), __FUNCTION__);
+    }
+
+    return Buffer(*this, *reinterpret_cast<VkBuffer*>(&resource), allocation, allocationInfo);
 }
 
 void Device::init()
@@ -174,6 +189,17 @@ void Device::init()
     if (vkres != vk::Result::eSuccess) {
         POLYPERROR("Failed to create VMA allocator.");
         mAllocatorVMA = VK_NULL_HANDLE;
+    }
+}
+
+Buffer::~Buffer()
+{
+    if (mAllocationVMA != VK_NULL_HANDLE)
+    {
+        auto resource = release();
+        auto allocator = RHIContext::get().device().vmaAlocator();
+
+        vmaDestroyBuffer(allocator, static_cast<VkBuffer>(resource), mAllocationVMA);
     }
 }
 
