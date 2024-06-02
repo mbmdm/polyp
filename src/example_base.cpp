@@ -95,8 +95,8 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
 {
     POLYPDEBUG(__FUNCTION__);
 
-    WindowInstance inst = args.windowInstance;
-    WindowHandle hwnd   = args.windowHandle;
+    auto inst = args.windowInstance;
+    auto hwnd = args.windowHandle;
 
     auto& ctx = vulkan::RHIContext::get();
 
@@ -105,7 +105,7 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
     RHIContext::CreateInfo ctxInfo {
          {__FILE__, 1},                         // CreateInfo::Application
          RHIContext::CreateInfo::GPU::Powerful, // CreateInfo::GPU
-         {inst, hwnd},                          // CreateInfo::Surface
+         {hwnd, inst},                          // CreateInfo::Surface
          {queInfos, {}},                        // CreateInfo::Device
          {3},                                   // CreateInfo::SwapChain
     };

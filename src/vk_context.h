@@ -1,6 +1,5 @@
 #pragma once
 
-#include "platforms.h"
 #include "vk_common.h"
 
 #include <string>
@@ -27,8 +26,8 @@ public:
 
         struct Surface
         {
-            WindowInstance instance;
-            WindowHandle   handle;
+            HWND        handle = NULL;
+            HINSTANCE instance = NULL;
         } win;
 
         struct Queue
