@@ -1,5 +1,4 @@
 #include <example_base.h>
-#include <application.h>
 
 using namespace polyp;
 

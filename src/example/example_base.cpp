@@ -1,6 +1,4 @@
 #include "example_base.h"
-
-#include "vk_common.h"
 #include "vk_utils.h"
 
 using polyp::vulkan::RHIContext;

@@ -1,5 +1,5 @@
-#ifndef EXAMPLERAII_H
-#define EXAMPLERAII_H
+#ifndef EXAMPLEBASE_H
+#define EXAMPLEBASE_H
 
 #include "vk_context.h"
 #include "application.h"
@@ -60,4 +60,4 @@ public:
 } // example
 } // polyp
 
-#endif // EXAMPLERAII_H
+#endif // EXAMPLEBASE_H

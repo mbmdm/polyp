@@ -5,7 +5,8 @@ set(sources
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/example/example_base.cpp)
+            ${CMAKE_CURRENT_SOURCE_DIR}/example/example_base.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/example/example_2D.cpp)
 
 set(includes
              ${CMAKE_CURRENT_SOURCE_DIR}
