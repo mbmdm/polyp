@@ -126,6 +126,24 @@ RenderPass createRenderPass()
     return device.createRenderPass(renderPassInfo);
 }
 
+Buffer createUploadBuffer(VkDeviceSize size)
+{
+    if (size == 0)
+        return VK_NULL_HANDLE;
+
+    const auto& device = vulkan::RHIContext::get().device();
+
+    BufferCreateInfo createInfo;
+    createInfo.size  = size;
+    createInfo.usage = vk::BufferUsageFlagBits::eTransferSrc;
+
+    VmaAllocationCreateInfo allocCreateInfo = {};
+    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+    return device.createBufferPLP(createInfo, allocCreateInfo);
+}
+
 }
 }
 }

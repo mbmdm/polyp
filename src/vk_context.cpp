@@ -8,17 +8,16 @@ namespace vulkan {
 
 namespace {
 
-std::vector<bool> getSupportedQueueFamilies(const PhysicalDevice& gpu, QueueFlags flags, uint32_t queueCount)
+std::vector<bool> getSupportedQueueFamilies(const std::vector<vk::QueueFamilyProperties>& props, QueueFlags flags, uint32_t queueCount)
 {
-    auto queFamilyProps = gpu.getQueueFamilyProperties();
-    std::vector<bool> output(queFamilyProps.size(), false);
+    std::vector<bool> output(props.size(), false);
 
     uint32_t graphicsQueueFamilyIndex = UINT32_MAX;
 
-    for (uint32_t i = 0; i < queFamilyProps.size(); i++)
+    for (uint32_t i = 0; i < props.size(); i++)
     {
-        if ((queFamilyProps[i].queueFlags & flags) &&
-            (queFamilyProps[i].queueCount >= queueCount))
+        if ((props[i].queueFlags & flags) &&
+            (props[i].queueCount >= queueCount))
         {
             output[i] = true;
         }
@@ -106,21 +105,25 @@ void RHIContext::init(const CreateInfo::Device& info)
     mCreateInfo.device = info;
 
     DeviceCreateInfo                   deviceCreateInfo{};
-    std::vector<DeviceQueueCreateInfo> queueCreateInfos(info.pQueueInfos.size());
+    std::vector<DeviceQueueCreateInfo> queueCreateInfos(info.queues.size());
 
     deviceCreateInfo.pQueueCreateInfos    = queueCreateInfos.data();
     deviceCreateInfo.queueCreateInfoCount = queueCreateInfos.size();
 
-    if (info.pQueueInfos.empty()) {
+    if (info.queues.empty()) {
        POLYPERROR("Zero queue were requested");
        return;
     }
 
-    std::vector<std::vector<float>> quePriorities(info.pQueueInfos.size());
+    auto queProps = mGPU.getQueueFamilyProperties();
 
-    for (size_t i = 0; i < info.pQueueInfos.size(); i++)
+    auto availableWSIQueue = getSupportedQueueFamilies(mGPU, mSurface);
+
+    std::vector<std::vector<float>> quePriorities(info.queues.size());
+
+    for (size_t i = 0; i < info.queues.size(); ++i)
     {
-        const auto& queInfo = info.pQueueInfos[i];
+        const auto& queInfo = info.queues[i];
 
         quePriorities[i] = std::vector<float>(queInfo.count, 1.);
 
@@ -128,15 +131,24 @@ void RHIContext::init(const CreateInfo::Device& info)
         queueCreateInfos[i].queueCount       = quePriorities[i].size();
         queueCreateInfos[i].queueFamilyIndex = UINT32_MAX;
 
-        auto queReqFlags = (queInfo.flags) ? queInfo.flags : QueueFlagBits::eGraphics;
+        auto queReqFlags    = (queInfo.flags) ? queInfo.flags : QueueFlagBits::eGraphics;
 
-        auto availableQueue    = getSupportedQueueFamilies(mGPU, queReqFlags, quePriorities[i].size());
-        auto availableWSIQueue = getSupportedQueueFamilies(mGPU, mSurface);
+        auto availableQueue = getSupportedQueueFamilies(queProps, queReqFlags, queInfo.count);
 
-        for (uint32_t i = 0; i < availableQueue.size(); i++) {
-            if (availableQueue[i] && availableWSIQueue[i]) {
-                queueCreateInfos[i].queueFamilyIndex = i;
-                break;
+        for (uint32_t j = 0; j < availableQueue.size(); ++j)
+        {
+            if (availableQueue[j])
+            {
+                if (queInfo.isWSIRequred && availableWSIQueue[i]) {
+                    queueCreateInfos[i].queueFamilyIndex = j;
+                    queProps[j].queueCount -= queInfo.count;
+                    break;
+                }
+                else if (!queInfo.isWSIRequred) {
+                    queueCreateInfos[i].queueFamilyIndex = j;
+                    queProps[j].queueCount -= queInfo.count;
+                    break;
+                }
             }
         }
 
@@ -200,7 +212,8 @@ void RHIContext::init(const CreateInfo::Device& info)
         }
     }
 
-    mDevice = mGPU.createDevice(deviceCreateInfo);
+    auto device = mGPU.createDevice(deviceCreateInfo).release();
+    mDevice = Device(static_cast<vk::raii::PhysicalDevice&>(mGPU), device);
 }
 
 void RHIContext::init(const CreateInfo::SwapChain& info)

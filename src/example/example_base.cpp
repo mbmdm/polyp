@@ -10,6 +10,21 @@ namespace example {
 
 using namespace polyp::vulkan;
 
+ExampleBase::ExampleBase()
+{
+    std::vector<RHIContext::CreateInfo::Queue> queInfos{ 
+        {1, vk::QueueFlagBits::eGraphics, true}
+    };
+
+    mContextInfo = RHIContext::CreateInfo{
+         {__FILE__, 1},                         // CreateInfo::Application
+         RHIContext::CreateInfo::GPU::Powerful, // CreateInfo::GPU
+         {NULL, NULL},                          // CreateInfo::Surface
+         {queInfos, {}},                        // CreateInfo::Device
+         {3},                                   // CreateInfo::SwapChain
+    };
+}
+
 void ExampleBase::preDraw() {
 
     const auto& swapchain = RHIContext::get().swapchain();
@@ -94,22 +109,12 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
 {
     POLYPDEBUG(__FUNCTION__);
 
-    auto inst = args.windowInstance;
-    auto hwnd = args.windowHandle;
+    mContextInfo.win.instance = args.windowInstance;
+    mContextInfo.win.handle   = args.windowHandle;
 
     auto& ctx = vulkan::RHIContext::get();
 
-    std::vector<RHIContext::CreateInfo::Queue> queInfos{ {1, vk::QueueFlagBits::eGraphics} };
-
-    RHIContext::CreateInfo ctxInfo {
-         {__FILE__, 1},                         // CreateInfo::Application
-         RHIContext::CreateInfo::GPU::Powerful, // CreateInfo::GPU
-         {hwnd, inst},                          // CreateInfo::Surface
-         {queInfos, {}},                        // CreateInfo::Device
-         {3},                                   // CreateInfo::SwapChain
-    };
-
-    ctx.init(ctxInfo);
+    ctx.init(mContextInfo);
 
     if (!ctx.ready()) {
         POLYPFATAL("Failed to initialize Vulkan infrastructure.");

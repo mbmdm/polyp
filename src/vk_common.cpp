@@ -167,24 +167,27 @@ Buffer Device::createBufferPLP(const BufferCreateInfo& createInfo, const VmaAllo
     return Buffer(*this, *reinterpret_cast<VkBuffer*>(&resource), allocation, allocationInfo);
 }
 
-void Device::init()
+void Device::init(vk::raii::PhysicalDevice const& gpu)
 {
     if (static_cast<VkDevice>(**this) == VK_NULL_HANDLE)
         return;
 
+    auto* devDispatcher  = getDispatcher();
+    auto* instDispatcher = gpu.getDispatcher();
+
     VmaVulkanFunctions vulkanFunctions = {};
 
-    vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
-    vulkanFunctions.vkGetDeviceProcAddr   = &vkGetDeviceProcAddr;
+    vulkanFunctions.vkGetInstanceProcAddr = instDispatcher->vkGetInstanceProcAddr;
+    vulkanFunctions.vkGetDeviceProcAddr   = devDispatcher->vkGetDeviceProcAddr;
 
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
     allocatorCreateInfo.flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    allocatorCreateInfo.vulkanApiVersion = ENGINE_VK_VERSION;
     allocatorCreateInfo.physicalDevice   = static_cast<VkPhysicalDevice>(*RHIContext::get().gpu());
     allocatorCreateInfo.device           = static_cast<VkDevice>(**this);
     allocatorCreateInfo.instance         = static_cast<VkInstance>(*RHIContext::get().instance());;
     allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
-    
+
     auto vkres = vk::Result(vmaCreateAllocator(&allocatorCreateInfo, &mAllocatorVMA));
     if (vkres != vk::Result::eSuccess) {
         POLYPERROR("Failed to create VMA allocator.");
@@ -202,6 +205,20 @@ Buffer::~Buffer()
         vmaDestroyBuffer(allocator, static_cast<VkBuffer>(resource), mAllocationVMA);
     }
 }
+
+void Buffer::fill(void* data, VkDeviceSize size, VkDeviceSize offset)
+{
+    auto& device = RHIContext::get().device();
+    auto allocator = device.vmaAlocator();
+
+    auto res = vmaCopyMemoryToAllocation(allocator, data, mAllocationVMA, offset, size);
+
+    if (res != VK_SUCCESS) {
+        detail::throwResultException(static_cast<vk::Result>(res), __FUNCTION__);
+    }
+}
+
+
 
 }
 }

@@ -15,7 +15,7 @@ public:
     {
         struct Application
         {
-            std::string name;
+            std::string    name;
             uint32_t    version;
         } app;
 
@@ -32,13 +32,14 @@ public:
 
         struct Queue
         {
-            uint32_t   count;
-            QueueFlags flags;
+            uint32_t          count;
+            QueueFlags        flags;
+            bool       isWSIRequred;
         };
 
         struct Device
         {
-            std::vector<Queue>     pQueueInfos;
+            std::vector<Queue>       queues;
             PhysicalDeviceFeatures features;
         } device;
 

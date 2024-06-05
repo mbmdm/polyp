@@ -14,20 +14,22 @@ protected:
     using Images       = std::vector<vk::Image>;
     using Views        = std::vector<vulkan::ImageView>;
 
-    vulkan::Queue          mQueue             = { VK_NULL_HANDLE };
-    vulkan::CommandPool    mCmdPool           = { VK_NULL_HANDLE };
-    vulkan::CommandBuffer  mCmdBuffer         = { VK_NULL_HANDLE };
-    vulkan::Semaphore      mReadyToPresent    = { VK_NULL_HANDLE };
-    vulkan::Fence          mSubmitFence       = { VK_NULL_HANDLE };
-    vulkan::Fence          mAqImageFence      = { VK_NULL_HANDLE };
-    vulkan::RenderPass     mRenderPass        = { VK_NULL_HANDLE };
+    vulkan::Queue          mQueue               = { VK_NULL_HANDLE };
+    vulkan::CommandPool    mCmdPool             = { VK_NULL_HANDLE };
+    vulkan::CommandBuffer  mCmdBuffer           = { VK_NULL_HANDLE };
+    vulkan::Semaphore      mReadyToPresent      = { VK_NULL_HANDLE };
+    vulkan::Fence          mSubmitFence         = { VK_NULL_HANDLE };
+    vulkan::Fence          mAqImageFence        = { VK_NULL_HANDLE };
+    vulkan::RenderPass     mRenderPass          = { VK_NULL_HANDLE };
+                                                
+    vk::ImageMemoryBarrier   mCurrSwImBarrier   = {};
+    uint32_t                 mCurrSwImIndex     = {};
+                                                
+    Images                   mSwapChainImages   = {};
+    Views                    mSwapChainVeiews   = {};
+    FrameBuffers             mFrameBuffers      = {};
 
-    vk::ImageMemoryBarrier   mCurrSwImBarrier = {};
-    uint32_t                 mCurrSwImIndex   = {};
-
-    Images                   mSwapChainImages = {};
-    Views                    mSwapChainVeiews = {};
-    FrameBuffers             mFrameBuffers    = {};
+    vulkan::RHIContext::CreateInfo mContextInfo = {};
 
     struct {
         vulkan::Image    image = VK_NULL_HANDLE;
@@ -39,19 +41,19 @@ protected:
 
 public:
 
-    ExampleBase() {};
+    ExampleBase();
 
-    ~ExampleBase() { }
+    virtual ~ExampleBase() { }
 
-    bool onInit(const WindowInitializedEventArgs& args);
+    virtual bool onInit(const WindowInitializedEventArgs& args);
 
-    bool onResize();
+    virtual bool onResize();
 
-    void draw();
+    virtual void draw();
 
-    void onShoutDown();
+    virtual void onShoutDown();
 
-    bool isReady() { return true; }
+    virtual bool isReady() { return true; }
 };
 
 } // example

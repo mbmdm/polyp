@@ -8,6 +8,8 @@ std::tuple<Image, ImageView> createDepthStencil();
 
 RenderPass createRenderPass();
 
+Buffer createUploadBuffer(VkDeviceSize size);
+
 }
 }
 }

@@ -89,7 +89,7 @@ public:
            Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::Device(physicalDevice, createInfo, allocator)
     {
-        init();
+        init(physicalDevice);
     }
 
     Device(vk::raii::PhysicalDevice const&     physicalDevice,
@@ -97,7 +97,7 @@ public:
            Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::Device(physicalDevice, device, allocator)
     {
-        init();
+        init(physicalDevice);
     }
 
     Device(std::nullptr_t ptr) :
@@ -116,15 +116,10 @@ public:
 
     Device& operator=(Device&& rhv) noexcept
     {
-        *this = static_cast<vk::raii::Device&&>(rhv);
-        std::swap(mAllocatorVMA, rhv.mAllocatorVMA);
-        return *this;
-    }
+        vk::raii::Device::operator=(static_cast<vk::raii::Device&&>(rhv));
 
-    vk::raii::Device& operator=(vk::raii::Device&& rhv) noexcept
-    {
-        static_cast<vk::raii::Device&>(*this) = std::move(rhv);
-        init();
+        std::swap(mAllocatorVMA, rhv.mAllocatorVMA);
+
         return *this;
     }
 
@@ -142,7 +137,7 @@ public:
 private:
     VmaAllocator mAllocatorVMA = { VK_NULL_HANDLE };
 
-    void init();
+    void init(vk::raii::PhysicalDevice const& gpu);
 };
 
 class Image : protected vk::raii::Image
@@ -233,6 +228,15 @@ public:
     vk::Buffer const& operator*() const noexcept
     {
         return vk::raii::Buffer::operator*();
+    }
+
+    void fill(void* data, VkDeviceSize size, VkDeviceSize offset = 0);
+
+    template<typename Container>
+    void fill(const Container& data, VkDeviceSize offset = 0)
+    {
+        auto size = sizeof(Container::value_type);
+        fill((void*)data.data(), size, offset);
     }
 
 private:
