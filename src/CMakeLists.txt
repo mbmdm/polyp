@@ -1,3 +1,34 @@
-add_subdirectory(tools)
-add_subdirectory(glEngine)
-add_subdirectory(vkEngine)
+cmake_minimum_required(VERSION 3.6)
+
+set(sources
+            ${CMAKE_CURRENT_SOURCE_DIR}/generic/application.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/example/example_base.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/example/example_2D.cpp)
+
+set(includes
+             ${CMAKE_CURRENT_SOURCE_DIR}
+             ${CMAKE_CURRENT_SOURCE_DIR}/vk
+             ${CMAKE_CURRENT_SOURCE_DIR}/generic
+             ${CMAKE_CURRENT_SOURCE_DIR}/example
+             ${VULKANSDK_INCLUDE_DIR})
+
+set(headers
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/common.h)
+
+set(sources ${sources}
+            ${headers})
+
+add_library(vkEngine STATIC ${sources})
+
+target_include_directories(vkEngine PUBLIC ${includes})
+
+target_link_libraries(vkEngine glm
+                               VulkanMemoryAllocator)
+
+set_target_properties(vkEngine PROPERTIES FOLDER "src")
