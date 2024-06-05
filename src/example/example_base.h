@@ -36,8 +36,9 @@ protected:
         vulkan::ImageView view = VK_NULL_HANDLE;
     } mDepthStencil;
 
-    void preDraw();
-    void postDraw();
+    void acquireSwapChainImage();
+
+    void present();
 
 public:
 

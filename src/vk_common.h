@@ -5,24 +5,32 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan_raii.hpp>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 namespace polyp {
 namespace vulkan {
 
 using namespace vk;
 
-using Context       = vk::raii::Context;
-using SurfaceKHR    = vk::raii::SurfaceKHR;
-using SwapchainKHR  = vk::raii::SwapchainKHR;
-using ImageView     = vk::raii::ImageView;
-using RenderPass    = vk::raii::RenderPass;
-using Queue         = vk::raii::Queue;
-using CommandPool   = vk::raii::CommandPool;
-using CommandBuffer = vk::raii::CommandBuffer;
-using Semaphore     = vk::raii::Semaphore;
-using Fence         = vk::raii::Fence;
-using Framebuffer   = vk::raii::Framebuffer;
-using Pipeline      = vk::raii::Pipeline;
-using DeviceMemory  = vk::raii::DeviceMemory;
+using Context             = vk::raii::Context;
+using SurfaceKHR          = vk::raii::SurfaceKHR;
+using SwapchainKHR        = vk::raii::SwapchainKHR;
+using ImageView           = vk::raii::ImageView;
+using RenderPass          = vk::raii::RenderPass;
+using Queue               = vk::raii::Queue;
+using CommandPool         = vk::raii::CommandPool;
+using CommandBuffer       = vk::raii::CommandBuffer;
+using Semaphore           = vk::raii::Semaphore;
+using Fence               = vk::raii::Fence;
+using Framebuffer         = vk::raii::Framebuffer;
+using Pipeline            = vk::raii::Pipeline;
+using DeviceMemory        = vk::raii::DeviceMemory;
+using DescriptorSetLayout = vk::raii::DescriptorSetLayout;
+using PipelineLayout      = vk::raii::PipelineLayout;
+using DescriptorPool      = vk::raii::DescriptorPool;
+using DescriptorSet       = vk::raii::DescriptorSet;
+using ShaderModule        = vk::raii::ShaderModule;
 
 class PhysicalDevice;
 class Instance;
@@ -235,7 +243,7 @@ public:
     template<typename Container>
     void fill(const Container& data, VkDeviceSize offset = 0)
     {
-        auto size = sizeof(Container::value_type);
+        auto size = sizeof(Container::value_type) * data.size();
         fill((void*)data.data(), size, offset);
     }
 

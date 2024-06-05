@@ -125,15 +125,15 @@ void RHIContext::init(const CreateInfo::Device& info)
     {
         const auto& queInfo = info.queues[i];
 
+        POLYPASSERTNOTEQUAL(queInfo.flags, static_cast<QueueFlagBits>(0));
+
         quePriorities[i] = std::vector<float>(queInfo.count, 1.);
 
         queueCreateInfos[i].pQueuePriorities = quePriorities[i].data();
         queueCreateInfos[i].queueCount       = quePriorities[i].size();
         queueCreateInfos[i].queueFamilyIndex = UINT32_MAX;
 
-        auto queReqFlags    = (queInfo.flags) ? queInfo.flags : QueueFlagBits::eGraphics;
-
-        auto availableQueue = getSupportedQueueFamilies(queProps, queReqFlags, queInfo.count);
+        auto availableQueue = getSupportedQueueFamilies(queProps, queInfo.flags, queInfo.count);
 
         for (uint32_t j = 0; j < availableQueue.size(); ++j)
         {
@@ -225,7 +225,7 @@ void RHIContext::init(const CreateInfo::SwapChain& info)
     SwapchainCreateInfoKHR createInfo{};
     createInfo.surface          = *mSurface;
     createInfo.minImageCount    = info.count;
-    createInfo.imageFormat      = Format::eR8G8B8A8Unorm;
+    createInfo.imageFormat      = Format::eB8G8R8A8Unorm;
     createInfo.imageColorSpace  = ColorSpaceKHR::eSrgbNonlinear;
     createInfo.presentMode      = reqPresentMode;
     createInfo.imageUsage       = ImageUsageFlagBits::eColorAttachment;

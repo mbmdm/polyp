@@ -10,6 +10,10 @@ RenderPass createRenderPass();
 
 Buffer createUploadBuffer(VkDeviceSize size);
 
+Buffer createDeviceBuffer(VkDeviceSize size, vk::BufferUsageFlags flags);
+
+ShaderModule loadSPIRV(std::string path);
+
 }
 }
 }

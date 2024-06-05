@@ -25,8 +25,8 @@ ExampleBase::ExampleBase()
     };
 }
 
-void ExampleBase::preDraw() {
-
+void ExampleBase::acquireSwapChainImage()
+{
     const auto& swapchain = RHIContext::get().swapchain();
 
     auto [res, imIdx] = swapchain.acquireNextImage(constants::kFenceTimeout, VK_NULL_HANDLE, *mAqImageFence);
@@ -44,53 +44,26 @@ void ExampleBase::preDraw() {
     vulkan::RHIContext::get().device().resetFences(*mAqImageFence);
 
     mCurrSwImIndex = imIdx;
-
-    vk::CommandBufferBeginInfo beginInfo{ ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit };
-    mCmdBuffer.begin(beginInfo);
-
-    mCurrSwImBarrier.image         = mSwapChainImages[imIdx];
-    mCurrSwImBarrier.srcAccessMask = vk::AccessFlagBits::eNone;
-    mCurrSwImBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-    mCurrSwImBarrier.oldLayout     = vk::ImageLayout::eUndefined;
-    mCurrSwImBarrier.newLayout     = vk::ImageLayout::eColorAttachmentOptimal;
-
-    mCmdBuffer.pipelineBarrier(
-        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        vk::DependencyFlags(), nullptr, nullptr, mCurrSwImBarrier);
 }
 
-void ExampleBase::postDraw() {
-    const auto& swapchain = RHIContext::get().swapchain();
-
-    vk::Result res = vk::Result::eSuccess;
-
-    mCurrSwImBarrier.srcAccessMask = mCurrSwImBarrier.dstAccessMask;
-    mCurrSwImBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
-    mCurrSwImBarrier.oldLayout = mCurrSwImBarrier.newLayout;
-    mCurrSwImBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
-
-    mCmdBuffer.pipelineBarrier(
-        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        vk::DependencyFlags(), nullptr, nullptr, mCurrSwImBarrier);
-
-    mCmdBuffer.end();
-
+void ExampleBase::present()
+{
     vk::SubmitInfo submitInfo{};
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &*mCmdBuffer;
+    submitInfo.commandBufferCount   = 1;
+    submitInfo.pCommandBuffers      = &*mCmdBuffer;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &*mReadyToPresent;
+    submitInfo.pSignalSemaphores    = &*mReadyToPresent;
     mQueue.submit(submitInfo, *mSubmitFence);
 
     vk::PresentInfoKHR presentInfo{};
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &*mReadyToPresent;
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &*swapchain;
-    presentInfo.pImageIndices = &mCurrSwImIndex;
-    res = mQueue.presentKHR(presentInfo);
+    presentInfo.pWaitSemaphores    = &*mReadyToPresent;
+    presentInfo.swapchainCount     = 1;
+    presentInfo.pSwapchains        = &*RHIContext::get().swapchain();
+    presentInfo.pImageIndices      = &mCurrSwImIndex;
+    
+    auto res = mQueue.presentKHR(presentInfo);
+
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Present failed with result %s", vk::to_string(res).c_str());
 
@@ -121,17 +94,17 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
         return false;
     }
 
-    POLYPINFO("Device %s will be used", ctx.gpu().toStringPLP().c_str());
+    POLYPINFO("Device [%s] will be used", ctx.gpu().toStringPLP().c_str());
 
     const auto& device = ctx.device();
 
-    auto familyIdx = ctx.queueFamily(vk::QueueFlagBits::eGraphics);
+    auto familyIdx = ctx.queueFamily(mContextInfo.device.queues[0].flags);
 
     mQueue = ctx.device().getQueue(familyIdx, 0);
     if (*mQueue == VK_NULL_HANDLE) {
         POLYPFATAL("Failed to create vulkan graphics queue");
     }
-    POLYPINFO("Graphics queue retrieved successfully");
+    POLYPDEBUG("Graphics queue retrieved successfully");
 
     vk::CommandPoolCreateInfo cmdPoolCreateInfo{};
     cmdPoolCreateInfo.queueFamilyIndex = familyIdx;
@@ -153,7 +126,7 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
     }
 
     mCmdBuffer = std::move(cmds[0]);
-    POLYPINFO("Primary command buffer created successfully");
+    POLYPDEBUG("Primary command buffer created successfully");
 
     vk::SemaphoreCreateInfo semaphoreCreateInfo{};
     mReadyToPresent = device.createSemaphore(semaphoreCreateInfo);
@@ -168,7 +141,7 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
         POLYPFATAL("Failed to create fence.");
     }
 
-    POLYPINFO("Semaphores and fence created successfully");
+    POLYPDEBUG("Semaphores and fence created successfully");
 
     mCurrSwImBarrier = vk::ImageMemoryBarrier{};
 
@@ -191,7 +164,8 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
     return true;
 }
 
-bool ExampleBase::onResize() {
+bool ExampleBase::onResize()
+{
     POLYPDEBUG(__FUNCTION__);
 
     auto& ctx = vulkan::RHIContext::get();
@@ -218,7 +192,7 @@ bool ExampleBase::onResize() {
     for (auto i = 0; i < mSwapChainImages.size(); ++i)
     {
         vk::ImageViewCreateInfo viewCreateInfo{};
-        viewCreateInfo.format = vk::Format::eR8G8B8A8Unorm;
+        viewCreateInfo.format     = vk::Format::eB8G8R8A8Unorm;
         viewCreateInfo.components = {
             VK_COMPONENT_SWIZZLE_R,
             VK_COMPONENT_SWIZZLE_G,
@@ -258,13 +232,49 @@ bool ExampleBase::onResize() {
     return true;
 }
 
-void ExampleBase::draw() {
-    preDraw();
+void ExampleBase::draw()
+{
     POLYPDEBUG(__FUNCTION__);
-    postDraw();
+
+    acquireSwapChainImage();
+
+    vk::CommandBufferBeginInfo beginInfo{};
+    beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+    mCmdBuffer.reset();
+
+    mCmdBuffer.begin(beginInfo);
+
+    mCurrSwImBarrier.image         = mSwapChainImages[mCurrSwImIndex];
+    mCurrSwImBarrier.srcAccessMask = vk::AccessFlagBits::eNone;
+    mCurrSwImBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+    mCurrSwImBarrier.oldLayout     = vk::ImageLayout::eUndefined;
+    mCurrSwImBarrier.newLayout     = vk::ImageLayout::eColorAttachmentOptimal;
+
+    mCmdBuffer.pipelineBarrier(
+        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        vk::DependencyFlags(), nullptr, nullptr, mCurrSwImBarrier);
+
+    /* Some rendering operations could be added here */
+
+    mCurrSwImBarrier.srcAccessMask = mCurrSwImBarrier.dstAccessMask;
+    mCurrSwImBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+    mCurrSwImBarrier.oldLayout = mCurrSwImBarrier.newLayout;
+    mCurrSwImBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
+
+    mCmdBuffer.pipelineBarrier(
+        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        vk::DependencyFlags(), nullptr, nullptr, mCurrSwImBarrier);
+
+    mCmdBuffer.end();
+
+    present();
 }
 
-void ExampleBase::onShoutDown() {
+void ExampleBase::onShoutDown()
+{
     POLYPDEBUG(__FUNCTION__);
     vulkan::RHIContext::get().device().waitIdle();
 }

@@ -1,6 +1,8 @@
 #include "vk_utils.h"
 #include "vk_context.h"
 
+#include <fstream>
+
 namespace polyp {
 namespace vulkan {
 namespace utils {
@@ -60,7 +62,7 @@ RenderPass createRenderPass()
     std::array<vk::AttachmentDescription, 2> attachments = {};
 
     // Color attachment
-    attachments[0].format         = vk::Format::eR8G8B8A8Unorm;
+    attachments[0].format         = vk::Format::eB8G8R8A8Unorm;
     attachments[0].samples        = vk::SampleCountFlagBits::e1;
     attachments[0].loadOp         = vk::AttachmentLoadOp::eClear;
     attachments[0].storeOp        = vk::AttachmentStoreOp::eStore;
@@ -143,6 +145,52 @@ Buffer createUploadBuffer(VkDeviceSize size)
 
     return device.createBufferPLP(createInfo, allocCreateInfo);
 }
+
+Buffer createDeviceBuffer(VkDeviceSize size, vk::BufferUsageFlags flags)
+{
+    if (size == 0)
+        return VK_NULL_HANDLE;
+
+    const auto& device = vulkan::RHIContext::get().device();
+
+    BufferCreateInfo createInfo;
+    createInfo.size  = size;
+    createInfo.usage = flags;
+
+    VmaAllocationCreateInfo allocCreateInfo = {};
+    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+    return device.createBufferPLP(createInfo, allocCreateInfo);
+}
+
+ShaderModule loadSPIRV(std::string path)
+{
+    std::ifstream is(path, std::ios::binary | std::ios::in | std::ios::ate);
+
+    size_t size = 0;
+    std::unique_ptr<char> code{ nullptr };
+
+    if (is.is_open())
+    {
+        size = is.tellg();
+        is.seekg(0, std::ios::beg);
+        code.reset(new char[size]);
+        is.read(code.get(), size);
+        is.close();
+        POLYPASSERT(size > 0 && "Load SPIR-V shared failed");
+    }
+
+    if (!code) {
+        POLYPFATAL("Failed to load SPIR-V file");
+        return VK_NULL_HANDLE;
+    }
+
+    vk::ShaderModuleCreateInfo createInfo{};
+    createInfo.codeSize = size;
+    createInfo.pCode    = (uint32_t*)code.get();
+
+    return RHIContext::get().device().createShaderModule(createInfo);
+};
 
 }
 }
