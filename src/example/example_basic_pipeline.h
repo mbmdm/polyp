@@ -9,10 +9,10 @@ namespace example {
 
 using namespace polyp::vulkan;
 
-class Example2D : public ExampleBase
+class ExampleBasicPipeline : public ExampleBase
 {
 public:
-    Example2D();
+    ExampleBasicPipeline();
 
     struct Vertex
     {

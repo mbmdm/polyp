@@ -1,11 +1,11 @@
-#include "example_2D.h"
+#include "example_basic_pipeline.h"
 
 namespace polyp {
 namespace example {
 
 using namespace polyp::vulkan;
 
-Example2D::Example2D() : ExampleBase()
+ExampleBasicPipeline::ExampleBasicPipeline() : ExampleBase()
 {
     std::vector<RHIContext::CreateInfo::Queue> queInfos{
         {1, vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eTransfer, true}
@@ -14,7 +14,7 @@ Example2D::Example2D() : ExampleBase()
     mContextInfo.device.queues = queInfos;
 }
 
-void Example2D::createTransferCmd()
+void ExampleBasicPipeline::createTransferCmd()
 {
     auto& ctx    = RHIContext::get();
     auto& device = ctx.device();
@@ -43,7 +43,7 @@ void Example2D::createTransferCmd()
     POLYPDEBUG("Primary command buffer created successfully");
 }
 
-void Example2D::createBuffers()
+void ExampleBasicPipeline::createBuffers()
 {
     const uint32_t vertexBufferSize  = mVertexData.size() * sizeof(decltype(mVertexData)::value_type);
     const uint32_t indexBufferSize   = mIndexData.size()  * sizeof(decltype(mIndexData)::value_type);
@@ -90,7 +90,7 @@ void Example2D::createBuffers()
     RHIContext::get().device().waitIdle();
 }
 
-void Example2D::createLayouts()
+void ExampleBasicPipeline::createLayouts()
 {
     auto& device = RHIContext::get().device();
     
@@ -112,7 +112,7 @@ void Example2D::createLayouts()
     mPipelineLayout = device.createPipelineLayout(pipeLayoutCreateInfo);
 }
 
-void Example2D::createDS()
+void ExampleBasicPipeline::createDS()
 {
     auto& device = RHIContext::get().device();
 
@@ -153,7 +153,7 @@ void Example2D::createDS()
     device.updateDescriptorSets({ writeDescriptorSet }, {});
 }
 
-void Example2D::createPipeline()
+void ExampleBasicPipeline::createPipeline()
 {
     vk::GraphicsPipelineCreateInfo pipeCreateInfo;
     pipeCreateInfo.layout     = *mPipelineLayout;
@@ -261,7 +261,7 @@ void Example2D::createPipeline()
     mPipeline = RHIContext::get().device().createGraphicsPipeline(VK_NULL_HANDLE, pipeCreateInfo);
 }
 
-bool Example2D::onInit(const WindowInitializedEventArgs& args)
+bool ExampleBasicPipeline::onInit(const WindowInitializedEventArgs& args)
 {
     if (!ExampleBase::onInit(args))
         return false;
@@ -290,7 +290,7 @@ bool Example2D::onInit(const WindowInitializedEventArgs& args)
     return true;
 }
 
-void Example2D::draw()
+void ExampleBasicPipeline::draw()
 {
     POLYPDEBUG(__FUNCTION__);
 
@@ -310,7 +310,7 @@ void Example2D::draw()
     RHIContext::get().device().waitIdle();
 }
 
-void Example2D::render()
+void ExampleBasicPipeline::render()
 {
     const auto& ctx = RHIContext::get();
 
@@ -359,7 +359,7 @@ void Example2D::render()
     VkDeviceSize offset = { 0 };
     mCmdBuffer.bindVertexBuffers(0, { *mVertexBuffer }, { offset });
     mCmdBuffer.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
-    mCmdBuffer.drawIndexed(3, 1, 0, 0, 1);
+    mCmdBuffer.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
     mCmdBuffer.endRenderPass();
 }
 

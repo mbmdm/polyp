@@ -1,10 +1,10 @@
-#include <example_2D.h>
+#include <example_basic_pipeline.h>
 
 using namespace polyp;
 
 using ShaderModule = polyp::vulkan::ShaderModule;
 
-class SimpleTriangle : public example::Example2D
+class SimpleTriangle : public example::ExampleBasicPipeline
 {
 protected:
     std::tuple<ShaderModule/*vert*/, ShaderModule/*frag*/> loadShaders() override
