@@ -157,14 +157,25 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
     mCurrSwImBarrier.subresourceRange.baseArrayLayer = 0;
     mCurrSwImBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
 
-    onResize();
+    WindowResizeEventArgs resizeArgs {
+        .mode = WindowResizeMode::Restored
+    };
+
+    onResize(resizeArgs);
 
     return true;
 }
 
-bool ExampleBase::onResize()
+bool ExampleBase::onResize(const WindowResizeEventArgs& args)
 {
+    if (args.mode == WindowResizeMode::Minimized) {
+        pauseDrawing = true;
+        return true;
+    }
+
     POLYPDEBUG(__FUNCTION__);
+    
+    pauseDrawing = false;
 
     auto& ctx = vulkan::RHIContext::get();
 
@@ -186,6 +197,8 @@ bool ExampleBase::onResize()
 
     mSwapChainVeiews.clear();
     mFrameBuffers.clear();
+
+    auto capabilities = ctx.gpu().getSurfaceCapabilitiesKHR(*ctx.surface());
 
     for (auto i = 0; i < mSwapChainImages.size(); ++i)
     {
@@ -213,8 +226,6 @@ bool ExampleBase::onResize()
         attachments[0] = *mSwapChainVeiews[i];
         attachments[1] = *mDepthStencil.view;
 
-        auto capabilities = ctx.gpu().getSurfaceCapabilitiesKHR(*ctx.surface());
-
         vk::FramebufferCreateInfo fbCreateInfo{};
         fbCreateInfo.renderPass      = *mRenderPass;
         fbCreateInfo.attachmentCount = attachments.size();
@@ -232,6 +243,9 @@ bool ExampleBase::onResize()
 
 void ExampleBase::draw()
 {
+    if (pauseDrawing)
+        return;
+
     POLYPDEBUG(__FUNCTION__);
 
     acquireSwapChainImage();

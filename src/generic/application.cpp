@@ -14,6 +14,7 @@ const char* kPolypWindowClassName = "PolypWindowClass";
 enum class UserMessage
 {
     Resize = WM_USER + 1,
+    Resized,
     Quit,
     MouseClick,
     MouseMove,
@@ -43,10 +44,10 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
         PostMessage(hWnd, static_cast<int>(UserMessage::MouseWheel), wParam, lParam);
         break;
     case WM_SIZE:
-        PostMessage(hWnd, static_cast<int>(UserMessage::Resize), 0, 0);
+        PostMessage(hWnd, static_cast<int>(UserMessage::Resize), wParam, lParam);
         break;
     case WM_EXITSIZEMOVE:
-        PostMessage(hWnd, static_cast<int>(UserMessage::Resize), wParam, lParam);
+        PostMessage(hWnd, static_cast<int>(UserMessage::Resized), 0, 0);
         break;
     case WM_KEYDOWN:
         if (VK_ESCAPE == wParam) {
@@ -173,9 +174,22 @@ void Application::run()
             }
             case UserMessage::Resize:
             {
-                WindowResizeEventArgs args{
-                    LOWORD(message.lParam),
-                    HIWORD(message.lParam)
+                WindowResizeEventArgs args
+                {
+                    .mode   = static_cast<WindowResizeMode>(message.wParam),
+                    .width  = HIWORD(message.lParam),
+                    .height = LOWORD(message.lParam)
+                };
+                onWindowResized(args);
+                break;
+            }
+            case UserMessage::Resized:
+            {
+                WindowResizeEventArgs args
+                {
+                    .mode   = WindowResizeMode::ExitSizeMove,
+                    .width  = 0,
+                    .height = 0
                 };
                 onWindowResized(args);
                 break;
