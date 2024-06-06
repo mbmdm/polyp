@@ -34,7 +34,7 @@ function(buildSample SAMPLE_NAME)
     target_link_libraries(${SAMPLE_NAME} glfw glm vkEngine)
     target_include_directories(${SAMPLE_NAME} PRIVATE ${VULKAN_HEADERS_INCLUDE_LOCATION})
     set_target_properties(${SAMPLE_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)")
-    set_target_properties(${SAMPLE_NAME} PROPERTIES FOLDER "samples/vk")
+    set_target_properties(${SAMPLE_NAME} PROPERTIES FOLDER "samples")
 endfunction(buildSample)
 
 function(buildSamples)

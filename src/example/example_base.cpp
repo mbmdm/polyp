@@ -206,14 +206,14 @@ bool ExampleBase::onResize()
         viewCreateInfo.flags                           = {};
         viewCreateInfo.image                           = mSwapChainImages[i];
 
-        auto view = vulkan::RHIContext::get().device().createImageView(viewCreateInfo);
+        auto view = ctx.device().createImageView(viewCreateInfo);
         mSwapChainVeiews.push_back(std::move(view));
 
         std::array<vk::ImageView, 2> attachments;
         attachments[0] = *mSwapChainVeiews[i];
         attachments[1] = *mDepthStencil.view;
 
-        auto capabilities = vulkan::RHIContext::get().gpu().getSurfaceCapabilitiesKHR(*ctx.surface());
+        auto capabilities = ctx.gpu().getSurfaceCapabilitiesKHR(*ctx.surface());
 
         vk::FramebufferCreateInfo fbCreateInfo{};
         fbCreateInfo.renderPass      = *mRenderPass;

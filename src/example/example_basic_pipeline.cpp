@@ -1,11 +1,11 @@
-#include "example_2D.h"
+#include "example_basic_pipeline.h"
 
 namespace polyp {
 namespace example {
 
 using namespace polyp::vulkan;
 
-Example2D::Example2D() : ExampleBase()
+ExampleBasicPipeline::ExampleBasicPipeline() : ExampleBase()
 {
     std::vector<RHIContext::CreateInfo::Queue> queInfos{
         {1, vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eTransfer, true}
@@ -14,7 +14,29 @@ Example2D::Example2D() : ExampleBase()
     mContextInfo.device.queues = queInfos;
 }
 
-void Example2D::createTransferCmd()
+ExampleBasicPipeline::ModelsData  ExampleBasicPipeline::loadModel()
+{
+    std::vector<Vertex> vertexData = {
+        { {  0.6f,  0.6f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+        { { -0.6f,  0.6f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+        { {  0.0f, -0.6f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
+    };
+
+    std::vector<uint32_t> indexData = { 0, 1, 2 };
+
+    return std::make_tuple(std::move(vertexData), std::move(indexData));
+}
+
+ExampleBasicPipeline::UniformData  ExampleBasicPipeline::loadUniformData()
+{
+    return UniformData {
+        glm::mat4(1.0f),
+        glm::mat4(1.0f),
+        glm::mat4(1.0f)
+    };
+}
+
+void ExampleBasicPipeline::createTransferCmd()
 {
     auto& ctx    = RHIContext::get();
     auto& device = ctx.device();
@@ -43,11 +65,11 @@ void Example2D::createTransferCmd()
     POLYPDEBUG("Primary command buffer created successfully");
 }
 
-void Example2D::createBuffers()
+void ExampleBasicPipeline::createBuffers()
 {
     const uint32_t vertexBufferSize  = mVertexData.size() * sizeof(decltype(mVertexData)::value_type);
     const uint32_t indexBufferSize   = mIndexData.size()  * sizeof(decltype(mIndexData)::value_type);
-    const uint32_t uniformBufferSize = sizeof(decltype(mShaderData));
+    const uint32_t uniformBufferSize = sizeof(decltype(mUniformData));
 
     auto vertexUploadBuffer  = utils::createUploadBuffer(vertexBufferSize);
     auto indexUploadBuffer   = utils::createUploadBuffer(indexBufferSize);
@@ -55,13 +77,11 @@ void Example2D::createBuffers()
 
     vertexUploadBuffer.fill(mVertexData);
     indexUploadBuffer.fill(mIndexData);
-    uniformUploadBuffer.fill((void*)&mShaderData, uniformBufferSize);
+    uniformUploadBuffer.fill((void*)&mUniformData, uniformBufferSize);
 
     const auto vertUsage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
     const auto indUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
     const auto sdrUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer;
-
-    POLYPTODO("Add barriers");
 
     mVertexBuffer  = utils::createDeviceBuffer(vertexBufferSize, vertUsage);
     mIndexBuffer   = utils::createDeviceBuffer(indexBufferSize,  indUsage);
@@ -71,6 +91,26 @@ void Example2D::createBuffers()
     beginInfo.flags = CommandBufferUsageFlagBits::eOneTimeSubmit;
     mTransferCmd.begin(beginInfo);
 
+    vk::BufferMemoryBarrier defaultBarrier{};
+    defaultBarrier.srcAccessMask       = vk::AccessFlagBits::eNone;
+    defaultBarrier.dstAccessMask       = vk::AccessFlagBits::eTransferWrite;
+    defaultBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    defaultBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    defaultBarrier.offset              = 0;
+    defaultBarrier.size                = VK_WHOLE_SIZE;
+
+    std::array<vk::BufferMemoryBarrier, 3> barriers{};
+
+    barriers[0] = defaultBarrier;
+    barriers[1] = defaultBarrier;
+    barriers[2] = defaultBarrier;
+
+    barriers[0].buffer = *mVertexBuffer;
+    barriers[1].buffer = *mIndexBuffer;
+    barriers[2].buffer = *mUniformBuffer;
+
+    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits{}, {}, barriers, {});
+
     vk::BufferCopy copyRegion{ 0,0, vertexBufferSize };
     mTransferCmd.copyBuffer(*vertexUploadBuffer, *mVertexBuffer, { copyRegion });
 
@@ -79,6 +119,19 @@ void Example2D::createBuffers()
 
     copyRegion.size = uniformBufferSize;
     mTransferCmd.copyBuffer(*uniformUploadBuffer, *mUniformBuffer, { copyRegion });
+
+    defaultBarrier.srcAccessMask = defaultBarrier.dstAccessMask;
+    defaultBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+
+    barriers[0] = defaultBarrier;
+    barriers[1] = defaultBarrier;
+    barriers[2] = defaultBarrier;
+
+    barriers[0].buffer = *mVertexBuffer;
+    barriers[1].buffer = *mIndexBuffer;
+    barriers[2].buffer = *mUniformBuffer;
+
+    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, {}, barriers, {});
 
     mTransferCmd.end();
    
@@ -90,7 +143,7 @@ void Example2D::createBuffers()
     RHIContext::get().device().waitIdle();
 }
 
-void Example2D::createLayouts()
+void ExampleBasicPipeline::createLayouts()
 {
     auto& device = RHIContext::get().device();
     
@@ -112,7 +165,7 @@ void Example2D::createLayouts()
     mPipelineLayout = device.createPipelineLayout(pipeLayoutCreateInfo);
 }
 
-void Example2D::createDS()
+void ExampleBasicPipeline::createDS()
 {
     auto& device = RHIContext::get().device();
 
@@ -140,7 +193,7 @@ void Example2D::createDS()
 
     vk::DescriptorBufferInfo dsBufferInfo{};
     dsBufferInfo.buffer = *mUniformBuffer;
-    dsBufferInfo.range  = sizeof(ShaderData);
+    dsBufferInfo.range  = sizeof(UniformData);
 
     vk::WriteDescriptorSet writeDescriptorSet{};
 
@@ -153,7 +206,7 @@ void Example2D::createDS()
     device.updateDescriptorSets({ writeDescriptorSet }, {});
 }
 
-void Example2D::createPipeline()
+void ExampleBasicPipeline::createPipeline()
 {
     vk::GraphicsPipelineCreateInfo pipeCreateInfo;
     pipeCreateInfo.layout     = *mPipelineLayout;
@@ -236,8 +289,7 @@ void Example2D::createPipeline()
     // Shaders
     std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages{};
 
-    auto vertexShader = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
-    auto indexShader  = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
+    auto [vertexShader, indexShader] = loadShaders();
 
     shaderStages[0].stage  = vk::ShaderStageFlagBits::eVertex;
     shaderStages[0].module = *vertexShader;
@@ -262,10 +314,13 @@ void Example2D::createPipeline()
     mPipeline = RHIContext::get().device().createGraphicsPipeline(VK_NULL_HANDLE, pipeCreateInfo);
 }
 
-bool Example2D::onInit(const WindowInitializedEventArgs& args)
+bool ExampleBasicPipeline::onInit(const WindowInitializedEventArgs& args)
 {
     if (!ExampleBase::onInit(args))
         return false;
+
+    mUniformData                      = loadUniformData();
+    std::tie(mVertexData, mIndexData) = loadModel();
 
     try
     {
@@ -291,7 +346,7 @@ bool Example2D::onInit(const WindowInitializedEventArgs& args)
     return true;
 }
 
-void Example2D::draw()
+void ExampleBasicPipeline::draw()
 {
     POLYPDEBUG(__FUNCTION__);
 
@@ -302,7 +357,7 @@ void Example2D::draw()
 
     mCmdBuffer.begin(beginInfo);
 
-    triangle();
+    render();
 
     mCmdBuffer.end();
 
@@ -311,7 +366,7 @@ void Example2D::draw()
     RHIContext::get().device().waitIdle();
 }
 
-void Example2D::triangle()
+void ExampleBasicPipeline::render()
 {
     const auto& ctx = RHIContext::get();
 
@@ -360,7 +415,7 @@ void Example2D::triangle()
     VkDeviceSize offset = { 0 };
     mCmdBuffer.bindVertexBuffers(0, { *mVertexBuffer }, { offset });
     mCmdBuffer.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
-    mCmdBuffer.drawIndexed(3, 1, 0, 0, 1);
+    mCmdBuffer.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
     mCmdBuffer.endRenderPass();
 }
 

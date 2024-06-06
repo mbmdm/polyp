@@ -9,10 +9,10 @@ namespace example {
 
 using namespace polyp::vulkan;
 
-class Example2D : public ExampleBase
+class ExampleBasicPipeline : public ExampleBase
 {
 public:
-    Example2D();
+    ExampleBasicPipeline();
 
     struct Vertex
     {
@@ -20,7 +20,7 @@ public:
         float color[3];
     };
 
-    struct ShaderData
+    struct UniformData
     {
         glm::mat4 projectionMatrix;
         glm::mat4 modelMatrix;
@@ -39,21 +39,16 @@ protected:
     DescriptorSet         mDescriptorSet   = { VK_NULL_HANDLE };
     Pipeline              mPipeline        = { VK_NULL_HANDLE };
 
-    std::vector<Vertex>   mVertexData 
-    {
-        { {  1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-        { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
-        { {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
-    };
+    std::vector<Vertex>   mVertexData      = {};
+    std::vector<uint32_t> mIndexData       = {};
+    UniformData           mUniformData     = {};
 
-    std::vector<uint32_t> mIndexData{ 0, 1, 2 };
+    using ShadersData = std::tuple<ShaderModule/*vert*/, ShaderModule/*frag*/>;
+    using ModelsData  = std::tuple<std::vector<Vertex>/*vertices*/, std::vector<uint32_t>/*indexes*/>;
 
-    ShaderData            mShaderData
-    {
-        glm::mat4(1.0f),
-        glm::mat4(1.0f),
-        glm::mat4(1.0f)
-    };
+    virtual ShadersData loadShaders() = 0;
+    virtual ModelsData  loadModel();
+    virtual UniformData loadUniformData();
 
 private:
     void createTransferCmd();
@@ -61,7 +56,8 @@ private:
     void createLayouts();
     void createDS();
     void createPipeline();
-    void triangle();
+
+    void render();
 
 public:
     bool onInit(const WindowInitializedEventArgs& args) override;

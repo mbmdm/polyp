@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.20)
 
 set(sources
             ${CMAKE_CURRENT_SOURCE_DIR}/generic/application.cpp
@@ -6,7 +6,7 @@ set(sources
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/example/example_base.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/example/example_2D.cpp)
+            ${CMAKE_CURRENT_SOURCE_DIR}/example/example_basic_pipeline.cpp)
 
 set(includes
              ${CMAKE_CURRENT_SOURCE_DIR}
