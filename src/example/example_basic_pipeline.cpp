@@ -83,8 +83,6 @@ void ExampleBasicPipeline::createBuffers()
     const auto indUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
     const auto sdrUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer;
 
-    POLYPTODO("Add barriers");
-
     mVertexBuffer  = utils::createDeviceBuffer(vertexBufferSize, vertUsage);
     mIndexBuffer   = utils::createDeviceBuffer(indexBufferSize,  indUsage);
     mUniformBuffer = utils::createDeviceBuffer(uniformBufferSize, sdrUsage);
@@ -92,6 +90,26 @@ void ExampleBasicPipeline::createBuffers()
     vk::CommandBufferBeginInfo beginInfo{};
     beginInfo.flags = CommandBufferUsageFlagBits::eOneTimeSubmit;
     mTransferCmd.begin(beginInfo);
+
+    vk::BufferMemoryBarrier defaultBarrier{};
+    defaultBarrier.srcAccessMask       = vk::AccessFlagBits::eNone;
+    defaultBarrier.dstAccessMask       = vk::AccessFlagBits::eTransferWrite;
+    defaultBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    defaultBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    defaultBarrier.offset              = 0;
+    defaultBarrier.size                = VK_WHOLE_SIZE;
+
+    std::array<vk::BufferMemoryBarrier, 3> barriers{};
+
+    barriers[0] = defaultBarrier;
+    barriers[1] = defaultBarrier;
+    barriers[2] = defaultBarrier;
+
+    barriers[0].buffer = *mVertexBuffer;
+    barriers[1].buffer = *mIndexBuffer;
+    barriers[2].buffer = *mUniformBuffer;
+
+    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits{}, {}, barriers, {});
 
     vk::BufferCopy copyRegion{ 0,0, vertexBufferSize };
     mTransferCmd.copyBuffer(*vertexUploadBuffer, *mVertexBuffer, { copyRegion });
@@ -101,6 +119,19 @@ void ExampleBasicPipeline::createBuffers()
 
     copyRegion.size = uniformBufferSize;
     mTransferCmd.copyBuffer(*uniformUploadBuffer, *mUniformBuffer, { copyRegion });
+
+    defaultBarrier.srcAccessMask = defaultBarrier.dstAccessMask;
+    defaultBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+    barriers[0] = defaultBarrier;
+    barriers[1] = defaultBarrier;
+    barriers[2] = defaultBarrier;
+
+    barriers[0].buffer = *mVertexBuffer;
+    barriers[1].buffer = *mIndexBuffer;
+    barriers[2].buffer = *mUniformBuffer;
+
+    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, {}, barriers, {});
 
     mTransferCmd.end();
    
