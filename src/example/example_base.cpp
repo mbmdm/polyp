@@ -169,13 +169,13 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
 bool ExampleBase::onResize(const WindowResizeEventArgs& args)
 {
     if (args.mode == WindowResizeMode::Minimized) {
-        pauseDrawing = true;
+        mPauseDrawing = true;
         return true;
     }
 
     POLYPDEBUG(__FUNCTION__);
     
-    pauseDrawing = false;
+    mPauseDrawing = false;
 
     auto& ctx = vulkan::RHIContext::get();
 
@@ -243,7 +243,7 @@ bool ExampleBase::onResize(const WindowResizeEventArgs& args)
 
 void ExampleBase::draw()
 {
-    if (pauseDrawing)
+    if (mPauseDrawing)
         return;
 
     POLYPDEBUG(__FUNCTION__);

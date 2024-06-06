@@ -348,7 +348,7 @@ bool ExampleBasicPipeline::onInit(const WindowInitializedEventArgs& args)
 
 void ExampleBasicPipeline::draw()
 {
-    if (pauseDrawing)
+    if (mPauseDrawing)
         return;
 
     POLYPDEBUG(__FUNCTION__);

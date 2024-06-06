@@ -31,7 +31,7 @@ protected:
                                                     
     vulkan::RHIContext::CreateInfo mContextInfo     = {};
 
-    bool pauseDrawing                               = false;
+    bool mPauseDrawing                              = false;
 
     struct {
         vulkan::Image    image = VK_NULL_HANDLE;
