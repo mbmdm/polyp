@@ -121,7 +121,7 @@ void ExampleBasicPipeline::createBuffers()
     mTransferCmd.copyBuffer(*uniformUploadBuffer, *mUniformBuffer, { copyRegion });
 
     defaultBarrier.srcAccessMask = defaultBarrier.dstAccessMask;
-    defaultBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+    defaultBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
 
     barriers[0] = defaultBarrier;
     barriers[1] = defaultBarrier;
