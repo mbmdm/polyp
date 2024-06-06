@@ -41,19 +41,14 @@ protected:
 
     std::vector<Vertex>   mVertexData      = {};
     std::vector<uint32_t> mIndexData       = {};
-
-    UniformData           mUniformData
-    {
-        glm::mat4(1.0f),
-        glm::mat4(1.0f),
-        glm::mat4(1.0f)
-    };
+    UniformData           mUniformData     = {};
 
     using ShadersData = std::tuple<ShaderModule/*vert*/, ShaderModule/*frag*/>;
     using ModelsData  = std::tuple<std::vector<Vertex>/*vertices*/, std::vector<uint32_t>/*indexes*/>;
 
     virtual ShadersData loadShaders() = 0;
     virtual ModelsData  loadModel();
+    virtual UniformData loadUniformData();
 
 private:
     void createTransferCmd();
@@ -61,6 +56,7 @@ private:
     void createLayouts();
     void createDS();
     void createPipeline();
+
     void render();
 
 public:

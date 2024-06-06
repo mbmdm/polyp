@@ -27,6 +27,15 @@ ExampleBasicPipeline::ModelsData  ExampleBasicPipeline::loadModel()
     return std::make_tuple(std::move(vertexData), std::move(indexData));
 }
 
+ExampleBasicPipeline::UniformData  ExampleBasicPipeline::loadUniformData()
+{
+    return UniformData {
+        glm::mat4(1.0f),
+        glm::mat4(1.0f),
+        glm::mat4(1.0f)
+    };
+}
+
 void ExampleBasicPipeline::createTransferCmd()
 {
     auto& ctx    = RHIContext::get();
@@ -279,6 +288,7 @@ bool ExampleBasicPipeline::onInit(const WindowInitializedEventArgs& args)
     if (!ExampleBase::onInit(args))
         return false;
 
+    mUniformData                      = loadUniformData();
     std::tie(mVertexData, mIndexData) = loadModel();
 
     try
