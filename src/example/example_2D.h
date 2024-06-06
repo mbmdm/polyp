@@ -41,9 +41,9 @@ protected:
 
     std::vector<Vertex>   mVertexData 
     {
-        { {  1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-        { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
-        { {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
+        { {  0.6f,  0.6f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+        { { -0.6f,  0.6f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+        { {  0.0f, -0.6f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
     };
 
     std::vector<uint32_t> mIndexData{ 0, 1, 2 };
@@ -55,13 +55,15 @@ protected:
         glm::mat4(1.0f)
     };
 
+    virtual std::tuple<ShaderModule/*vert*/, ShaderModule/*frag*/> loadShaders() = 0;
+
 private:
     void createTransferCmd();
     void createBuffers();
     void createLayouts();
     void createDS();
     void createPipeline();
-    void triangle();
+    void render();
 
 public:
     bool onInit(const WindowInitializedEventArgs& args) override;

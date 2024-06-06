@@ -236,8 +236,7 @@ void Example2D::createPipeline()
     // Shaders
     std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages{};
 
-    auto vertexShader = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
-    auto indexShader  = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
+    auto [vertexShader, indexShader] = loadShaders();
 
     shaderStages[0].stage  = vk::ShaderStageFlagBits::eVertex;
     shaderStages[0].module = *vertexShader;
@@ -302,7 +301,7 @@ void Example2D::draw()
 
     mCmdBuffer.begin(beginInfo);
 
-    triangle();
+    render();
 
     mCmdBuffer.end();
 
@@ -311,7 +310,7 @@ void Example2D::draw()
     RHIContext::get().device().waitIdle();
 }
 
-void Example2D::triangle()
+void Example2D::render()
 {
     const auto& ctx = RHIContext::get();
 

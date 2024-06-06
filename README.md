@@ -1,6 +1,6 @@
 # Vulkan C++ samples
 
-This repository contains a collection of Vulkan samples, and maybe a simple rendering engine in the future, if I don't lose my motivation.
+This repository contains a collection of Vulkan samples, and maybe a simple rendering engine in the future, if I don't lose my motivation :smile:.
 
 ## Buil Windows
 
