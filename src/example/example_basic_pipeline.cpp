@@ -348,6 +348,9 @@ bool ExampleBasicPipeline::onInit(const WindowInitializedEventArgs& args)
 
 void ExampleBasicPipeline::draw()
 {
+    if (mPauseDrawing)
+        return;
+
     POLYPDEBUG(__FUNCTION__);
 
     acquireSwapChainImage();

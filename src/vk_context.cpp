@@ -222,6 +222,8 @@ void RHIContext::init(const CreateInfo::SwapChain& info)
 
     PresentModeKHR reqPresentMode = PresentModeKHR::eMailbox;
 
+    auto capabilities = mGPU.getSurfaceCapabilitiesKHR(*mSurface);
+
     SwapchainCreateInfoKHR createInfo{};
     createInfo.surface          = *mSurface;
     createInfo.minImageCount    = info.count;
@@ -229,7 +231,7 @@ void RHIContext::init(const CreateInfo::SwapChain& info)
     createInfo.imageColorSpace  = ColorSpaceKHR::eSrgbNonlinear;
     createInfo.presentMode      = reqPresentMode;
     createInfo.imageUsage       = ImageUsageFlagBits::eColorAttachment;
-    createInfo.imageExtent      = mGPU.getSurfaceCapabilitiesKHR(*mSurface).currentExtent;
+    createInfo.imageExtent      = capabilities.currentExtent;
     createInfo.imageArrayLayers = 1; // single layer, no stereoscopic-3D
     createInfo.imageSharingMode = SharingMode::eExclusive; // image is owned by one queue family at a time
     createInfo.preTransform     = SurfaceTransformFlagBitsKHR::eIdentity;

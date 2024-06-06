@@ -56,7 +56,6 @@ private:
     void createLayouts();
     void createDS();
     void createPipeline();
-
     void render();
 
 public:

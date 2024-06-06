@@ -20,6 +20,16 @@ enum class MouseActioin
     Release
 };
 
+enum class WindowResizeMode
+{
+    Restored = 0,
+    Minimized,
+    Maxshow,
+    Maximized,
+    Maxide,
+    ExitSizeMove = 100
+};
+
 struct WindowInitializedEventArgs
 {
     HWND        windowHandle = NULL;
@@ -28,8 +38,9 @@ struct WindowInitializedEventArgs
 
 struct WindowResizeEventArgs
 {
-    uint32_t width;
-    uint32_t height;
+    WindowResizeMode  mode;
+    uint32_t         width;
+    uint32_t        height;
 };
 
 struct MouseClickEventArgs
