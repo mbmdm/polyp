@@ -50,7 +50,7 @@ protected:
     };
 
     using ShadersData = std::tuple<ShaderModule/*vert*/, ShaderModule/*frag*/>;
-    using ModelsData  = std::tuple<std::vector<Vertex>/*vertexes*/, std::vector<uint32_t>/*indexes*/>;
+    using ModelsData  = std::tuple<std::vector<Vertex>/*vertices*/, std::vector<uint32_t>/*indexes*/>;
 
     virtual ShadersData loadShaders() = 0;
     virtual ModelsData  loadModel();
