@@ -14,6 +14,19 @@ ExampleBasicPipeline::ExampleBasicPipeline() : ExampleBase()
     mContextInfo.device.queues = queInfos;
 }
 
+ExampleBasicPipeline::ModelsData  ExampleBasicPipeline::loadModel()
+{
+    std::vector<Vertex> vertexData = {
+        { {  0.6f,  0.6f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+        { { -0.6f,  0.6f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+        { {  0.0f, -0.6f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
+    };
+
+    std::vector<uint32_t> indexData = { 0, 1, 2 };
+
+    return std::make_tuple(std::move(vertexData), std::move(indexData));
+}
+
 void ExampleBasicPipeline::createTransferCmd()
 {
     auto& ctx    = RHIContext::get();
@@ -47,7 +60,7 @@ void ExampleBasicPipeline::createBuffers()
 {
     const uint32_t vertexBufferSize  = mVertexData.size() * sizeof(decltype(mVertexData)::value_type);
     const uint32_t indexBufferSize   = mIndexData.size()  * sizeof(decltype(mIndexData)::value_type);
-    const uint32_t uniformBufferSize = sizeof(decltype(mShaderData));
+    const uint32_t uniformBufferSize = sizeof(decltype(mUniformData));
 
     auto vertexUploadBuffer  = utils::createUploadBuffer(vertexBufferSize);
     auto indexUploadBuffer   = utils::createUploadBuffer(indexBufferSize);
@@ -55,7 +68,7 @@ void ExampleBasicPipeline::createBuffers()
 
     vertexUploadBuffer.fill(mVertexData);
     indexUploadBuffer.fill(mIndexData);
-    uniformUploadBuffer.fill((void*)&mShaderData, uniformBufferSize);
+    uniformUploadBuffer.fill((void*)&mUniformData, uniformBufferSize);
 
     const auto vertUsage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
     const auto indUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
@@ -140,7 +153,7 @@ void ExampleBasicPipeline::createDS()
 
     vk::DescriptorBufferInfo dsBufferInfo{};
     dsBufferInfo.buffer = *mUniformBuffer;
-    dsBufferInfo.range  = sizeof(ShaderData);
+    dsBufferInfo.range  = sizeof(UniformData);
 
     vk::WriteDescriptorSet writeDescriptorSet{};
 
@@ -265,6 +278,8 @@ bool ExampleBasicPipeline::onInit(const WindowInitializedEventArgs& args)
 {
     if (!ExampleBase::onInit(args))
         return false;
+
+    std::tie(mVertexData, mIndexData) = loadModel();
 
     try
     {

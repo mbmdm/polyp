@@ -7,7 +7,7 @@ using ShaderModule = polyp::vulkan::ShaderModule;
 class SimpleTriangle : public example::ExampleBasicPipeline
 {
 protected:
-    std::tuple<ShaderModule/*vert*/, ShaderModule/*frag*/> loadShaders() override
+    ShadersData loadShaders() override
     {
         auto vert  = vulkan::utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
         auto index = vulkan::utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");

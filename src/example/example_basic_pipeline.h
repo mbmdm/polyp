@@ -20,7 +20,7 @@ public:
         float color[3];
     };
 
-    struct ShaderData
+    struct UniformData
     {
         glm::mat4 projectionMatrix;
         glm::mat4 modelMatrix;
@@ -39,23 +39,21 @@ protected:
     DescriptorSet         mDescriptorSet   = { VK_NULL_HANDLE };
     Pipeline              mPipeline        = { VK_NULL_HANDLE };
 
-    std::vector<Vertex>   mVertexData 
-    {
-        { {  0.6f,  0.6f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-        { { -0.6f,  0.6f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
-        { {  0.0f, -0.6f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
-    };
+    std::vector<Vertex>   mVertexData      = {};
+    std::vector<uint32_t> mIndexData       = {};
 
-    std::vector<uint32_t> mIndexData{ 0, 1, 2 };
-
-    ShaderData            mShaderData
+    UniformData           mUniformData
     {
         glm::mat4(1.0f),
         glm::mat4(1.0f),
         glm::mat4(1.0f)
     };
 
-    virtual std::tuple<ShaderModule/*vert*/, ShaderModule/*frag*/> loadShaders() = 0;
+    using ShadersData = std::tuple<ShaderModule/*vert*/, ShaderModule/*frag*/>;
+    using ModelsData  = std::tuple<std::vector<Vertex>/*vertexes*/, std::vector<uint32_t>/*indexes*/>;
+
+    virtual ShadersData loadShaders() = 0;
+    virtual ModelsData  loadModel();
 
 private:
     void createTransferCmd();
