@@ -18,7 +18,8 @@ enum class UserMessage
     Quit,
     MouseClick,
     MouseMove,
-    MouseWheel
+    MouseWheel,
+    KeyDown
 };
 
 LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -50,6 +51,7 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
         PostMessage(hWnd, static_cast<int>(UserMessage::Resized), 0, 0);
         break;
     case WM_KEYDOWN:
+        PostMessage(hWnd, static_cast<int>(UserMessage::KeyDown), wParam, lParam);
         if (VK_ESCAPE == wParam) {
             PostMessage(hWnd, static_cast<int>(UserMessage::Quit), 0, 0);
         }
@@ -195,15 +197,35 @@ void Application::run()
                 break;
             }
             case UserMessage::Quit:
+            {
                 stopRenderLoop = true;
                 break;
+            }
+            case UserMessage::KeyDown:
+            {
+                if (message.wParam >> 8 > 0)
+                    break;
+
+                char key = static_cast<char>(message.wParam);
+
+                if (!isalnum(key))
+                    break;
+
+                KeyPressEventArgs args
+                {
+                    .key = key
+                };
+
+                onKeyPress(args);
+            }
+
             }
             TranslateMessage(&message);
             DispatchMessage(&message);
         }
         else
         {
-            onFrameRender();
+            onNextFrame();
         }
     }
 

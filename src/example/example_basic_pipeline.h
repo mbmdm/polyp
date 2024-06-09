@@ -1,13 +1,12 @@
-#ifndef EXAMPLE2D_H
-#define EXAMPLE2D_H
+#ifndef EXAMPLEBASICPIPELINE_H
+#define EXAMPLEBASICPIPELINE_H
 
 #include "example_base.h"
 #include "vk_utils.h"
 
 namespace polyp {
+namespace vulkan {
 namespace example {
-
-using namespace polyp::vulkan;
 
 class ExampleBasicPipeline : public ExampleBase
 {
@@ -60,10 +59,11 @@ private:
 
 public:
     bool onInit(const WindowInitializedEventArgs& args) override;
-    void draw() override;
+    void onNextFrame() override;
 };
 
 } // example
+} // vulkan
 } // polyp
 
-#endif // EXAMPLE2D_H
+#endif // EXAMPLEBASICPIPELINE_H

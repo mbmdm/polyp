@@ -1,12 +1,9 @@
 #include "example_base.h"
 #include "vk_utils.h"
 
-using polyp::vulkan::RHIContext;
-
 namespace polyp {
+namespace vulkan {
 namespace example {
-
-using namespace polyp::vulkan;
 
 ExampleBase::ExampleBase()
 {
@@ -31,7 +28,7 @@ void ExampleBase::acquireSwapChainImage()
     if (res !=  vk::Result::eSuccess ) {
         POLYPFATAL("Failed to get Swapchain images");
     }
-    res = vulkan::RHIContext::get().device().waitForFences(*mAqImageFence, VK_TRUE, constants::kFenceTimeout);
+    res = RHIContext::get().device().waitForFences(*mAqImageFence, VK_TRUE, constants::kFenceTimeout);
     if (res != vk::Result::eSuccess) {
         POLYPFATAL("Failed get nex swapchain image with result %s", vk::to_string(res).c_str());
     }
@@ -39,7 +36,7 @@ void ExampleBase::acquireSwapChainImage()
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
 
-    vulkan::RHIContext::get().device().resetFences(*mAqImageFence);
+    RHIContext::get().device().resetFences(*mAqImageFence);
 
     mCurrSwImIndex = imIdx;
 }
@@ -65,7 +62,7 @@ void ExampleBase::present()
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Present failed with result %s", vk::to_string(res).c_str());
 
-    res = vulkan::RHIContext::get().device().waitForFences(*mSubmitFence, VK_TRUE, constants::kFenceTimeout);
+    res = RHIContext::get().device().waitForFences(*mSubmitFence, VK_TRUE, constants::kFenceTimeout);
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
 
@@ -73,7 +70,7 @@ void ExampleBase::present()
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
 
-    vulkan::RHIContext::get().device().resetFences(*mSubmitFence);
+    RHIContext::get().device().resetFences(*mSubmitFence);
 }
 
 bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
@@ -83,7 +80,7 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
     mContextInfo.win.instance = args.windowInstance;
     mContextInfo.win.handle   = args.windowHandle;
 
-    auto& ctx = vulkan::RHIContext::get();
+    auto& ctx = RHIContext::get();
 
     ctx.init(mContextInfo);
 
@@ -177,7 +174,7 @@ bool ExampleBase::onResize(const WindowResizeEventArgs& args)
     
     mPauseDrawing = false;
 
-    auto& ctx = vulkan::RHIContext::get();
+    auto& ctx = RHIContext::get();
 
     const auto& device    = ctx.device();
     const auto& gpu       = ctx.gpu();
@@ -241,7 +238,7 @@ bool ExampleBase::onResize(const WindowResizeEventArgs& args)
     return true;
 }
 
-void ExampleBase::draw()
+void ExampleBase::onNextFrame()
 {
     if (mPauseDrawing)
         return;
@@ -288,8 +285,9 @@ void ExampleBase::draw()
 void ExampleBase::onShoutDown()
 {
     POLYPDEBUG(__FUNCTION__);
-    vulkan::RHIContext::get().device().waitIdle();
+    RHIContext::get().device().waitIdle();
 }
 
 } // example
+} // vulkan
 } // polyp

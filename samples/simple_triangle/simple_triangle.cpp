@@ -1,16 +1,15 @@
 #include <example_basic_pipeline.h>
 
 using namespace polyp;
-
-using ShaderModule = polyp::vulkan::ShaderModule;
+using namespace polyp::vulkan;
 
 class SimpleTriangle : public example::ExampleBasicPipeline
 {
 protected:
     ShadersData loadShaders() override
     {
-        auto vert  = vulkan::utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
-        auto index = vulkan::utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
+        auto vert  = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
+        auto index = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
         
         return std::make_tuple(std::move(vert), std::move(index));
     }
@@ -23,9 +22,9 @@ int main()
 
     SimpleTriangle sample{};
 
-    Application::get().onWindowInitialized += [&sample](const auto& args) {sample.onInit(args); };
-    Application::get().onWindowResized     += [&sample](const auto& args) {sample.onResize(args); };
-    Application::get().onFrameRender       += [&sample]() {sample.draw(); };
+    Application::get().onWindowInitialized += [&sample](const auto& args) { sample.onInit(args); };
+    Application::get().onWindowResized     += [&sample](const auto& args) { sample.onResize(args); };
+    Application::get().onNextFrame         += [&sample]()                 { sample.onNextFrame(); };
 
     Application::get().init(title.c_str(), 1024, 600);
     Application::get().run();

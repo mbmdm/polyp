@@ -1,9 +1,8 @@
 #include "example_basic_pipeline.h"
 
 namespace polyp {
+namespace vulkan {
 namespace example {
-
-using namespace polyp::vulkan;
 
 ExampleBasicPipeline::ExampleBasicPipeline() : ExampleBase()
 {
@@ -346,7 +345,7 @@ bool ExampleBasicPipeline::onInit(const WindowInitializedEventArgs& args)
     return true;
 }
 
-void ExampleBasicPipeline::draw()
+void ExampleBasicPipeline::onNextFrame()
 {
     if (mPauseDrawing)
         return;
@@ -399,7 +398,13 @@ void ExampleBasicPipeline::render()
     viewport.width    = (float)width;
     viewport.minDepth = (float)0.0f;
     viewport.maxDepth = (float)1.0f;
-    
+
+    // View port transformation flipping (like in OpenGL)
+    //viewport.height = -(float)height;
+    //viewport.width  = (float)width;
+    //viewport.x      = 0;
+    //viewport.y      = height;
+
     std::vector<vk::Viewport> viewpors{ viewport };
     mCmdBuffer.setViewport(0, viewpors);
     
@@ -423,4 +428,5 @@ void ExampleBasicPipeline::render()
 }
 
 } // example
+} // vulkan
 } // polyp

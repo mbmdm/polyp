@@ -60,6 +60,11 @@ struct MouseWheelEventArgs : public MouseMoveEventArgs
     float delta;
 };
 
+struct KeyPressEventArgs
+{
+    char key; // returned in uppercase (for example, pressing the 'd' key will produce the 'D' character)
+};
+
 class Application final
 {
 public:
@@ -68,7 +73,8 @@ public:
     Event<void(const MouseClickEventArgs&)>        onMouseClick;
     Event<void(const MouseMoveEventArgs&)>         onMouseMove;
     Event<void(const MouseWheelEventArgs&)>        onMouseWheel;
-    Event<void()>                                  onFrameRender;
+    Event<void(const KeyPressEventArgs&)>          onKeyPress;
+    Event<void()>                                  onNextFrame;
     Event<void()>                                  onShutdown;
 
     static Application& get()

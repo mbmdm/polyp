@@ -1,16 +1,15 @@
 #include <example_basic_pipeline.h>
 
 using namespace polyp;
-
-using ShaderModule = polyp::vulkan::ShaderModule;
+using namespace polyp::vulkan;
 
 class SimpleBox : public example::ExampleBasicPipeline
 {
 protected:
     ShadersData loadShaders() override
     {
-        auto vert  = vulkan::utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
-        auto index = vulkan::utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
+        auto vert  = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
+        auto index = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
         
         return std::make_tuple(std::move(vert), std::move(index));
     }
@@ -98,8 +97,10 @@ protected:
         auto width  = capabilities.currentExtent.width;
         auto height = capabilities.currentExtent.height;
 
-        model      = glm::rotate(model, glm::radians(-30.0f), glm::vec3(1.0f, 1.0f, 0.0f));
-        view       = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+        view = glm::lookAt(glm::vec3(1.0f, 3.0f, 3.0f),
+                           glm::vec3(0.0f, 0.0f, 0.0f),
+                           glm::vec3(0.0f, 1.0f, 0.0f));
+
         projection = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 100.0f);
 
         return UniformData{ projection, model, view };
@@ -113,9 +114,9 @@ int main()
 
     SimpleBox sample{};
 
-    Application::get().onWindowInitialized += [&sample](const auto& args) {sample.onInit(args); };
-    Application::get().onWindowResized     += [&sample](const auto& args) {sample.onResize(args);};
-    Application::get().onFrameRender       += [&sample]() {sample.draw(); };
+    Application::get().onWindowInitialized += [&sample](const auto& args) { sample.onInit(args); };
+    Application::get().onWindowResized     += [&sample](const auto& args) { sample.onResize(args);};
+    Application::get().onNextFrame         += [&sample]()                 { sample.onNextFrame(); };
 
     Application::get().init(title.c_str(), 1024, 600);
     Application::get().run();
