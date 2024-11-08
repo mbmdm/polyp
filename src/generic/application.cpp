@@ -5,6 +5,8 @@
 #include <winuser.h>
 #endif
 
+#include <unordered_map>
+
 namespace {
 
 using namespace polyp;
@@ -24,6 +26,8 @@ enum class UserMessage
 
 LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    static std::unordered_map<WPARAM, LPARAM> pressedKeys;
+
     switch (message)
     {
     case WM_LBUTTONDOWN:
@@ -51,10 +55,16 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
         PostMessage(hWnd, static_cast<int>(UserMessage::Resized), 0, 0);
         break;
     case WM_KEYDOWN:
-        PostMessage(hWnd, static_cast<int>(UserMessage::KeyDown), wParam, lParam);
+        pressedKeys[wParam] = lParam;
+        for (const auto& item : pressedKeys)
+            PostMessage(hWnd, static_cast<int>(UserMessage::KeyDown), item.first, item.second);
         if (VK_ESCAPE == wParam) {
+            pressedKeys.clear();
             PostMessage(hWnd, static_cast<int>(UserMessage::Quit), 0, 0);
         }
+        break;
+    case WM_KEYUP:
+        pressedKeys.erase(wParam);
         break;
     case WM_CLOSE:
         PostMessage(hWnd, static_cast<int>(UserMessage::Quit), 0, 0);
@@ -203,7 +213,7 @@ void Application::run()
             }
             case UserMessage::KeyDown:
             {
-                if (message.wParam >> 8 > 0)
+                if ((message.wParam >> 8) > 0)
                     break;
 
                 char key = static_cast<char>(message.wParam);
@@ -225,7 +235,8 @@ void Application::run()
         }
         else
         {
-            onNextFrame();
+            // no messages to handle, process rendering commands
+            onRender();
         }
     }
 

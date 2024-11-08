@@ -1,148 +1,225 @@
-#include "example_basic_pipeline.h"
+#include "example_a.h"
 
 namespace polyp {
 namespace vulkan {
 namespace example {
 
-ExampleBasicPipeline::ExampleBasicPipeline() : ExampleBase()
+bool ExampleA::postInit()
 {
-    std::vector<RHIContext::CreateInfo::Queue> queInfos{
+    mCmdBuffer = utils::createCommandBuffer(mCmdPool, vk::CommandBufferLevel::ePrimary);
+    if (*mCmdBuffer == VK_NULL_HANDLE) {
+        return false;
+    }
+
+    mSubmitFence = std::move(utils::createFence(true));
+    if (*mSubmitFence == VK_NULL_HANDLE) {
+        return false;
+    }
+
+    mTransferCmd = utils::createCommandBuffer(mCmdPool, vk::CommandBufferLevel::ePrimary);
+    if (*mTransferCmd == VK_NULL_HANDLE) {
+        return false;
+    }
+
+    POLYPDEBUG("Primary command buffers created successfully");
+
+    std::tie(mVertexData, mIndexData) = loadModel();
+
+    try
+    {
+        createBuffers();
+        createLayouts();
+        createDS();
+        createPipeline();
+    }
+    catch (const SystemError& err)
+    {
+        POLYPFATAL("Exception %d (%s), message %s", err.code().value(), err.code().message().c_str(), err.what());
+        return false;
+    }
+    catch (...)
+    {
+        POLYPFATAL("Internal fatal error during initialization.");
+        return false;
+    }
+
+    POLYPDEBUG("Initialization finished");
+
+    return true;
+}
+
+bool ExampleA::postResize()
+{
+    const auto& gpu     = RHIContext::get().gpu();
+    const auto& surface = RHIContext::get().surface();
+    const auto& device  = RHIContext::get().device();
+
+    auto [image, view]  = utils::createDepthStencil();
+    if (*image == VK_NULL_HANDLE  || *view == VK_NULL_HANDLE)
+    {
+        POLYPERROR("Internal error: failed to create depth resources.");
+        return false;
+    }
+
+    mDepthStencil.image = std::move(image);
+    mDepthStencil.view  = std::move(view);
+
+    mRenderPass = utils::createRenderPass();
+    if (*mRenderPass == VK_NULL_HANDLE)
+    {
+        POLYPERROR("Internal error: failed to create render pass.");
+        return false;
+    }
+
+    auto capabilities = gpu.getSurfaceCapabilitiesKHR(*surface);
+
+    if (mSwapChainVeiews.empty())
+    {
+        POLYPERROR("Internal error: there are no swapchain imave view.");
+        return false;
+    }
+
+    mFrameBuffers.clear();
+
+    for (auto i = 0; i < mSwapChainVeiews.size(); ++i)
+    {
+        std::array<vk::ImageView, 2> attachments;
+        attachments[0] = *mSwapChainVeiews[i];
+        attachments[1] = *mDepthStencil.view;
+
+        vk::FramebufferCreateInfo fbCreateInfo{};
+        fbCreateInfo.renderPass      = *mRenderPass;
+        fbCreateInfo.attachmentCount = attachments.size();
+        fbCreateInfo.pAttachments    = attachments.data();
+        fbCreateInfo.width           = capabilities.currentExtent.width;
+        fbCreateInfo.height          = capabilities.currentExtent.height;
+        fbCreateInfo.layers          = 1;
+
+        auto fb = device.createFramebuffer(fbCreateInfo);
+        if (*fb == VK_NULL_HANDLE)
+        {
+            POLYPERROR("Internal error: failed to create frame buffer.");
+            return false;
+        }
+
+        mFrameBuffers.push_back(std::move(fb));
+    }
+
+    return true;
+}
+
+ExampleBase::SubmitInfo ExampleA::getSubmitCmd() //rendering here ???
+{
+    waitForFence();
+
+    updateUniformBuffer();
+
+    prepareDrawCommands();
+
+    return SubmitInfo{ *mSubmitFence,{*mCmdBuffer} };
+}
+
+RHIContext::CreateInfo ExampleA::getRHICreateInfo()
+{
+    auto info = utils::getCreateInfo<RHIContext::CreateInfo>();
+
+    std::vector<RHIContext::CreateInfo::Queue> queInfos {
         {1, vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eTransfer, true}
     };
 
-    mContextInfo.device.queues = queInfos;
+    info.device.queues = queInfos;
+
+    return info;
 }
 
-ExampleBasicPipeline::ModelsData  ExampleBasicPipeline::loadModel()
+void ExampleA::createBuffers()
 {
-    std::vector<Vertex> vertexData = {
-        { {  0.6f,  0.6f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-        { { -0.6f,  0.6f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
-        { {  0.0f, -0.6f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
-    };
+    auto mvpData = getMVP();
 
-    std::vector<uint32_t> indexData = { 0, 1, 2 };
-
-    return std::make_tuple(std::move(vertexData), std::move(indexData));
-}
-
-ExampleBasicPipeline::UniformData  ExampleBasicPipeline::loadUniformData()
-{
-    return UniformData {
-        glm::mat4(1.0f),
-        glm::mat4(1.0f),
-        glm::mat4(1.0f)
-    };
-}
-
-void ExampleBasicPipeline::createTransferCmd()
-{
-    auto& ctx    = RHIContext::get();
-    auto& device = ctx.device();
-
-    auto familyIdx = ctx.queueFamily(mContextInfo.device.queues[0].flags);
-
-    vk::CommandPoolCreateInfo cmdPoolCreateInfo{};
-    cmdPoolCreateInfo.queueFamilyIndex = familyIdx;
-    cmdPoolCreateInfo.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-    mTransferCmdPool = ctx.device().createCommandPool(cmdPoolCreateInfo);
-    if (*mTransferCmdPool == VK_NULL_HANDLE) {
-        POLYPFATAL("Failed to create command pool");
-    }
-    
-    vk::CommandBufferAllocateInfo allocInfo{};
-    allocInfo.commandPool        = *mCmdPool;
-    allocInfo.level              = vk::CommandBufferLevel::ePrimary;
-    allocInfo.commandBufferCount = 1;
-    
-    auto cmds = device.allocateCommandBuffers(allocInfo);
-    if (cmds.empty() && *cmds[0] != VK_NULL_HANDLE) {
-        POLYPFATAL("Failed to allocate command buffers.");
-    }
-    
-    mTransferCmd = std::move(cmds[0]);
-    POLYPDEBUG("Primary command buffer created successfully");
-}
-
-void ExampleBasicPipeline::createBuffers()
-{
-    const uint32_t vertexBufferSize  = mVertexData.size() * sizeof(decltype(mVertexData)::value_type);
-    const uint32_t indexBufferSize   = mIndexData.size()  * sizeof(decltype(mIndexData)::value_type);
-    const uint32_t uniformBufferSize = sizeof(decltype(mUniformData));
-
-    auto vertexUploadBuffer  = utils::createUploadBuffer(vertexBufferSize);
-    auto indexUploadBuffer   = utils::createUploadBuffer(indexBufferSize);
-    auto uniformUploadBuffer = utils::createUploadBuffer(uniformBufferSize);
-
-    vertexUploadBuffer.fill(mVertexData);
-    indexUploadBuffer.fill(mIndexData);
-    uniformUploadBuffer.fill((void*)&mUniformData, uniformBufferSize);
+    const VkDeviceSize vertexBufferSize  = mVertexData.size() * sizeof(decltype(mVertexData)::value_type);
+    const VkDeviceSize indexBufferSize   = mIndexData.size()  * sizeof(decltype(mIndexData)::value_type);
+    const VkDeviceSize uniformBufferSize = sizeof(mvpData);
 
     const auto vertUsage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
     const auto indUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
-    const auto sdrUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer;
+    const auto uplUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer;
+
+    VkMemoryPropertyFlags uniformMemFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+    auto vertexUploadBuffer  = utils::createUploadBuffer(vertexBufferSize);
+    auto indexUploadBuffer   = utils::createUploadBuffer(indexBufferSize);
+    auto uniformUploadBuffer = utils::createUploadBuffer(uniformBufferSize, uplUsage, uniformMemFlags);
+
+    if (*vertexUploadBuffer  == VK_NULL_HANDLE ||
+        *indexUploadBuffer   == VK_NULL_HANDLE ||
+        *uniformUploadBuffer == VK_NULL_HANDLE)
+    {
+        throw std::runtime_error("Failed to create upload buffers.");
+    }
+
+    vertexUploadBuffer.fill(mVertexData);
+    indexUploadBuffer.fill(mIndexData);
+    uniformUploadBuffer.fill((void*)&mvpData, uniformBufferSize);
 
     mVertexBuffer  = utils::createDeviceBuffer(vertexBufferSize, vertUsage);
     mIndexBuffer   = utils::createDeviceBuffer(indexBufferSize,  indUsage);
-    mUniformBuffer = utils::createDeviceBuffer(uniformBufferSize, sdrUsage);
+    mUniformBuffer = std::move(uniformUploadBuffer);
 
-    vk::CommandBufferBeginInfo beginInfo{};
-    beginInfo.flags = CommandBufferUsageFlagBits::eOneTimeSubmit;
-    mTransferCmd.begin(beginInfo);
+    if (*mVertexBuffer  == VK_NULL_HANDLE ||
+        *mIndexBuffer   == VK_NULL_HANDLE ||
+        *mUniformBuffer == VK_NULL_HANDLE)
+    {
+        throw std::runtime_error("Failed to create device buffers.");
+    }
 
-    vk::BufferMemoryBarrier defaultBarrier{};
-    defaultBarrier.srcAccessMask       = vk::AccessFlagBits::eNone;
-    defaultBarrier.dstAccessMask       = vk::AccessFlagBits::eTransferWrite;
-    defaultBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    defaultBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    defaultBarrier.offset              = 0;
-    defaultBarrier.size                = VK_WHOLE_SIZE;
+    vk::BufferMemoryBarrier barrier{};
+    barrier.srcAccessMask       = vk::AccessFlagBits::eTransferWrite;
+    barrier.dstAccessMask       = vk::AccessFlagBits::eMemoryRead;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.offset              = 0;
+    barrier.size                = VK_WHOLE_SIZE;
 
-    std::array<vk::BufferMemoryBarrier, 3> barriers{};
+    std::array<vk::BufferMemoryBarrier, 2> barriers{};
 
-    barriers[0] = defaultBarrier;
-    barriers[1] = defaultBarrier;
-    barriers[2] = defaultBarrier;
+    barriers[0] = barrier;
+    barriers[1] = barrier;
 
     barriers[0].buffer = *mVertexBuffer;
     barriers[1].buffer = *mIndexBuffer;
-    barriers[2].buffer = *mUniformBuffer;
 
-    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits{}, {}, barriers, {});
+    mTransferCmd.reset();
 
-    vk::BufferCopy copyRegion{ 0,0, vertexBufferSize };
+    vk::CommandBufferBeginInfo beginInfo{};
+    beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+    mTransferCmd.begin(beginInfo);
+
+    vk::BufferCopy copyRegion{ 0, 0, vertexBufferSize };
     mTransferCmd.copyBuffer(*vertexUploadBuffer, *mVertexBuffer, { copyRegion });
 
     copyRegion.size = indexBufferSize;
     mTransferCmd.copyBuffer(*indexUploadBuffer, *mIndexBuffer, { copyRegion });
 
-    copyRegion.size = uniformBufferSize;
-    mTransferCmd.copyBuffer(*uniformUploadBuffer, *mUniformBuffer, { copyRegion });
-
-    defaultBarrier.srcAccessMask = defaultBarrier.dstAccessMask;
-    defaultBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
-
-    barriers[0] = defaultBarrier;
-    barriers[1] = defaultBarrier;
-    barriers[2] = defaultBarrier;
-
-    barriers[0].buffer = *mVertexBuffer;
-    barriers[1].buffer = *mIndexBuffer;
-    barriers[2].buffer = *mUniformBuffer;
-
+    // The barriers are useless because of queue idle (added for demonstration)
     mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, {}, barriers, {});
 
+    barrier.buffer        = *mUniformBuffer;
+    barrier.srcAccessMask = vk::AccessFlagBits::eHostWrite;
+
+    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, {}, { barrier }, {});
+
     mTransferCmd.end();
-   
+
     vk::SubmitInfo submitInfo{};
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers    = &*mTransferCmd;
-    mQueue.submit(submitInfo);
 
-    RHIContext::get().device().waitIdle();
+    mQueue.submit(submitInfo);
+    mQueue.waitIdle();
 }
 
-void ExampleBasicPipeline::createLayouts()
+void ExampleA::createLayouts()
 {
     auto& device = RHIContext::get().device();
     
@@ -164,7 +241,7 @@ void ExampleBasicPipeline::createLayouts()
     mPipelineLayout = device.createPipelineLayout(pipeLayoutCreateInfo);
 }
 
-void ExampleBasicPipeline::createDS()
+void ExampleA::createDS()
 {
     auto& device = RHIContext::get().device();
 
@@ -192,7 +269,7 @@ void ExampleBasicPipeline::createDS()
 
     vk::DescriptorBufferInfo dsBufferInfo{};
     dsBufferInfo.buffer = *mUniformBuffer;
-    dsBufferInfo.range  = sizeof(UniformData);
+    dsBufferInfo.range  = sizeof(ExampleBase::MVP);
 
     vk::WriteDescriptorSet writeDescriptorSet{};
 
@@ -205,7 +282,7 @@ void ExampleBasicPipeline::createDS()
     device.updateDescriptorSets({ writeDescriptorSet }, {});
 }
 
-void ExampleBasicPipeline::createPipeline()
+void ExampleA::createPipeline()
 {
     vk::GraphicsPipelineCreateInfo pipeCreateInfo;
     pipeCreateInfo.layout     = *mPipelineLayout;
@@ -313,63 +390,48 @@ void ExampleBasicPipeline::createPipeline()
     mPipeline = RHIContext::get().device().createGraphicsPipeline(VK_NULL_HANDLE, pipeCreateInfo);
 }
 
-bool ExampleBasicPipeline::onInit(const WindowInitializedEventArgs& args)
+void ExampleA::waitForFence()
 {
-    if (!ExampleBase::onInit(args))
-        return false;
+    const auto& ctx = RHIContext::get();
 
-    mUniformData                      = loadUniformData();
-    std::tie(mVertexData, mIndexData) = loadModel();
-
-    try
-    {
-        createTransferCmd();
-        createBuffers();
-        createLayouts();
-        createDS();
-        createPipeline();
-    }
-    catch (const SystemError& err)
-    {
-        POLYPFATAL("Exception %d (%s), message %s", err.code().value(), err.code().message().c_str(), err.what());
-        return false;
-    }
-    catch (...)
-    {
-        POLYPFATAL("Internal fatal error.");
-        return false;
+    auto res = ctx.device().waitForFences(*mSubmitFence, VK_TRUE, constants::kFenceTimeout);
+    if (res != vk::Result::eSuccess) {
+        POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
     }
 
-    POLYPDEBUG("Initialization finished");
+    res = mSubmitFence.getStatus();
+    if (res != vk::Result::eSuccess)
+        POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
 
-    return true;
+    vulkan::RHIContext::get().device().resetFences(*mSubmitFence);
 }
 
-void ExampleBasicPipeline::onNextFrame()
+void ExampleA::updateUniformBuffer()
 {
-    if (mPauseDrawing)
-        return;
+    const auto mvpData = getMVP();
+    mUniformBuffer.fill((void*)&mvpData, sizeof(mvpData));
+}
 
-    POLYPDEBUG(__FUNCTION__);
-
-    acquireSwapChainImage();
-
+void ExampleA::prepareDrawCommands()
+{
     vk::CommandBufferBeginInfo beginInfo{};
     beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 
     mCmdBuffer.begin(beginInfo);
 
-    render();
+    vk::BufferMemoryBarrier barrier{};
+    barrier.srcAccessMask       = vk::AccessFlagBits::eHostWrite;
+    barrier.dstAccessMask       = vk::AccessFlagBits::eMemoryRead;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.offset              = 0;
+    barrier.size                = VK_WHOLE_SIZE;
+    barrier.buffer              = *mUniformBuffer;
 
-    mCmdBuffer.end();
+    std::array<vk::BufferMemoryBarrier, 1> barriers{ barrier };
 
-    present();
+    mCmdBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, {}, barriers, {});
 
-    RHIContext::get().device().waitIdle();
-}
-
-void ExampleBasicPipeline::render()
-{
     const auto& ctx = RHIContext::get();
 
     auto capabilities = ctx.gpu().getSurfaceCapabilitiesKHR(*ctx.surface());
@@ -407,24 +469,26 @@ void ExampleBasicPipeline::render()
 
     std::vector<vk::Viewport> viewpors{ viewport };
     mCmdBuffer.setViewport(0, viewpors);
-    
+
     vk::Rect2D scissor{};
-    scissor.extent.width  = width;
+    scissor.extent.width = width;
     scissor.extent.height = height;
     scissor.offset.x      = 0;
     scissor.offset.y      = 0;
-    
+
     std::vector<vk::Rect2D> scissors{ scissor };
     mCmdBuffer.setScissor(0, scissors);
-    
+
     mCmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *mPipelineLayout, 0, { *mDescriptorSet }, {});
     mCmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *mPipeline);
-    
+
     VkDeviceSize offset = { 0 };
     mCmdBuffer.bindVertexBuffers(0, { *mVertexBuffer }, { offset });
     mCmdBuffer.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
     mCmdBuffer.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
     mCmdBuffer.endRenderPass();
+
+    mCmdBuffer.end();
 }
 
 } // example

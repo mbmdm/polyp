@@ -137,7 +137,7 @@ void RHIContext::init(const CreateInfo::Device& info)
 
         for (uint32_t j = 0; j < availableQueue.size(); ++j)
         {
-            if (availableQueue[j])
+            if (availableQueue[j] && queProps[j].queueCount >= queInfo.count)
             {
                 if (queInfo.isWSIRequred && availableWSIQueue[i]) {
                     queueCreateInfos[i].queueFamilyIndex = j;
@@ -154,6 +154,11 @@ void RHIContext::init(const CreateInfo::Device& info)
 
         if (queueCreateInfos[i].queueFamilyIndex == UINT32_MAX) {
             POLYPERROR("Failed to find the reqired queue family");
+            return;
+        }
+
+        if (mQueueFamilies.contains(queInfo.flags)) {
+            POLYPERROR("Internal error: only one entity with unique queue flags is available.");
             return;
         }
 

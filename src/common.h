@@ -1,11 +1,12 @@
-#ifndef COMMON_H
-#define COMMON_H
+#pragma once
 
-#include <logs.h>
+#include <generic/logs.h>
+#include <generic/time_utils.h>
 
 #include <chrono>
 #include <array>
 #include <vector>
+#include <set>
 #include <algorithm>
 #include <numeric>
 #include <string>
@@ -73,11 +74,10 @@ inline constexpr float kPitch                  = 0.0f;
 inline constexpr float kSpeed                  = 2.5f;
 inline constexpr float kSensitivity            = 0.1f;
 inline constexpr float kZoom                   = 45.0f;
+inline constexpr float kMoveSpeed               = 0.05f;
 
 /// specific vulkan constants
 inline constexpr auto kVkLibraryName           = "vulkan-1.dll";
 
 } // namespace constants
 } // namespace polyp
-
-#endif // COMMON_H

@@ -74,8 +74,8 @@ public:
     Event<void(const MouseMoveEventArgs&)>         onMouseMove;
     Event<void(const MouseWheelEventArgs&)>        onMouseWheel;
     Event<void(const KeyPressEventArgs&)>          onKeyPress;
-    Event<void()>                                  onNextFrame;
     Event<void()>                                  onShutdown;
+    Event<void()>                                  onRender;
 
     static Application& get()
     {

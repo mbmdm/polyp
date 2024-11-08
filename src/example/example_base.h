@@ -1,8 +1,22 @@
-#ifndef EXAMPLEBASE_H
-#define EXAMPLEBASE_H
+#pragma once
 
 #include "vk_context.h"
 #include "application.h"
+
+#define RUN_APP_EXAMPLE(ClassName)                                                                  \
+std::string title{ constants::kWindowTitle };                                                       \
+title += ": "#ClassName;                                                                            \
+                                                                                                    \
+ClassName sample{};                                                                                 \
+                                                                                                    \
+Application::get().onWindowInitialized += [&sample](const auto& args) { sample.onInit(args); };     \
+Application::get().onWindowResized     += [&sample](const auto& args) { sample.onResize(args); };   \
+Application::get().onKeyPress          += [&sample](const auto& args) { sample.onKeyPress(args); }; \
+Application::get().onShutdown          += [&sample]() { sample.onShoutDown(); };                    \
+Application::get().onRender            += [&sample]() { sample.onRender(); };                       \
+                                                                                                    \
+Application::get().init(title.c_str(), 1024, 600);                                                  \
+Application::get().run();
 
 namespace polyp {
 namespace vulkan {
@@ -10,58 +24,57 @@ namespace example {
 
 class ExampleBase
 {
+public:
+    virtual ~ExampleBase() = default;
+
+    void onRender();
+    bool onInit(const WindowInitializedEventArgs& args);
+    bool onResize(const WindowResizeEventArgs& args);
+    void onKeyPress(const KeyPressEventArgs& args);
+    void onShoutDown();
+
 protected:
-    using FrameBuffers = std::vector<vulkan::Framebuffer>;
-    using Images       = std::vector<vk::Image>;
-    using Views        = std::vector<vulkan::ImageView>;
+    struct MVP
+    {
+        glm::mat4 projectionMatrix;
+        glm::mat4 modelMatrix;
+        glm::mat4 viewMatrix;
+    };
+
+    struct SubmitInfo
+    {
+        vk::Fence fence = VK_NULL_HANDLE;
+        std::vector<vk::CommandBuffer> cmds;
+    };
+
+    MVP getMVP() const;
+
+    virtual bool                           postInit() = 0;
+    virtual bool                         postResize() = 0;
+    virtual SubmitInfo                 getSubmitCmd() = 0;
+    virtual RHIContext::CreateInfo getRHICreateInfo() = 0;
 
     Queue                  mQueue           = { VK_NULL_HANDLE };
     CommandPool            mCmdPool         = { VK_NULL_HANDLE };
-    CommandBuffer          mCmdBuffer       = { VK_NULL_HANDLE };
-    Semaphore              mReadyToPresent  = { VK_NULL_HANDLE };
-    Fence                  mSubmitFence     = { VK_NULL_HANDLE };
-    Fence                  mAqImageFence    = { VK_NULL_HANDLE };
-    RenderPass             mRenderPass      = { VK_NULL_HANDLE };
-                                                    
-    vk::ImageMemoryBarrier mCurrSwImBarrier = {};
     uint32_t               mCurrSwImIndex   = {};
-                                            
-    Images                 mSwapChainImages = {};
-    Views                  mSwapChainVeiews = {};
-    FrameBuffers           mFrameBuffers    = {};
-                                                    
-    RHIContext::CreateInfo mContextInfo     = {};
+    std::vector<vk::Image> mSwapChainImages = {};
+    std::vector<ImageView> mSwapChainVeiews = {};
 
-    bool mPauseDrawing                      = false;
-
-    struct {
-        vulkan::Image    image = VK_NULL_HANDLE;
-        vulkan::ImageView view = VK_NULL_HANDLE;
-    } mDepthStencil;
-
-    void acquireSwapChainImage();
-
+private:
+    void acquireNextSwapChainImage();
+    void submit(const std::vector<vk::CommandBuffer>& cmds, vk::Fence fence = VK_NULL_HANDLE);
     void present();
 
-public:
+    Fence                  mAqImageFence = { VK_NULL_HANDLE };
+    std::vector<Semaphore> mSemaphores   = {};
+    RHIContext::CreateInfo mContextInfo  = {};
+    bool                   mPauseDrawing = false;
 
-    ExampleBase();
-
-    virtual ~ExampleBase() { }
-
-    virtual bool onInit(const WindowInitializedEventArgs& args);
-
-    virtual bool onResize(const WindowResizeEventArgs& args);
-
-    virtual void onNextFrame();
-
-    virtual void onShoutDown();
-
-    virtual bool isReady() { return true; }
+    glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);   // TODO: pack into camer class
+    glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);  // TODO: pack into camer class
+    glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);   // TODO: pack into camer class
 };
 
 } // example
 } // vulkan
 } // polyp
-
-#endif // EXAMPLEBASE_H

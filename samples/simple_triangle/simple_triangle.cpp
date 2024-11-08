@@ -1,11 +1,18 @@
-#include <example_basic_pipeline.h>
+#include <example_a.h>
 
 using namespace polyp;
 using namespace polyp::vulkan;
 
-class SimpleTriangle : public example::ExampleBasicPipeline
+namespace polyp::vulkan {
+
+class SimpleTriangle : public example::ExampleA
 {
 protected:
+    RHIContext::CreateInfo getRHICreateInfo() override
+    {
+        return utils::getCreateInfo<RHIContext::CreateInfo>();
+    }
+
     ShadersData loadShaders() override
     {
         auto vert  = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
@@ -13,21 +20,26 @@ protected:
         
         return std::make_tuple(std::move(vert), std::move(index));
     }
+
+    ModelsData loadModel() override
+    {
+        std::vector<Vertex> vertexData = {
+            { {  0.6f,  0.6f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+            { { -0.6f,  0.6f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+            { {  0.0f, -0.6f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
+        };
+
+        std::vector<uint32_t> indexData = { 0, 1, 2 };
+
+        return std::make_tuple(std::move(vertexData), std::move(indexData));
+    }
 };
+
+} // namespace namespace polyp::vulkan
 
 int main()
 {
-    std::string title{ constants::kWindowTitle };
-    title += ": simple triangle";
-
-    SimpleTriangle sample{};
-
-    Application::get().onWindowInitialized += [&sample](const auto& args) { sample.onInit(args); };
-    Application::get().onWindowResized     += [&sample](const auto& args) { sample.onResize(args); };
-    Application::get().onNextFrame         += [&sample]()                 { sample.onNextFrame(); };
-
-    Application::get().init(title.c_str(), 1024, 600);
-    Application::get().run();
+    RUN_APP_EXAMPLE(SimpleTriangle);
 
     return EXIT_SUCCESS;
 }
