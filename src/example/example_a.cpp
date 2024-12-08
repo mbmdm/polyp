@@ -104,8 +104,6 @@ void ExampleA::draw()
 {
     prepareDrawCommands();
 
-    
-
     updateUniformBuffer();
 }
 
@@ -130,7 +128,7 @@ void ExampleA::createBuffers()
 
     const VkDeviceSize vertexBufferSize  = mVertexData.size() * sizeof(decltype(mVertexData)::value_type) * cubeCount;
     const VkDeviceSize indexBufferSize   = mIndexData.size()  * sizeof(decltype(mIndexData)::value_type);
-    const VkDeviceSize uniformBufferSize = sizeof(mvpData);
+    const VkDeviceSize uniformBufferSize = sizeof(mvpData) * mSwapChainImages.size();
 
     const auto vertUsage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
     const auto indUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
@@ -153,7 +151,6 @@ void ExampleA::createBuffers()
     indexUploadBuffer.fill(mIndexData);
     uniformUploadBuffer.fill((void*)&mvpData, uniformBufferSize);
 
-    
     glm::vec3 cubePositions[] = {
         glm::vec3(0.0f,  0.0f,  0.0f),
         glm::vec3(2.0f,  5.0f, -15.0f),
@@ -299,12 +296,12 @@ void ExampleA::createDS()
 
     vk::DescriptorBufferInfo dsBufferInfo{};
     dsBufferInfo.buffer = *mUniformBuffer;
-    dsBufferInfo.range  = VK_WHOLE_SIZE;
+    dsBufferInfo.range = static_cast<uint32_t>(sizeof(MVP));
 
     vk::WriteDescriptorSet writeDescriptorSet{};
     writeDescriptorSet.dstSet          = *mDescriptorSet;
     writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.descriptorType  = vk::DescriptorType::eUniformBuffer;
+    writeDescriptorSet.descriptorType  = vk::DescriptorType::eUniformBufferDynamic;
     writeDescriptorSet.pBufferInfo     = &dsBufferInfo;
     writeDescriptorSet.dstBinding      = 0;
 
