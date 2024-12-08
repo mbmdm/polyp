@@ -93,7 +93,7 @@ protected:
     }
 };
 
-} // namespace namespace polyp::vulkan
+} // namespace polyp::vulkan
 
 int main()
 {

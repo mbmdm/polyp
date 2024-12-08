@@ -5,7 +5,7 @@ using namespace polyp::vulkan;
 
 namespace polyp::vulkan {
 
-class SimpleTriangle : public example::ExampleA
+class SimpleTriangle final: public example::ExampleA
 {
 protected:
     RHIContext::CreateInfo getRHICreateInfo() override
@@ -35,7 +35,7 @@ protected:
     }
 };
 
-} // namespace namespace polyp::vulkan
+} // namespace polyp::vulkan
 
 int main()
 {
