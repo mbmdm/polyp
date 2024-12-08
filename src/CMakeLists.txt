@@ -20,8 +20,8 @@ set(headers
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.h
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.h
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/os_utils.h
             ${CMAKE_CURRENT_SOURCE_DIR}/common.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/generic/os_utils.h
             ${CMAKE_CURRENT_SOURCE_DIR}/generic/fps_counter.h
             ${CMAKE_CURRENT_SOURCE_DIR}/generic/camera.h)
 
