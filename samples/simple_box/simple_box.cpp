@@ -5,7 +5,7 @@ using namespace polyp::vulkan;
 
 namespace polyp::vulkan {
 
-class SimpleBox : public example::ExampleA
+class SimpleBox final : public example::ExampleA
 {
 protected:
     RHIContext::CreateInfo getRHICreateInfo() override
