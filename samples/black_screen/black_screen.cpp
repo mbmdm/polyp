@@ -8,7 +8,7 @@ namespace polyp::vulkan {
 
 class BlackScreen final : public example::ExampleBase 
 {
-private:
+protected:
     bool postResize() override { return true; }
 
     bool postInit() override { return true; }
@@ -40,8 +40,8 @@ private:
         barrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
         
         cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                                   vk::PipelineStageFlagBits::eTopOfPipe,
-                                   vk::DependencyFlags(), nullptr, nullptr, barrier);
+                            vk::PipelineStageFlagBits::eBottomOfPipe,
+                            vk::DependencyFlags(), nullptr, nullptr, barrier);
 
         cmd.end();
     }
