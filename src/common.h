@@ -1,7 +1,6 @@
 #pragma once
 
 #include <generic/logs.h>
-#include <generic/time_utils.h>
 #include <glm/glm.hpp>
 
 #include <chrono>
