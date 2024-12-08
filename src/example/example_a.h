@@ -16,14 +16,12 @@ protected:
         float color[3];
     };
 
-    bool                           postInit() override;
-    bool                         postResize() override;
-    SubmitInfo                 getSubmitCmd() override;
+    void                   draw()             override;
+    bool                   postInit()         override;
+    bool                   postResize()       override;
     RHIContext::CreateInfo getRHICreateInfo() override;
 
     CommandBuffer            mTransferCmd    = { VK_NULL_HANDLE };
-    CommandBuffer            mCmdBuffer      = { VK_NULL_HANDLE };
-    Fence                    mSubmitFence    = { VK_NULL_HANDLE };
     Buffer                   mVertexBuffer   = { VK_NULL_HANDLE };
     Buffer                   mIndexBuffer    = { VK_NULL_HANDLE };
     Buffer                   mUniformBuffer  = { VK_NULL_HANDLE };
@@ -54,7 +52,6 @@ private:
     void createDS();
     void createPipeline();
 
-    void waitForFence();
     void updateUniformBuffer();
     void prepareDrawCommands();
 };

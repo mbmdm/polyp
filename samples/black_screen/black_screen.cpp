@@ -11,28 +11,18 @@ class BlackScreen final : public example::ExampleBase
 private:
     bool postResize() override { return true; }
 
-    bool postInit() override
-    {
-        mCmdBuffer = utils::createCommandBuffer(mCmdPool, vk::CommandBufferLevel::ePrimary);
-        if (*mCmdBuffer == VK_NULL_HANDLE) {
-            return false;
-        }
+    bool postInit() override { return true; }
 
-        POLYPDEBUG("Primary command buffer created successfully");
-
-        return true;
-    }
-
-    SubmitInfo getSubmitCmd() override
+    void draw() override
     {
         RHIContext::get().device().waitIdle(); // Simply make sure that the cmd is not in a pending stage
 
-        mCmdBuffer.reset();
+        CommandBuffer& cmd = mDrawCmds[mCurrSwImIndex];
 
         vk::CommandBufferBeginInfo beginInfo{};
         beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 
-        mCmdBuffer.begin(beginInfo);
+        cmd.begin(beginInfo);
 
         auto barrier = vk::ImageMemoryBarrier{};
         
@@ -49,21 +39,17 @@ private:
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
         
-        mCmdBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+        cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
                                    vk::PipelineStageFlagBits::eTopOfPipe,
                                    vk::DependencyFlags(), nullptr, nullptr, barrier);
 
-        mCmdBuffer.end();
-
-        return SubmitInfo{ VK_NULL_HANDLE,{*mCmdBuffer} };
+        cmd.end();
     }
 
     RHIContext::CreateInfo getRHICreateInfo() override
     {
         return utils::getCreateInfo<RHIContext::CreateInfo>();
     }
-
-    CommandBuffer mCmdBuffer = { VK_NULL_HANDLE };
 };
 
 }

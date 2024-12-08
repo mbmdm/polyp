@@ -5,16 +5,16 @@ namespace polyp {
 namespace vulkan {
 namespace example {
 
+
 void ExampleBase::onRender()
 {
     if (mPauseDrawing)
         return;
 
     acquireNextSwapChainImage();
-
-    auto submitInfo = getSubmitCmd();
-    submit(submitInfo.cmds, submitInfo.fence);
-
+    waitForFence();
+    draw();
+    submit();
     present();
 }
 
@@ -68,6 +68,12 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
     };
 
     onResize(resizeArgs);
+
+    createDrawCmds();
+    
+    if (mDrawCmds.size() != mSwapChainImages.size()) {
+        POLYPFATAL("Failed to create command buffers and fences.");
+    }
 
     if (!postInit())
         POLYPFATAL("Post initialization failed.");
@@ -129,28 +135,57 @@ bool ExampleBase::onResize(const WindowResizeEventArgs& args)
     return postResize();
 }
 
-void ExampleBase::onKeyPress(const KeyPressEventArgs& args)
+void ExampleBase::OnMouseClick(const MouseClickEventArgs& args)
 {
-    switch (args.key)
+    if (args.button == MouseButton::Left && args.action == MouseActioin::Click)
     {
-        case 'w':
-        case 'W':
-            cameraPos += constants::kMoveSpeed * cameraFront;
-            break;
-        case 's':
-        case 'S':
-            cameraPos -= constants::kMoveSpeed * cameraFront;
-            break;
-        case 'a':
-        case 'A':
-            cameraPos -= constants::kMoveSpeed * glm::normalize(glm::cross(cameraFront, cameraUp));
-            break;
-        case 'd':
-        case 'D':
-            cameraPos += constants::kMoveSpeed * glm::normalize(glm::cross(cameraFront, cameraUp));
-            break;
-        default:
-            break;
+        mLastXMousePos = 0.f;
+        mLastYMousePos = 0.f;
+        mMouseMoving = true;
+    }
+
+    if (args.button == MouseButton::Left && args.action == MouseActioin::Release)
+        mMouseMoving = false;
+}
+
+void ExampleBase::onMovement(const MovementEventArgs& args)
+{
+    auto deltaTime = (1 / mFPSCounter.fps());
+
+    if (args.HasMotion())
+    {
+        if (args.move.ahead)
+            mCamera.processKeyboard(Camera::Direction::Forward, deltaTime);
+        else if (args.move.back)
+            mCamera.processKeyboard(Camera::Direction::Backward, deltaTime);
+
+        if (args.move.left)
+            mCamera.processKeyboard(Camera::Direction::Left, deltaTime);
+        else if (args.move.righ)
+            mCamera.processKeyboard(Camera::Direction::Right, deltaTime);
+
+        if (args.move.up)
+            mCamera.processKeyboard(Camera::Direction::Up, deltaTime);
+        else if (args.move.down)
+            mCamera.processKeyboard(Camera::Direction::Down, deltaTime);
+    }
+
+    if (args.HasMouse() && mMouseMoving)
+    {
+        if (mLastXMousePos == 0 && mLastYMousePos == 0)
+        {
+            mLastXMousePos = args.mouse.x;
+            mLastYMousePos = args.mouse.y;
+            return;
+        }
+
+        auto xoffset = args.mouse.x - mLastXMousePos;
+        auto yoffset = args.mouse.y - mLastYMousePos;
+
+        mLastXMousePos = args.mouse.x;
+        mLastYMousePos = args.mouse.y;
+
+        mCamera.procesMouse(xoffset, yoffset);
     }
 }
 
@@ -159,13 +194,13 @@ void ExampleBase::onShoutDown()
     RHIContext::get().device().waitIdle();
 }
 
-ExampleBase::MVP ExampleBase::getMVP() const
+ExampleBase::MVP ExampleBase::getMVP()
 {
     MVP output{};
 
     output.modelMatrix = glm::mat4(1.0f);
 
-    output.viewMatrix = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+    output.viewMatrix = mCamera.view();
 
     auto& ctx         = vulkan::RHIContext::get();
     auto capabilities = ctx.gpu().getSurfaceCapabilitiesKHR(*ctx.surface());
@@ -201,14 +236,36 @@ void ExampleBase::acquireNextSwapChainImage()
     mCurrSwImIndex = imIdx;
 }
 
-void ExampleBase::submit(const std::vector<vk::CommandBuffer>& cmds, vk::Fence fence)
+void ExampleBase::createDrawCmds()
+{
+    const auto size = mSwapChainImages.size();
+
+    mDrawCmds.clear();
+    mDrawFences.clear();
+
+    for (size_t i = 0; i < size; ++i)
+    {
+        auto cmd = utils::createCommandBuffer(mCmdPool, vk::CommandBufferLevel::ePrimary);
+        if (*cmd == VK_NULL_HANDLE)
+            continue;
+
+        auto fence = utils::createFence(true);
+        if (*fence == VK_NULL_HANDLE)
+            continue;
+
+        mDrawCmds.push_back(std::move(cmd));
+        mDrawFences.push_back(std::move(fence));
+    }
+}
+
+void ExampleBase::submit()
 {
     vk::SubmitInfo submitInfo{};
-    submitInfo.commandBufferCount   = cmds.size();
-    submitInfo.pCommandBuffers      = cmds.data();
+    submitInfo.commandBufferCount   = 1;
+    submitInfo.pCommandBuffers      = &*mDrawCmds[mCurrSwImIndex];
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores    = &*mSemaphores[mCurrSwImIndex];
-    mQueue.submit(submitInfo, fence);
+    mQueue.submit(submitInfo, *mDrawFences[mCurrSwImIndex]);
 }
 
 void ExampleBase::present()
@@ -222,8 +279,26 @@ void ExampleBase::present()
 
     auto res = mQueue.presentKHR(presentInfo);
 
+    mFPSCounter.onPresent();
+
     if (res != vk::Result::eSuccess)
         POLYPFATAL("Present failed with result %s", vk::to_string(res).c_str());
+}
+
+void ExampleBase::waitForFence()
+{
+    const auto& ctx = RHIContext::get();
+
+    auto res = ctx.device().waitForFences(*mDrawFences[mCurrSwImIndex], VK_TRUE, constants::kFenceTimeout);
+    if (res != vk::Result::eSuccess) {
+        POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
+    }
+
+    res = mDrawFences[mCurrSwImIndex].getStatus();
+    if (res != vk::Result::eSuccess)
+        POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
+
+    vulkan::RHIContext::get().device().resetFences(*mDrawFences[mCurrSwImIndex]);
 }
 
 } // example

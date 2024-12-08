@@ -2,20 +2,23 @@
 
 #include "vk_context.h"
 #include "application.h"
+#include "fps_counter.h"
+#include "camera.h"
 
-#define RUN_APP_EXAMPLE(ClassName)                                                                  \
-std::string title{ constants::kWindowTitle };                                                       \
-title += ": "#ClassName;                                                                            \
-                                                                                                    \
-ClassName sample{};                                                                                 \
-                                                                                                    \
-Application::get().onWindowInitialized += [&sample](const auto& args) { sample.onInit(args); };     \
-Application::get().onWindowResized     += [&sample](const auto& args) { sample.onResize(args); };   \
-Application::get().onKeyPress          += [&sample](const auto& args) { sample.onKeyPress(args); }; \
-Application::get().onShutdown          += [&sample]() { sample.onShoutDown(); };                    \
-Application::get().onRender            += [&sample]() { sample.onRender(); };                       \
-                                                                                                    \
-Application::get().init(title.c_str(), 1024, 600);                                                  \
+#define RUN_APP_EXAMPLE(ClassName)                                                                    \
+std::string title{ constants::kWindowTitle };                                                         \
+title += ": "#ClassName;                                                                              \
+                                                                                                      \
+ClassName sample{};                                                                                   \
+                                                                                                      \
+Application::get().onWindowInitialized += [&sample](const auto& args) { sample.onInit(args); };       \
+Application::get().onWindowResized     += [&sample](const auto& args) { sample.onResize(args); };     \
+Application::get().onMovement          += [&sample](const auto& args) { sample.onMovement(args); };   \
+Application::get().onMouseClick        += [&sample](const auto& args) { sample.OnMouseClick(args); }; \
+Application::get().onShutdown          += [&sample]()                 { sample.onShoutDown(); };      \
+Application::get().onRender            += [&sample]()                 { sample.onRender(); };         \
+                                                                                                      \
+Application::get().init(title.c_str(), 1024, 600);                                                    \
 Application::get().run();
 
 namespace polyp {
@@ -25,13 +28,21 @@ namespace example {
 class ExampleBase
 {
 public:
+    ExampleBase() : 
+        mCamera{constants::kCameraInitPos,
+                constants::kCameraInitUp,
+                constants::kYaw, constants::kPitch,
+                constants::kMoveSpeed, constants::kSensitivity }
+    { }
+
     virtual ~ExampleBase() = default;
 
     void onRender();
+    void onShoutDown();
     bool onInit(const WindowInitializedEventArgs& args);
     bool onResize(const WindowResizeEventArgs& args);
-    void onKeyPress(const KeyPressEventArgs& args);
-    void onShoutDown();
+    void OnMouseClick(const MouseClickEventArgs& args);
+    void onMovement(const MovementEventArgs& args);
 
 protected:
     struct MVP
@@ -41,38 +52,44 @@ protected:
         glm::mat4 viewMatrix;
     };
 
-    struct SubmitInfo
-    {
-        vk::Fence fence = VK_NULL_HANDLE;
-        std::vector<vk::CommandBuffer> cmds;
-    };
+    MVP getMVP();
 
-    MVP getMVP() const;
-
-    virtual bool                           postInit() = 0;
-    virtual bool                         postResize() = 0;
-    virtual SubmitInfo                 getSubmitCmd() = 0;
+    virtual void                   draw()             = 0;
+    virtual bool                   postInit()         = 0;
+    virtual bool                   postResize()       = 0;
     virtual RHIContext::CreateInfo getRHICreateInfo() = 0;
 
-    Queue                  mQueue           = { VK_NULL_HANDLE };
-    CommandPool            mCmdPool         = { VK_NULL_HANDLE };
-    uint32_t               mCurrSwImIndex   = {};
-    std::vector<vk::Image> mSwapChainImages = {};
-    std::vector<ImageView> mSwapChainVeiews = {};
+    Queue                      mQueue           = { VK_NULL_HANDLE };
+    CommandPool                mCmdPool         = { VK_NULL_HANDLE };
+    std::vector<CommandBuffer> mDrawCmds        = {};
+    std::vector<Fence>         mDrawFences      = {};
+    uint32_t                   mCurrSwImIndex   = {};
+    std::vector<vk::Image>     mSwapChainImages = {};
+    std::vector<ImageView>     mSwapChainVeiews = {};
+    FPSCounter                 mFPSCounter;
+    Camera                     mCamera;
 
 private:
-    void acquireNextSwapChainImage();
-    void submit(const std::vector<vk::CommandBuffer>& cmds, vk::Fence fence = VK_NULL_HANDLE);
+    void submit();
     void present();
+    void waitForFence();
+    void createDrawCmds();
+    void acquireNextSwapChainImage();
 
     Fence                  mAqImageFence = { VK_NULL_HANDLE };
     std::vector<Semaphore> mSemaphores   = {};
     RHIContext::CreateInfo mContextInfo  = {};
     bool                   mPauseDrawing = false;
+    bool                   mMouseMoving  = false;
 
     glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);   // TODO: pack into camer class
     glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);  // TODO: pack into camer class
     glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);   // TODO: pack into camer class
+    float mLastXMousePos  = 0;                             // TODO: pack into camer class
+    float mLastYMousePos  = 0;                             // TODO: pack into camer class
+
+    float mYal            = -90.f;
+    float mPitch          = 0.f;
 };
 
 } // example

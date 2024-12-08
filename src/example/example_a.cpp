@@ -6,16 +6,6 @@ namespace example {
 
 bool ExampleA::postInit()
 {
-    mCmdBuffer = utils::createCommandBuffer(mCmdPool, vk::CommandBufferLevel::ePrimary);
-    if (*mCmdBuffer == VK_NULL_HANDLE) {
-        return false;
-    }
-
-    mSubmitFence = std::move(utils::createFence(true));
-    if (*mSubmitFence == VK_NULL_HANDLE) {
-        return false;
-    }
-
     mTransferCmd = utils::createCommandBuffer(mCmdPool, vk::CommandBufferLevel::ePrimary);
     if (*mTransferCmd == VK_NULL_HANDLE) {
         return false;
@@ -44,6 +34,8 @@ bool ExampleA::postInit()
     }
 
     POLYPDEBUG("Initialization finished");
+
+    mCamera.speed(mCamera.speed() * 5);
 
     return true;
 }
@@ -108,15 +100,13 @@ bool ExampleA::postResize()
     return true;
 }
 
-ExampleBase::SubmitInfo ExampleA::getSubmitCmd() //rendering here ???
+void ExampleA::draw()
 {
-    waitForFence();
-
-    updateUniformBuffer();
-
     prepareDrawCommands();
 
-    return SubmitInfo{ *mSubmitFence,{*mCmdBuffer} };
+    
+
+    updateUniformBuffer();
 }
 
 RHIContext::CreateInfo ExampleA::getRHICreateInfo()
@@ -136,7 +126,9 @@ void ExampleA::createBuffers()
 {
     auto mvpData = getMVP();
 
-    const VkDeviceSize vertexBufferSize  = mVertexData.size() * sizeof(decltype(mVertexData)::value_type);
+    const auto cubeCount = 10;
+
+    const VkDeviceSize vertexBufferSize  = mVertexData.size() * sizeof(decltype(mVertexData)::value_type) * cubeCount;
     const VkDeviceSize indexBufferSize   = mIndexData.size()  * sizeof(decltype(mIndexData)::value_type);
     const VkDeviceSize uniformBufferSize = sizeof(mvpData);
 
@@ -160,6 +152,44 @@ void ExampleA::createBuffers()
     vertexUploadBuffer.fill(mVertexData);
     indexUploadBuffer.fill(mIndexData);
     uniformUploadBuffer.fill((void*)&mvpData, uniformBufferSize);
+
+    
+    glm::vec3 cubePositions[] = {
+        glm::vec3(0.0f,  0.0f,  0.0f),
+        glm::vec3(2.0f,  5.0f, -15.0f),
+        glm::vec3(-1.5f, -2.2f, -2.5f),
+        glm::vec3(-3.8f, -2.0f, -12.3f),
+        glm::vec3(2.4f, -0.4f, -3.5f),
+        glm::vec3(-1.7f,  3.0f, -7.5f),
+        glm::vec3(1.3f, -2.0f, -2.5f),
+        glm::vec3(1.5f,  2.0f, -2.5f),
+        glm::vec3(1.5f,  0.2f, -1.5f),
+        glm::vec3(-1.3f,  1.0f, -1.5f)
+    };
+
+    for (size_t i = 0; i < cubeCount; ++i)
+    {
+        uint32_t offset = (mVertexData.size() * sizeof(decltype(mVertexData)::value_type)) * i;
+
+        auto cpVertexData = mVertexData;
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, cubePositions[i]);
+        float angle = 20.0f * i;
+        model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+
+        for (size_t v = 0; v < cpVertexData.size(); v++)
+        {
+            auto& vertex = cpVertexData[v];
+            glm::vec4 transformedVertex{ vertex.position[0], vertex.position[1], vertex.position[2], 1.0 };
+            transformedVertex = model * transformedVertex;
+
+            vertex.position[0] = transformedVertex.x;
+            vertex.position[1] = transformedVertex.y;
+            vertex.position[2] = transformedVertex.z;
+        }
+
+        vertexUploadBuffer.fill(cpVertexData, offset);
+    }
 
     mVertexBuffer  = utils::createDeviceBuffer(vertexBufferSize, vertUsage);
     mIndexBuffer   = utils::createDeviceBuffer(indexBufferSize,  indUsage);
@@ -224,7 +254,7 @@ void ExampleA::createLayouts()
     auto& device = RHIContext::get().device();
     
     vk::DescriptorSetLayoutBinding layoutBindingInfo{}; // uniform buffer for vertex shader
-    layoutBindingInfo.descriptorType  = vk::DescriptorType::eUniformBuffer;
+    layoutBindingInfo.descriptorType  = vk::DescriptorType::eUniformBufferDynamic;
     layoutBindingInfo.descriptorCount = 1;
     layoutBindingInfo.stageFlags      = vk::ShaderStageFlagBits::eVertex;
     
@@ -246,7 +276,7 @@ void ExampleA::createDS()
     auto& device = RHIContext::get().device();
 
     vk::DescriptorPoolSize descriptorPoolSize;
-    descriptorPoolSize.type            = vk::DescriptorType::eUniformBuffer;
+    descriptorPoolSize.type            = vk::DescriptorType::eUniformBufferDynamic;
     descriptorPoolSize.descriptorCount = 1;
 
     vk::DescriptorPoolCreateInfo dsPoolCreateInfo{};
@@ -269,10 +299,9 @@ void ExampleA::createDS()
 
     vk::DescriptorBufferInfo dsBufferInfo{};
     dsBufferInfo.buffer = *mUniformBuffer;
-    dsBufferInfo.range  = sizeof(ExampleBase::MVP);
+    dsBufferInfo.range  = VK_WHOLE_SIZE;
 
     vk::WriteDescriptorSet writeDescriptorSet{};
-
     writeDescriptorSet.dstSet          = *mDescriptorSet;
     writeDescriptorSet.descriptorCount = 1;
     writeDescriptorSet.descriptorType  = vk::DescriptorType::eUniformBuffer;
@@ -390,34 +419,23 @@ void ExampleA::createPipeline()
     mPipeline = RHIContext::get().device().createGraphicsPipeline(VK_NULL_HANDLE, pipeCreateInfo);
 }
 
-void ExampleA::waitForFence()
-{
-    const auto& ctx = RHIContext::get();
-
-    auto res = ctx.device().waitForFences(*mSubmitFence, VK_TRUE, constants::kFenceTimeout);
-    if (res != vk::Result::eSuccess) {
-        POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
-    }
-
-    res = mSubmitFence.getStatus();
-    if (res != vk::Result::eSuccess)
-        POLYPFATAL("Unexpected VkFence wait result %s", vk::to_string(res).c_str());
-
-    vulkan::RHIContext::get().device().resetFences(*mSubmitFence);
-}
-
 void ExampleA::updateUniformBuffer()
 {
     const auto mvpData = getMVP();
-    mUniformBuffer.fill((void*)&mvpData, sizeof(mvpData));
+
+    auto pos = (mCurrSwImIndex + 1) % mSwapChainImages.size();
+
+    mUniformBuffer.fill((void*)&mvpData, sizeof(mvpData), sizeof(MVP) * pos);
 }
 
 void ExampleA::prepareDrawCommands()
 {
+    CommandBuffer& cmd = mDrawCmds[mCurrSwImIndex];
+
     vk::CommandBufferBeginInfo beginInfo{};
     beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 
-    mCmdBuffer.begin(beginInfo);
+    cmd.begin(beginInfo);
 
     vk::BufferMemoryBarrier barrier{};
     barrier.srcAccessMask       = vk::AccessFlagBits::eHostWrite;
@@ -430,7 +448,7 @@ void ExampleA::prepareDrawCommands()
 
     std::array<vk::BufferMemoryBarrier, 1> barriers{ barrier };
 
-    mCmdBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, {}, barriers, {});
+    //cmd.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, {}, barriers, {});
 
     const auto& ctx = RHIContext::get();
 
@@ -453,7 +471,7 @@ void ExampleA::prepareDrawCommands()
     renderPassBeginInfo.pClearValues             = clearValues;
     renderPassBeginInfo.framebuffer              = *mFrameBuffers[mCurrSwImIndex];
 
-    mCmdBuffer.beginRenderPass(renderPassBeginInfo, SubpassContents::eInline);
+    cmd.beginRenderPass(renderPassBeginInfo, SubpassContents::eInline);
 
     vk::Viewport viewport{};
     viewport.height   = (float)height;
@@ -468,7 +486,7 @@ void ExampleA::prepareDrawCommands()
     //viewport.y      = height;
 
     std::vector<vk::Viewport> viewpors{ viewport };
-    mCmdBuffer.setViewport(0, viewpors);
+    cmd.setViewport(0, viewpors);
 
     vk::Rect2D scissor{};
     scissor.extent.width = width;
@@ -477,18 +495,31 @@ void ExampleA::prepareDrawCommands()
     scissor.offset.y      = 0;
 
     std::vector<vk::Rect2D> scissors{ scissor };
-    mCmdBuffer.setScissor(0, scissors);
+    cmd.setScissor(0, scissors);
 
-    mCmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *mPipelineLayout, 0, { *mDescriptorSet }, {});
-    mCmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *mPipeline);
+    std::vector<uint32_t> dynamicOffsets{ static_cast<uint32_t>(sizeof(MVP)) * mCurrSwImIndex };
 
-    VkDeviceSize offset = { 0 };
-    mCmdBuffer.bindVertexBuffers(0, { *mVertexBuffer }, { offset });
-    mCmdBuffer.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
-    mCmdBuffer.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
-    mCmdBuffer.endRenderPass();
+    cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *mPipelineLayout, 0, { *mDescriptorSet }, dynamicOffsets);
+    cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, *mPipeline);
 
-    mCmdBuffer.end();
+    const auto cubeCount = 10;
+
+    cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
+
+    for (size_t i = 0; i < cubeCount; i++)
+    {
+        VkDeviceSize offset = (mVertexData.size() * sizeof(decltype(mVertexData)::value_type)) * i;
+        cmd.bindVertexBuffers(0, { *mVertexBuffer }, { offset });
+        cmd.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
+    }
+
+    //VkDeviceSize offset = { 0 };
+    //cmd.bindVertexBuffers(0, { *mVertexBuffer }, { offset });
+    //cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
+    //cmd.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
+    cmd.endRenderPass();
+
+    cmd.end();
 }
 
 } // example

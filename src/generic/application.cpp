@@ -1,11 +1,15 @@
 #include "application.h"
 
+#include <os_utils.h>
+
 #ifdef WIN32
 #include <windowsx.h>
 #include <winuser.h>
 #endif
 
 #include <unordered_map>
+#include <thread>
+#include <sstream>
 
 namespace {
 
@@ -18,16 +22,16 @@ enum class UserMessage
     Resize = WM_USER + 1,
     Resized,
     Quit,
+    LostFocus,
     MouseClick,
     MouseMove,
     MouseWheel,
-    KeyDown
+    KeyPress,
+    KeyRelease
 };
 
 LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    static std::unordered_map<WPARAM, LPARAM> pressedKeys;
-
     switch (message)
     {
     case WM_LBUTTONDOWN:
@@ -55,16 +59,14 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
         PostMessage(hWnd, static_cast<int>(UserMessage::Resized), 0, 0);
         break;
     case WM_KEYDOWN:
-        pressedKeys[wParam] = lParam;
-        for (const auto& item : pressedKeys)
-            PostMessage(hWnd, static_cast<int>(UserMessage::KeyDown), item.first, item.second);
         if (VK_ESCAPE == wParam) {
-            pressedKeys.clear();
             PostMessage(hWnd, static_cast<int>(UserMessage::Quit), 0, 0);
+            break;
         }
+        PostMessage(hWnd, static_cast<int>(UserMessage::KeyPress), wParam, lParam);
         break;
     case WM_KEYUP:
-        pressedKeys.erase(wParam);
+        PostMessage(hWnd, static_cast<int>(UserMessage::KeyRelease), wParam, lParam);
         break;
     case WM_CLOSE:
         PostMessage(hWnd, static_cast<int>(UserMessage::Quit), 0, 0);
@@ -77,8 +79,6 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 
 class DPIScale
 {
-    static float scale;
-
 public:
     static void init(HWND windowHandle)
     {
@@ -91,6 +91,9 @@ public:
     {
         return static_cast<float>(val) / scale;
     }
+
+private:
+    static float scale;
 };
 
 float DPIScale::scale = 1.0f;
@@ -138,6 +141,17 @@ bool Application::init(const char* title, int width, int height)
     return true;
 }
 
+bool inWindow(HWND handle)
+{
+    RECT rect;
+    GetClientRect(handle, &rect);
+    POINT cursor;
+    GetCursorPos(&cursor);
+    ScreenToClient(handle, &cursor);
+    return cursor.x >= rect.left && cursor.x <= rect.right && 
+           cursor.y >= rect.top && cursor.y <= rect.bottom;
+}
+
 void Application::run()
 {
     if (!mWindowHandle || !mWindowInstance) {
@@ -148,99 +162,162 @@ void Application::run()
     UpdateWindow(mWindowHandle);
 
     MSG message;
-    bool stopRenderLoop = false;
+    MovementEventArgs movement{};
 
-    while (!stopRenderLoop)
+    std::atomic_bool trackCursor{ false };
+
+    auto trackCursorFunc = [](HWND win, std::atomic_bool& output, std::atomic_bool& stopToken) {
+        while (!stopToken) {
+            output.store(utils::CheckCursorPosition(win), std::memory_order_relaxed);
+        }
+    };
+    std::thread trackCursorThread{ trackCursorFunc, mWindowHandle, std::ref(trackCursor), std::ref(mStopRendering) };
+    
+    while (!mStopRendering)
     {
-        if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
+        while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
         {
             switch (static_cast<UserMessage>(message.message))
             {
-            case UserMessage::MouseClick:
-            {
-                MouseClickEventArgs args {
-                    static_cast<MouseButton>(message.wParam),
-                    static_cast<MouseActioin>(message.lParam)
-                };
-                onMouseClick(args);
-                break;
-            }
-            case UserMessage::MouseMove:
-            {
-                MouseMoveEventArgs args {
-                    DPIScale::convert(GET_X_LPARAM(message.lParam)),
-                    DPIScale::convert(GET_Y_LPARAM(message.lParam))
-                };
-                onMouseMove(args);
-                break;
-            }
-            case UserMessage::MouseWheel:
-            {
-                MouseWheelEventArgs args {
-                    DPIScale::convert(GET_X_LPARAM(message.lParam)),
-                    DPIScale::convert(GET_Y_LPARAM(message.lParam)),
-                    GET_WHEEL_DELTA_WPARAM(message.wParam) / WHEEL_DELTA
-                };
-                onMouseWheel(args);
-                break;
-            }
-            case UserMessage::Resize:
-            {
-                WindowResizeEventArgs args
+                case UserMessage::MouseClick:
                 {
-                    .mode   = static_cast<WindowResizeMode>(message.wParam),
-                    .width  = HIWORD(message.lParam),
-                    .height = LOWORD(message.lParam)
-                };
-                onWindowResized(args);
-                break;
-            }
-            case UserMessage::Resized:
-            {
-                WindowResizeEventArgs args
-                {
-                    .mode   = WindowResizeMode::ExitSizeMove,
-                    .width  = 0,
-                    .height = 0
-                };
-                onWindowResized(args);
-                break;
-            }
-            case UserMessage::Quit:
-            {
-                stopRenderLoop = true;
-                break;
-            }
-            case UserMessage::KeyDown:
-            {
-                if ((message.wParam >> 8) > 0)
+                    MouseClickEventArgs args {
+                        static_cast<MouseButton>(message.wParam),
+                        static_cast<MouseActioin>(message.lParam)
+                    };
+                    onMouseClick(args);
                     break;
-
-                char key = static_cast<char>(message.wParam);
-
-                if (!isalnum(key))
-                    break;
-
-                KeyPressEventArgs args
+                }
+                case UserMessage::MouseMove:
                 {
-                    .key = key
-                };
+                    MouseMoveEventArgs args {
+                        DPIScale::convert(GET_X_LPARAM(message.lParam)),
+                        DPIScale::convert(GET_Y_LPARAM(message.lParam))
+                    };
 
-                onKeyPress(args);
+                    onMouseMove(args);
+
+                    movement.mouse.x = args.x;
+                    movement.mouse.y = args.y;
+                    break;
+                }
+                case UserMessage::MouseWheel:
+                {
+                    MouseWheelEventArgs args {
+                        DPIScale::convert(GET_X_LPARAM(message.lParam)),
+                        DPIScale::convert(GET_Y_LPARAM(message.lParam)),
+                        GET_WHEEL_DELTA_WPARAM(message.wParam) / WHEEL_DELTA
+                    };
+                    onMouseWheel(args);
+                    movement.mouse.wheel += args.delta;
+                    movement.mouse.x = args.x;
+                    movement.mouse.y = args.y;
+                    break;
+                }
+                case UserMessage::Resize:
+                {
+                    WindowResizeEventArgs args
+                    {
+                        .mode   = static_cast<WindowResizeMode>(message.wParam),
+                        .width  = HIWORD(message.lParam),
+                        .height = LOWORD(message.lParam)
+                    };
+                    onWindowResized(args);
+                    break;
+                }
+                case UserMessage::Resized:
+                {
+                    WindowResizeEventArgs args
+                    {
+                        .mode   = WindowResizeMode::ExitSizeMove,
+                        .width  = 0,
+                        .height = 0
+                    };
+                    onWindowResized(args);
+                    break;
+                }
+                case UserMessage::Quit:
+                {
+                    mStopRendering = true;
+                    break;
+                }
+                case UserMessage::KeyPress:
+                {
+                    if ((message.wParam >> 8) > 0)
+                        break;
+
+                    char key = static_cast<char>(message.wParam);
+
+                    KeyPressEventArgs args
+                    {
+                        .key = key
+                    };
+
+                    onKeyPress(args);
+
+                    if (key == VK_SPACE)
+                        movement.move.up = true;
+                    else if (key == VK_CONTROL)
+                        movement.move.down = true;
+
+                    key = std::tolower(key);
+
+                    if (key == 'w')
+                        movement.move.ahead = true;
+                    else if (key == 's')
+                        movement.move.back = true;
+                    else if (key == 'a')
+                        movement.move.left = true;
+                    else if (key == 'd')
+                        movement.move.righ = true;
+
+                    break;
+                }
+                case UserMessage::KeyRelease:
+                {
+                    if ((message.wParam >> 8) > 0)
+                        break;
+
+                    char key = static_cast<char>(message.wParam);
+
+                    if (key == VK_SPACE)
+                        movement.move.up = false;
+                    else if (key == VK_CONTROL)
+                        movement.move.down = false;
+
+                    key = std::tolower(key);
+
+                    if (key == 'w')
+                        movement.move.ahead = false;
+                    else if (key == 's')
+                        movement.move.back = false;
+                    else if (key == 'a')
+                        movement.move.left = false;
+                    else if (key == 'd')
+                        movement.move.righ = false;
+
+                    break;
+                }
             }
 
-            }
             TranslateMessage(&message);
             DispatchMessage(&message);
+
         }
-        else
+
+        if (!trackCursor.load(std::memory_order_relaxed))
         {
-            // no messages to handle, process rendering commands
-            onRender();
+            MouseClickEventArgs args{ MouseButton::Left, MouseActioin::Release };
+            onMouseClick(args);
         }
+
+        onMovement(movement);
+        onRender();
     }
 
     onShutdown();
+
+    trackCursorThread.join();
 }
 
 void Application::destroyWindow()
