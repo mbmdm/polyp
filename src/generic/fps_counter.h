@@ -7,51 +7,41 @@ class FPSCounter
 public:
     FPSCounter()
     { 
-        avg.prevFrame    = std::chrono::high_resolution_clock::now();
-        avg.fps          = kInitialFPS;
-        avg.frameCounter = 0;
-
-        cur.fps          = kInitialFPS;
-        cur.pevFrame     = avg.prevFrame;
+        avgTimePoint = curTimePoint = std::chrono::high_resolution_clock::now();
     }
 
     void onPresent()
     {
-        avg.frameCounter++;
+        avgFrameCounter++;
 
         auto now = std::chrono::high_resolution_clock::now();
 
-        auto avgDuration = std::chrono::duration<double>(now - avg.prevFrame).count();
-        auto curDuration = std::chrono::duration<double>(now - cur.pevFrame).count();
+        auto avgDuration = std::chrono::duration<double>(now - avgTimePoint).count();
+        auto curDuration = std::chrono::duration<double>(now - curTimePoint).count();
 
         if (avgDuration >= 1.0)
         {
-            avg.fps          = static_cast<float>(avg.frameCounter) / avgDuration;
-            avg.frameCounter = 0;
-            avg.prevFrame    = now;
+            avgFps          = static_cast<float>(avgFrameCounter) / avgDuration;
+            avgFrameCounter = 0;
+            avgTimePoint    = now;
         }
 
-        cur.pevFrame = now;
-        cur.fps = 1.0 / curDuration;
+        curTimePoint = now;
+        curFps       = 1.0 / curDuration;
     }
 
-    float avgfps() const { return avg.fps; }
+    float avgfps() const { return avgFps; }
 
-    float fps() const { return cur.fps; }
+    float curfps() const { return curFps; }
 
 private:
-    using TymePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
+    using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
-    const double kInitialFPS = 25.0;
+    float avgFps = 0.01;
+    float curFps = 0.01;
 
-    struct {
-        float     fps;
-        TymePoint prevFrame;
-        uint32_t  frameCounter;
-    } avg;
+    uint32_t avgFrameCounter = 0;
 
-    struct {
-        float     fps;
-        TymePoint pevFrame;
-    } cur;
+    TimePoint avgTimePoint;
+    TimePoint curTimePoint;
 };
