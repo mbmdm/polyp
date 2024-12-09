@@ -9,7 +9,6 @@
 
 #include <unordered_map>
 #include <thread>
-#include <sstream>
 
 namespace {
 
@@ -22,7 +21,6 @@ enum class UserMessage
     Resize = WM_USER + 1,
     Resized,
     Quit,
-    LostFocus,
     MouseClick,
     MouseMove,
     MouseWheel,
@@ -141,17 +139,6 @@ bool Application::init(const char* title, int width, int height)
     return true;
 }
 
-bool inWindow(HWND handle)
-{
-    RECT rect;
-    GetClientRect(handle, &rect);
-    POINT cursor;
-    GetCursorPos(&cursor);
-    ScreenToClient(handle, &cursor);
-    return cursor.x >= rect.left && cursor.x <= rect.right && 
-           cursor.y >= rect.top && cursor.y <= rect.bottom;
-}
-
 void Application::run()
 {
     if (!mWindowHandle || !mWindowInstance) {
@@ -169,11 +156,12 @@ void Application::run()
     auto trackCursorFunc = [](HWND win, std::atomic_bool& output, std::atomic_bool& stopToken) {
         while (!stopToken) {
             output.store(utils::CheckCursorPosition(win), std::memory_order_relaxed);
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
         }
     };
     std::thread trackCursorThread{ trackCursorFunc, mWindowHandle, std::ref(trackCursor), std::ref(mStopRendering) };
     
-    while (!mStopRendering)
+    while (!mStopRendering.load())
     {
         while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
         {
@@ -225,7 +213,7 @@ void Application::run()
                 }
                 case UserMessage::Quit:
                 {
-                    mStopRendering = true;
+                    mStopRendering.store(true);
                     break;
                 }
                 case UserMessage::KeyPress:
