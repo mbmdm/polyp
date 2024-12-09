@@ -49,38 +49,6 @@ struct MouseClickEventArgs
     MouseActioin action;
 };
 
-struct MouseMoveEventArgs
-{
-    float x;
-    float y;
-};
-
-struct MouseWheelEventArgs : public MouseMoveEventArgs
-{
-    float delta;
-};
-
-struct KeyPressEventArgs
-{
-    char key; // returned in uppercase (for example, pressing the 'd' key will produce the 'D' character)
-
-    struct
-    {
-        bool up   = false;
-        bool back = false;
-        bool righ = false;
-        bool left = false;
-    } move;
-
-    struct
-    {
-        float x = 0;
-        float y = 0;
-        float wheel = 0;
-
-    } mouse;
-};
-
 struct MovementEventArgs
 {
     struct
@@ -123,9 +91,6 @@ public:
     Event<void(const WindowInitializedEventArgs&)> onWindowInitialized;
     Event<void(const WindowResizeEventArgs&)>      onWindowResized;
     Event<void(const MouseClickEventArgs&)>        onMouseClick;
-    Event<void(const MouseMoveEventArgs&)>         onMouseMove;
-    Event<void(const MouseWheelEventArgs&)>        onMouseWheel;
-    Event<void(const KeyPressEventArgs&)>          onKeyPress;
     Event<void(const MovementEventArgs&)>          onMovement;
     Event<void()>                                  onShutdown;
     Event<void()>                                  onRender;
@@ -147,7 +112,6 @@ private:
     ~Application() { destroyWindow(); }
 
     void destroyWindow();
-    void checkMouseCursorPosition();
 
     HWND               mWindowHandle;
     HINSTANCE        mWindowInstance;

@@ -190,28 +190,15 @@ void Application::run()
                 }
                 case UserMessage::MouseMove:
                 {
-                    MouseMoveEventArgs args {
-                        DPIScale::convert(GET_X_LPARAM(message.lParam)),
-                        DPIScale::convert(GET_Y_LPARAM(message.lParam))
-                    };
-
-                    onMouseMove(args);
-
-                    movement.mouse.x = args.x;
-                    movement.mouse.y = args.y;
+                    movement.mouse.x = DPIScale::convert(GET_X_LPARAM(message.lParam));
+                    movement.mouse.y = DPIScale::convert(GET_Y_LPARAM(message.lParam));
                     break;
                 }
                 case UserMessage::MouseWheel:
                 {
-                    MouseWheelEventArgs args {
-                        DPIScale::convert(GET_X_LPARAM(message.lParam)),
-                        DPIScale::convert(GET_Y_LPARAM(message.lParam)),
-                        GET_WHEEL_DELTA_WPARAM(message.wParam) / WHEEL_DELTA
-                    };
-                    onMouseWheel(args);
-                    movement.mouse.wheel += args.delta;
-                    movement.mouse.x = args.x;
-                    movement.mouse.y = args.y;
+                    movement.mouse.wheel += GET_WHEEL_DELTA_WPARAM(message.wParam) / WHEEL_DELTA;
+                    movement.mouse.x      = DPIScale::convert(GET_X_LPARAM(message.lParam));
+                    movement.mouse.y      = DPIScale::convert(GET_Y_LPARAM(message.lParam));
                     break;
                 }
                 case UserMessage::Resize:
@@ -247,13 +234,6 @@ void Application::run()
                         break;
 
                     char key = static_cast<char>(message.wParam);
-
-                    KeyPressEventArgs args
-                    {
-                        .key = key
-                    };
-
-                    onKeyPress(args);
 
                     if (key == VK_SPACE)
                         movement.move.up = true;
