@@ -1,7 +1,5 @@
 #include "camera.h"
 
-#include <stdexcept>
-
 namespace polyp {
 
 void Camera::reset(glm::vec3 position, float yaw, float pitch)
@@ -53,10 +51,10 @@ void Camera::processKeyboard(Direction direction, float deltaTime)
     dirtyView = true;
 }
 
-void Camera::procesMouse(float xoffset, float yoffset)
+void Camera::procesMouse(float xoffset, float yoffset, float deltaTime)
 {
-    xoffset *= mSensitivity;
-    yoffset *= mSensitivity;
+    xoffset *= mSensitivity * deltaTime;
+    yoffset *= mSensitivity * deltaTime;
 
     mYaw   += xoffset;
     mPitch += yoffset;
@@ -75,7 +73,7 @@ void Camera::updateView()
     if (dirtyOrientation)
         updateOrientation();
 
-    mCachedView = glm::lookAt(mPosition, mPosition + mFront /*glm::vec3(0.0, 0.0, 0.0)*/, mUp);
+    mCachedView = glm::lookAt(mPosition, mPosition + mFront, mUp);
 
     dirtyView = false;
 }

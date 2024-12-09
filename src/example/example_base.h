@@ -28,12 +28,12 @@ namespace example {
 class ExampleBase
 {
 public:
-    ExampleBase() : 
-        mCamera{constants::kCameraInitPos,
-                constants::kCameraInitUp,
-                constants::kYaw, constants::kPitch,
-                constants::kMoveSpeed, constants::kSensitivity }
-    { }
+    ExampleBase() :
+        mCamera{ constants::kCameraInitPos, constants::kYaw, constants::kPitch }
+    { 
+        mCamera.speed(constants::kMoveSpeed);
+        mCamera.sensitivity(constants::kSensitivity);
+    }
 
     virtual ~ExampleBase() = default;
 
@@ -76,20 +76,13 @@ private:
     void createDrawCmds();
     void acquireNextSwapChainImage();
 
-    Fence                  mAqImageFence = { VK_NULL_HANDLE };
-    std::vector<Semaphore> mSemaphores   = {};
-    RHIContext::CreateInfo mContextInfo  = {};
-    bool                   mPauseDrawing = false;
-    bool                   mMouseMoving  = false;
-
-    glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);   // TODO: pack into camer class
-    glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);  // TODO: pack into camer class
-    glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);   // TODO: pack into camer class
-    float mLastXMousePos  = 0;                             // TODO: pack into camer class
-    float mLastYMousePos  = 0;                             // TODO: pack into camer class
-
-    float mYal            = -90.f;
-    float mPitch          = 0.f;
+    Fence                  mAqImageFence  = { VK_NULL_HANDLE };
+    std::vector<Semaphore> mSemaphores    = {};
+    RHIContext::CreateInfo mContextInfo   = {};
+    float                  mLastXMousePos = 0.0;
+    float                  mLastYMousePos = 0.0;
+    bool                   mPauseDrawing  = false;
+    bool                   mMouseMoving   = false;
 };
 
 } // example

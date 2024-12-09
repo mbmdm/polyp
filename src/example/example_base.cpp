@@ -185,7 +185,7 @@ void ExampleBase::onMovement(const MovementEventArgs& args)
         mLastXMousePos = args.mouse.x;
         mLastYMousePos = args.mouse.y;
 
-        mCamera.procesMouse(xoffset, yoffset);
+        mCamera.procesMouse(xoffset, yoffset, deltaTime);
     }
 }
 
