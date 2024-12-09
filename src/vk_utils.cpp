@@ -10,12 +10,14 @@ namespace utils {
 template<>
 RHIContext::CreateInfo getCreateInfo<RHIContext::CreateInfo>()
 {
+    using namespace constants;
+
     std::vector<RHIContext::CreateInfo::Queue> queInfos{
         {1, vk::QueueFlagBits::eGraphics, true}
     };
 
    return RHIContext::CreateInfo {
-         {__FILE__, 1},                         // CreateInfo::Application
+         {kInternalApplicationName, 1},         // CreateInfo::Application
          RHIContext::CreateInfo::GPU::Powerful, // CreateInfo::GPU
          {NULL, NULL},                          // CreateInfo::Surface
          {queInfos, {}},                        // CreateInfo::Device
@@ -47,7 +49,7 @@ CommandBuffer createCommandBuffer(const CommandPool& pool, vk::CommandBufferLeve
         return std::move(cmds[0]);
 
     POLYPERROR("Failed to allocate command buffer(s).");
-    VK_NULL_HANDLE;
+    return VK_NULL_HANDLE;
 }
 
 std::tuple<Image, ImageView> createDepthStencil()
