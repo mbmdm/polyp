@@ -35,7 +35,8 @@ protected:
     std::vector<Vertex>      mVertexData     = {};
     std::vector<uint32_t>    mIndexData      = {};
 
-    struct {
+    struct
+    {
         vulkan::Image    image = VK_NULL_HANDLE;
         vulkan::ImageView view = VK_NULL_HANDLE;
     } mDepthStencil;
