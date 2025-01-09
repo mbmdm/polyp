@@ -65,7 +65,7 @@ bool ExampleA::postResize()
 
     auto capabilities = gpu.getSurfaceCapabilitiesKHR(*surface);
 
-    if (mSwapChainVeiews.empty())
+    if (mSwapChainViews.empty())
     {
         POLYPERROR("Internal error: there are no swapchain imave view.");
         return false;
@@ -73,10 +73,10 @@ bool ExampleA::postResize()
 
     mFrameBuffers.clear();
 
-    for (auto i = 0; i < mSwapChainVeiews.size(); ++i)
+    for (auto i = 0; i < mSwapChainViews.size(); ++i)
     {
         std::array<vk::ImageView, 2> attachments;
-        attachments[0] = *mSwapChainVeiews[i];
+        attachments[0] = *mSwapChainViews[i];
         attachments[1] = *mDepthStencil.view;
 
         vk::FramebufferCreateInfo fbCreateInfo{};

@@ -14,7 +14,7 @@ ClassName sample{};                                                             
 Application::get().onWindowInitialized += [&sample](const auto& args) { sample.onInit(args); };       \
 Application::get().onWindowResized     += [&sample](const auto& args) { sample.onResize(args); };     \
 Application::get().onMovement          += [&sample](const auto& args) { sample.onMovement(args); };   \
-Application::get().onMouseClick        += [&sample](const auto& args) { sample.OnMouseClick(args); }; \
+Application::get().onMouseClick        += [&sample](const auto& args) { sample.onMouseClick(args); }; \
 Application::get().onShutdown          += [&sample]()                 { sample.onShoutDown(); };      \
 Application::get().onRender            += [&sample]()                 { sample.onRender(); };         \
                                                                                                       \
@@ -29,7 +29,7 @@ class ExampleBase
 {
 public:
     ExampleBase() :
-        mCamera{ constants::kCameraInitPos, constants::kYaw, constants::kPitch }
+       mCamera{ constants::kCameraInitPos, constants::kYaw, constants::kPitch }
     { 
         mCamera.speed(constants::kMoveSpeed);
         mCamera.sensitivity(constants::kSensitivity);
@@ -41,7 +41,7 @@ public:
     void onShoutDown();
     bool onInit(const WindowInitializedEventArgs& args);
     bool onResize(const WindowResizeEventArgs& args);
-    void OnMouseClick(const MouseClickEventArgs& args);
+    void onMouseClick(const MouseClickEventArgs& args);
     void onMovement(const MovementEventArgs& args);
 
 protected:
@@ -65,7 +65,7 @@ protected:
     std::vector<Fence>         mDrawFences      = {};
     uint32_t                   mCurrSwImIndex   = {};
     std::vector<vk::Image>     mSwapChainImages = {};
-    std::vector<ImageView>     mSwapChainVeiews = {};
+    std::vector<ImageView>     mSwapChainViews  = {};
     FPSCounter                 mFPSCounter;
     Camera                     mCamera;
 
