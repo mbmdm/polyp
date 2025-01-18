@@ -16,10 +16,18 @@ protected:
         float color[3];
     };
 
-    void                   draw()             override;
-    bool                   postInit()         override;
-    bool                   postResize()       override;
-    RHIContext::CreateInfo getRHICreateInfo() override;
+    void                     draw()             override;
+    bool                     postInit()         override;
+    bool                     postResize()       override;
+    RHIContext::CreateInfo   getRHICreateInfo() override;
+
+    void                     updateUniformBuffer();
+
+    using ShadersData = std::tuple<ShaderModule/*vert*/, ShaderModule/*frag*/>;
+    using ModelsData  = std::tuple<std::vector<Vertex>/*vertices*/, std::vector<uint32_t>/*indexes*/>;
+
+    virtual ShadersData      loadShaders() = 0;
+    virtual ModelsData       loadModel()   = 0;
 
     CommandBuffer            mTransferCmd    = { VK_NULL_HANDLE };
     Buffer                   mVertexBuffer   = { VK_NULL_HANDLE };
@@ -41,19 +49,11 @@ protected:
         vulkan::ImageView view = VK_NULL_HANDLE;
     } mDepthStencil;
 
-    using ShadersData = std::tuple<ShaderModule/*vert*/, ShaderModule/*frag*/>;
-    using ModelsData  = std::tuple<std::vector<Vertex>/*vertices*/, std::vector<uint32_t>/*indexes*/>;
-
-    virtual ShadersData loadShaders() = 0;
-    virtual ModelsData  loadModel()   = 0;
-
 private:
     void createBuffers();
     void createLayouts();
     void createDS();
     void createPipeline();
-
-    void updateUniformBuffer();
     void prepareDrawCommands();
 };
 
