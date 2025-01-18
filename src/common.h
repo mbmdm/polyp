@@ -71,9 +71,9 @@ inline constexpr auto      kFenceTimeout            = 2'000'000'000ULL;
 /// Default camera values
 inline constexpr float     kYaw                     = -90.0f;
 inline constexpr float     kPitch                   = 0.0f;
-inline constexpr float     kSensitivity             = 30.f;
+inline constexpr float     kSensitivity             = 50.f;
 inline constexpr float     kZoom                    = 45.0f;
-inline constexpr float     kMoveSpeed               = 2.5f;
+inline constexpr float     kMoveSpeed               = 1.0f;
 inline constexpr glm::vec3 kCameraInitPos           = glm::vec3(0.0f, 0.0f, 3.0f);
 
 /// specific vulkan constants
