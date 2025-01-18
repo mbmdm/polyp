@@ -218,7 +218,5 @@ void Buffer::fill(void* data, VkDeviceSize size, VkDeviceSize offset)
     }
 }
 
-
-
 }
 }

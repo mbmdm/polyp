@@ -1,5 +1,4 @@
-#ifndef LOGS_H
-#define LOGS_H
+#pragma once
 
 #include <cstdio>
 #include <cassert>
@@ -75,5 +74,3 @@ assert(lhv != rhv);
 #define POLYPDEBUG(...)
 #define POLYPASSERT(...)
 #endif // !DEBUG
-
-#endif // LOGS_H 

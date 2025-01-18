@@ -37,12 +37,16 @@ function(buildSample SAMPLE_NAME)
     set_target_properties(${SAMPLE_NAME} PROPERTIES FOLDER "samples")
 endfunction(buildSample)
 
-function(buildSamples)
+function(buildAll)
 	foreach(SAMPLE ${SAMPLES})
 		buildSample(${SAMPLE})
 	endforeach(SAMPLE)
-endfunction(buildSamples)
+endfunction(buildAll)
 
 SUBDIRLIST(SAMPLES ${CMAKE_CURRENT_SOURCE_DIR})
 
-buildSamples()
+#buildAll()
+
+buildSample("black_screen")
+buildSample("simple_triangle")
+buildSample("simple_box")

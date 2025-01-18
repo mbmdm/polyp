@@ -1,11 +1,12 @@
-#ifndef COMMON_H
-#define COMMON_H
+#pragma once
 
-#include <logs.h>
+#include <generic/logs.h>
+#include <glm/glm.hpp>
 
 #include <chrono>
 #include <array>
 #include <vector>
+#include <set>
 #include <algorithm>
 #include <numeric>
 #include <string>
@@ -57,27 +58,26 @@
 namespace polyp {
 namespace constants {
 
-inline constexpr auto kWindowTitle             = "Polypious (by Polyp &Ko)";
-inline constexpr auto kWindowClassName         = "PolypWindowClass";
-inline constexpr auto kInternalApplicationName = "Polyp";
-inline constexpr auto kMajorVersion            = 99LU;
-inline constexpr auto kMinorVersion            = 99LU;
-inline constexpr auto kPatchVersion            = 99LU;
+inline constexpr auto      kWindowTitle             = "Polypious (by Polyp &Ko)";
+inline constexpr auto      kWindowClassName         = "PolypWindowClass";
+inline constexpr auto      kInternalApplicationName = "Polyp";
+inline constexpr auto      kMajorVersion            = 99LU;
+inline constexpr auto      kMinorVersion            = 99LU;
+inline constexpr auto      kPatchVersion            = 99LU;
 
 /// Vulkan constants
-inline constexpr auto kFenceTimeout            = 2'000'000'000ULL;
-                                               
-/// Default camera values                       
-inline constexpr float kYaw                    = -90.0f;
-inline constexpr float kPitch                  = 0.0f;
-inline constexpr float kSpeed                  = 2.5f;
-inline constexpr float kSensitivity            = 0.1f;
-inline constexpr float kZoom                   = 45.0f;
+inline constexpr auto      kFenceTimeout            = 2'000'000'000ULL;
+
+/// Default camera values
+inline constexpr float     kYaw                     = -90.0f;
+inline constexpr float     kPitch                   = 0.0f;
+inline constexpr float     kSensitivity             = 50.f;
+inline constexpr float     kZoom                    = 45.0f;
+inline constexpr float     kMoveSpeed               = 1.0f;
+inline constexpr glm::vec3 kCameraInitPos           = glm::vec3(0.0f, 0.0f, 3.0f);
 
 /// specific vulkan constants
-inline constexpr auto kVkLibraryName           = "vulkan-1.dll";
+inline constexpr auto kVkLibraryName                = "vulkan-1.dll";
 
 } // namespace constants
 } // namespace polyp
-
-#endif // COMMON_H

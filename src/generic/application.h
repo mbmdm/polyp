@@ -49,15 +49,40 @@ struct MouseClickEventArgs
     MouseActioin action;
 };
 
-struct MouseMoveEventArgs
+struct MovementEventArgs
 {
-    float x;
-    float y;
-};
+    struct
+    {
+        bool ahead = false;
+        bool back  = false;
+        bool righ  = false;
+        bool left  = false;
+        bool up    = false;
+        bool down  = false;
+    } move;
 
-struct MouseWheelEventArgs : public MouseMoveEventArgs
-{
-    float delta;
+    struct
+    {
+        float x = 0;
+        float y = 0;
+        float wheel = 0;
+
+    } mouse;
+
+    bool HasMotion() const
+    {
+        return move.ahead || move.back || move.righ || move.left || move.up || move.down;
+    }
+
+    bool HasMouse() const
+    {
+        return mouse.x != 0 && mouse.y != 0;
+    }
+
+    bool HasWheel() const
+    {
+        return mouse.wheel != 0;
+    }
 };
 
 class Application final
@@ -66,10 +91,9 @@ public:
     Event<void(const WindowInitializedEventArgs&)> onWindowInitialized;
     Event<void(const WindowResizeEventArgs&)>      onWindowResized;
     Event<void(const MouseClickEventArgs&)>        onMouseClick;
-    Event<void(const MouseMoveEventArgs&)>         onMouseMove;
-    Event<void(const MouseWheelEventArgs&)>        onMouseWheel;
-    Event<void()>                                  onFrameRender;
+    Event<void(const MovementEventArgs&)>          onMovement;
     Event<void()>                                  onShutdown;
+    Event<void()>                                  onRender;
 
     static Application& get()
     {
@@ -82,15 +106,16 @@ public:
     void run();
 
 private:
-    Application() : mWindowHandle(NULL), mWindowInstance(NULL)
+    Application() : mWindowHandle(NULL), mWindowInstance(NULL), mStopRendering{ false }
     { }
 
     ~Application() { destroyWindow(); }
 
     void destroyWindow();
 
-    HWND        mWindowHandle;
-    HINSTANCE mWindowInstance;
+    HWND               mWindowHandle;
+    HINSTANCE        mWindowInstance;
+    std::atomic_bool mStopRendering;
 };
 
 }

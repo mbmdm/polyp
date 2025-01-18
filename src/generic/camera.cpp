@@ -1,100 +1,96 @@
 #include "camera.h"
 
-#include <stdexcept>
-
 namespace polyp {
-namespace tools {
 
-Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) :
-    mPosition(position),
-    mWorldUp(glm::normalize(up)),
-    mYaw(yaw),
-    mPitch(pitch),
-    mSpeed(constants::kSpeed), 
-    mSensitivity(constants::kSensitivity), 
-    mZoom(constants::kZoom)
+void Camera::reset(glm::vec3 position, float yaw, float pitch)
 {
-    update();
-}
-
-void Camera::reset(glm::vec3 position) {
     mPosition = position;
-    mWorldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    mSensitivity = constants::kSensitivity;
-    mSpeed = constants::kSpeed;
-    update();
+    mYaw = mYaw;
+    mPitch = pitch;
+
+    dirtyView        = true;
+    dirtyOrientation = true;
 }
 
-glm::mat4 Camera::view() {
-    return glm::lookAt(mPosition, mPosition + mFront, mUp);
+glm::mat4 Camera::view()
+{
+    if (dirtyView)
+        updateView();
+
+    return mCachedView;
 }
 
-void Camera::process_keyboard(Direction direction, float deltaTime) {
+void Camera::processKeyboard(Direction direction, float deltaTime)
+{
+    const auto movementSpeed = mSpeed * deltaTime;
 
-    float velocity = mSpeed * deltaTime;
     switch (direction)
     {
-    case tools::Direction::FORWARD:
-        mPosition += mFront * velocity;
-        break;
-    case tools::Direction::BACKWARD:
-        mPosition -= mFront * velocity;
-        break;
-    case tools::Direction::LEFT:
-        mPosition -= mRight * velocity;
-        break;
-    case tools::Direction::RIGHT:
-        mPosition += mRight * velocity;
-        break;
-    case tools::Direction::UP:
-        mPosition += mUp * velocity;
-        break;
-    case tools::Direction::DOWN:
-        mPosition -= mUp * velocity;
-        break;
-    default:
-        break;
+        case Direction::Forward:
+            mPosition += mFront * movementSpeed;
+            break;
+        case Direction::Backward:
+            mPosition -= mFront * movementSpeed;
+            break;
+        case Direction::Left:
+            mPosition -= mRight * movementSpeed;
+            break;
+        case Direction::Right:
+            mPosition += mRight * movementSpeed;
+            break;
+        case Direction::Up:
+            mPosition -= mUp * movementSpeed;
+            break;
+        case Direction::Down:
+            mPosition += mUp * movementSpeed;
+            break;
+        default:
+            break;
     }
+
+    dirtyView = true;
 }
 
-void Camera::process_mouse(float xoffset, float yoffset, bool constrainPitch) {
+void Camera::procesMouse(float xoffset, float yoffset, float deltaTime)
+{
+    xoffset *= mSensitivity * deltaTime;
+    yoffset *= mSensitivity * deltaTime;
 
-    xoffset *= mSensitivity;
-    yoffset *= mSensitivity;
-
-    mYaw += xoffset;
+    mYaw   += xoffset;
     mPitch += yoffset;
 
-    if (constrainPitch)
-    {
-        if (mPitch > 89.0f)
-            mPitch = 89.0f;
-        else if (mPitch < -89.0f)
-            mPitch = -89.0f;
-    }
-    update();
+    if (mPitch > 89.0f)
+        mPitch = 89.0f;
+    else if (mPitch < -89.0f)
+        mPitch = -89.0f;
+
+    dirtyView        = true;
+    dirtyOrientation = true;
 }
 
-void Camera::process_scroll(float yoffset) {
-    mZoom -= (float)yoffset;
-    if (mZoom < 1.0f)
-        mZoom = 1.0f;
-    else if (mZoom > 45.0f)
-        mZoom = 45.0f;
+void Camera::updateView()
+{
+    if (dirtyOrientation)
+        updateOrientation();
+
+    mCachedView = glm::lookAt(mPosition, mPosition + mFront, mUp);
+
+    dirtyView = false;
 }
 
-void Camera::update() {
+void Camera::updateOrientation()
+{
+    glm::vec3 direction;
 
-    glm::vec3 front;
+    direction.x = cos(glm::radians(mYaw)) * cos(glm::radians(mPitch));
+    direction.y = sin(glm::radians(mPitch));
+    direction.z = sin(glm::radians(mYaw)) * cos(glm::radians(mPitch));
 
-    front.x = cos(glm::radians(mYaw)) * cos(glm::radians(mPitch));
-    front.y = sin(glm::radians(mPitch));
-    front.z = sin(glm::radians(mYaw)) * cos(glm::radians(mPitch));
-
-    mFront = glm::normalize(front);
+    mFront = glm::normalize(direction);
     mRight = glm::normalize(glm::cross(mFront, mWorldUp));
     mUp    = glm::normalize(glm::cross(mRight, mFront));
+
+    dirtyOrientation = false;
 }
 
-} // tools
 } // polyp

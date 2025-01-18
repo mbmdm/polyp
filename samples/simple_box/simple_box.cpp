@@ -1,16 +1,22 @@
-#include <example_basic_pipeline.h>
+#include <example_a.h>
 
 using namespace polyp;
+using namespace polyp::vulkan;
 
-using ShaderModule = polyp::vulkan::ShaderModule;
+namespace polyp::vulkan {
 
-class SimpleBox : public example::ExampleBasicPipeline
+class SimpleBox final : public example::ExampleA
 {
 protected:
+    RHIContext::CreateInfo getRHICreateInfo() override
+    {
+        return utils::getCreateInfo<RHIContext::CreateInfo>();
+    }
+
     ShadersData loadShaders() override
     {
-        auto vert  = vulkan::utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
-        auto index = vulkan::utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
+        auto vert  = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
+        auto index = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
         
         return std::make_tuple(std::move(vert), std::move(index));
     }
@@ -85,40 +91,13 @@ protected:
     
         return std::make_tuple(std::move(vertexData), std::move(indexData));
     }
-
-    UniformData loadUniformData() override
-    {
-        glm::mat4 view       = glm::mat4(1.0f);
-        glm::mat4 model      = glm::mat4(1.0f);
-        glm::mat4 projection = glm::mat4(1.0f);
-
-        auto& ctx = vulkan::RHIContext::get();
-        auto capabilities = ctx.gpu().getSurfaceCapabilitiesKHR(*ctx.surface());
-
-        auto width  = capabilities.currentExtent.width;
-        auto height = capabilities.currentExtent.height;
-
-        model      = glm::rotate(model, glm::radians(-30.0f), glm::vec3(1.0f, 1.0f, 0.0f));
-        view       = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-        projection = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 100.0f);
-
-        return UniformData{ projection, model, view };
-    }
 };
+
+} // namespace polyp::vulkan
 
 int main()
 {
-    std::string title{ constants::kWindowTitle };
-    title += ": simple box";
-
-    SimpleBox sample{};
-
-    Application::get().onWindowInitialized += [&sample](const auto& args) {sample.onInit(args); };
-    Application::get().onWindowResized     += [&sample](const auto& args) {sample.onResize(args);};
-    Application::get().onFrameRender       += [&sample]() {sample.draw(); };
-
-    Application::get().init(title.c_str(), 1024, 600);
-    Application::get().run();
+    RUN_APP_EXAMPLE(SimpleBox);
 
     return EXIT_SUCCESS;
 }

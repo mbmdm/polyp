@@ -7,6 +7,51 @@ namespace polyp {
 namespace vulkan {
 namespace utils {
 
+template<>
+RHIContext::CreateInfo getCreateInfo<RHIContext::CreateInfo>()
+{
+    using namespace constants;
+
+    std::vector<RHIContext::CreateInfo::Queue> queInfos{
+        {1, vk::QueueFlagBits::eGraphics, true}
+    };
+
+   return RHIContext::CreateInfo {
+         {kInternalApplicationName, 1},         // CreateInfo::Application
+         RHIContext::CreateInfo::GPU::Powerful, // CreateInfo::GPU
+         {NULL, NULL},                          // CreateInfo::Surface
+         {queInfos, {}},                        // CreateInfo::Device
+         {3},                                   // CreateInfo::SwapChain
+    };
+}
+
+Fence createFence(bool signaled)
+{
+    vk::FenceCreateInfo createInfo{};
+
+    if (signaled)
+        createInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+
+    return RHIContext::get().device().createFence(createInfo);
+}
+
+CommandBuffer createCommandBuffer(const CommandPool& pool, vk::CommandBufferLevel level)
+{
+    const auto& device = RHIContext::get().device();
+
+    vk::CommandBufferAllocateInfo allocInfo{};
+    allocInfo.commandPool        = *pool;
+    allocInfo.level              = level;
+    allocInfo.commandBufferCount = 1;
+
+    auto cmds = device.allocateCommandBuffers(allocInfo);
+    if (!cmds.empty())
+        return std::move(cmds[0]);
+
+    POLYPERROR("Failed to allocate command buffer(s).");
+    return VK_NULL_HANDLE;
+}
+
 std::tuple<Image, ImageView> createDepthStencil()
 {
     const auto& gpu     = RHIContext::get().gpu();
@@ -57,7 +102,6 @@ RenderPass createRenderPass()
 {
     const auto& gpu     = RHIContext::get().gpu();
     const auto& device  = RHIContext::get().device();
-    const auto& surface = RHIContext::get().surface();
 
     std::array<vk::AttachmentDescription, 2> attachments = {};
 
@@ -130,6 +174,11 @@ RenderPass createRenderPass()
 
 Buffer createUploadBuffer(VkDeviceSize size)
 {
+    return createUploadBuffer(size, {}, 0);
+}
+
+Buffer createUploadBuffer(VkDeviceSize size, vk::BufferUsageFlags flags, VkMemoryPropertyFlags requiredFlags)
+{
     if (size == 0)
         return VK_NULL_HANDLE;
 
@@ -137,16 +186,17 @@ Buffer createUploadBuffer(VkDeviceSize size)
 
     BufferCreateInfo createInfo;
     createInfo.size  = size;
-    createInfo.usage = vk::BufferUsageFlagBits::eTransferSrc;
+    createInfo.usage = vk::BufferUsageFlagBits::eTransferSrc | flags;
 
     VmaAllocationCreateInfo allocCreateInfo = {};
-    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    allocCreateInfo.usage         = VMA_MEMORY_USAGE_AUTO;
+    allocCreateInfo.flags         = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    allocCreateInfo.requiredFlags = requiredFlags;
 
     return device.createBufferPLP(createInfo, allocCreateInfo);
 }
 
-Buffer createDeviceBuffer(VkDeviceSize size, vk::BufferUsageFlags flags)
+Buffer createDeviceBuffer(VkDeviceSize size, vk::BufferUsageFlags flags, VkMemoryPropertyFlags requiredFlags)
 {
     if (size == 0)
         return VK_NULL_HANDLE;
@@ -158,7 +208,8 @@ Buffer createDeviceBuffer(VkDeviceSize size, vk::BufferUsageFlags flags)
     createInfo.usage = flags;
 
     VmaAllocationCreateInfo allocCreateInfo = {};
-    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    allocCreateInfo.usage         = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    allocCreateInfo.requiredFlags = requiredFlags;
 
     return device.createBufferPLP(createInfo, allocCreateInfo);
 }

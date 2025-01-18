@@ -1,65 +1,90 @@
-#ifndef EXAMPLEBASE_H
-#define EXAMPLEBASE_H
+#pragma once
 
 #include "vk_context.h"
 #include "application.h"
+#include "fps_counter.h"
+#include "camera.h"
+
+#define RUN_APP_EXAMPLE(ClassName)                                                                    \
+std::string title{ constants::kWindowTitle };                                                         \
+title += ": "#ClassName;                                                                              \
+                                                                                                      \
+ClassName sample{};                                                                                   \
+                                                                                                      \
+Application::get().onWindowInitialized += [&sample](const auto& args) { sample.onInit(args); };       \
+Application::get().onWindowResized     += [&sample](const auto& args) { sample.onResize(args); };     \
+Application::get().onMovement          += [&sample](const auto& args) { sample.onMovement(args); };   \
+Application::get().onMouseClick        += [&sample](const auto& args) { sample.onMouseClick(args); }; \
+Application::get().onShutdown          += [&sample]()                 { sample.onShoutDown(); };      \
+Application::get().onRender            += [&sample]()                 { sample.onRender(); };         \
+                                                                                                      \
+Application::get().init(title.c_str(), 1024, 600);                                                    \
+Application::get().run();
 
 namespace polyp {
+namespace vulkan {
 namespace example {
 
-class ExampleBase {
-protected:
-
-    using FrameBuffers = std::vector<vulkan::Framebuffer>;
-    using Images       = std::vector<vk::Image>;
-    using Views        = std::vector<vulkan::ImageView>;
-
-    vulkan::Queue                  mQueue           = { VK_NULL_HANDLE };
-    vulkan::CommandPool            mCmdPool         = { VK_NULL_HANDLE };
-    vulkan::CommandBuffer          mCmdBuffer       = { VK_NULL_HANDLE };
-    vulkan::Semaphore              mReadyToPresent  = { VK_NULL_HANDLE };
-    vulkan::Fence                  mSubmitFence     = { VK_NULL_HANDLE };
-    vulkan::Fence                  mAqImageFence    = { VK_NULL_HANDLE };
-    vulkan::RenderPass             mRenderPass      = { VK_NULL_HANDLE };
-                                                    
-    vk::ImageMemoryBarrier         mCurrSwImBarrier = {};
-    uint32_t                       mCurrSwImIndex   = {};
-                                                    
-    Images                         mSwapChainImages = {};
-    Views                          mSwapChainVeiews = {};
-    FrameBuffers                   mFrameBuffers    = {};
-                                                    
-    vulkan::RHIContext::CreateInfo mContextInfo     = {};
-
-    bool mPauseDrawing                              = false;
-
-    struct {
-        vulkan::Image    image = VK_NULL_HANDLE;
-        vulkan::ImageView view = VK_NULL_HANDLE;
-    } mDepthStencil;
-
-    void acquireSwapChainImage();
-
-    void present();
-
+class ExampleBase
+{
 public:
+    ExampleBase() :
+       mCamera{ constants::kCameraInitPos, constants::kYaw, constants::kPitch }
+    { 
+        mCamera.speed(constants::kMoveSpeed);
+        mCamera.sensitivity(constants::kSensitivity);
+    }
 
-    ExampleBase();
+    virtual ~ExampleBase() = default;
 
-    virtual ~ExampleBase() { }
+    void onRender();
+    void onShoutDown();
+    bool onInit(const WindowInitializedEventArgs& args);
+    bool onResize(const WindowResizeEventArgs& args);
+    void onMouseClick(const MouseClickEventArgs& args);
+    void onMovement(const MovementEventArgs& args);
 
-    virtual bool onInit(const WindowInitializedEventArgs& args);
+protected:
+    struct MVP
+    {
+        glm::mat4 projectionMatrix;
+        glm::mat4 modelMatrix;
+        glm::mat4 viewMatrix;
+    };
 
-    virtual bool onResize(const WindowResizeEventArgs& args);
+    MVP getMVP();
 
-    virtual void draw();
+    virtual void                   draw()             = 0;
+    virtual bool                   postInit()         = 0;
+    virtual bool                   postResize()       = 0;
+    virtual RHIContext::CreateInfo getRHICreateInfo() = 0;
 
-    virtual void onShoutDown();
+    Queue                      mQueue           = { VK_NULL_HANDLE };
+    CommandPool                mCmdPool         = { VK_NULL_HANDLE };
+    std::vector<CommandBuffer> mDrawCmds        = {};
+    std::vector<Fence>         mDrawFences      = {};
+    uint32_t                   mCurrSwImIndex   = {};
+    std::vector<vk::Image>     mSwapChainImages = {};
+    std::vector<ImageView>     mSwapChainViews  = {};
+    FPSCounter                 mFPSCounter;
+    Camera                     mCamera;
 
-    virtual bool isReady() { return true; }
+private:
+    void submit();
+    void present();
+    void waitForFence();
+    void createDrawCmds();
+    void acquireNextSwapChainImage();
+
+    Fence                  mAqImageFence  = { VK_NULL_HANDLE };
+    std::vector<Semaphore> mSemaphores    = {};
+    RHIContext::CreateInfo mContextInfo   = {};
+    float                  mLastXMousePos = 0.0;
+    float                  mLastYMousePos = 0.0;
+    bool                   mPauseDrawing  = false;
+    bool                   mMouseMoving   = false;
 };
 
 } // example
+} // vulkan
 } // polyp
-
-#endif // EXAMPLEBASE_H
