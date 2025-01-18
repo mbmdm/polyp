@@ -7,9 +7,8 @@ namespace example {
 bool ExampleA::postInit()
 {
     mTransferCmd = utils::createCommandBuffer(mCmdPool, vk::CommandBufferLevel::ePrimary);
-    if (*mTransferCmd == VK_NULL_HANDLE) {
+    if (*mTransferCmd == VK_NULL_HANDLE)
         return false;
-    }
 
     POLYPDEBUG("Primary command buffers created successfully");
 
@@ -111,7 +110,8 @@ RHIContext::CreateInfo ExampleA::getRHICreateInfo()
 {
     auto info = utils::getCreateInfo<RHIContext::CreateInfo>();
 
-    std::vector<RHIContext::CreateInfo::Queue> queInfos {
+    std::vector<RHIContext::CreateInfo::Queue> queInfos
+    {
         {1, vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eTransfer, true}
     };
 
@@ -124,10 +124,8 @@ void ExampleA::createBuffers()
 {
     auto mvpData = getMVP();
 
-    const auto cubeCount = 10;
-
-    const VkDeviceSize vertexBufferSize  = mVertexData.size() * sizeof(decltype(mVertexData)::value_type) * cubeCount;
-    const VkDeviceSize indexBufferSize   = mIndexData.size()  * sizeof(decltype(mIndexData)::value_type);
+    const VkDeviceSize vertexBufferSize = mVertexData.size() * sizeof(decltype(mVertexData)::value_type);
+    const VkDeviceSize indexBufferSize  = mIndexData.size() * sizeof(decltype(mIndexData)::value_type);
     const VkDeviceSize uniformBufferSize = sizeof(mvpData) * mSwapChainImages.size();
 
     const auto vertUsage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
@@ -136,8 +134,8 @@ void ExampleA::createBuffers()
 
     VkMemoryPropertyFlags uniformMemFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-    auto vertexUploadBuffer  = utils::createUploadBuffer(vertexBufferSize);
-    auto indexUploadBuffer   = utils::createUploadBuffer(indexBufferSize);
+    auto vertexUploadBuffer = utils::createUploadBuffer(vertexBufferSize);
+    auto indexUploadBuffer  = utils::createUploadBuffer(indexBufferSize);
     auto uniformUploadBuffer = utils::createUploadBuffer(uniformBufferSize, uplUsage, uniformMemFlags);
 
     if (*vertexUploadBuffer  == VK_NULL_HANDLE ||
@@ -151,45 +149,8 @@ void ExampleA::createBuffers()
     indexUploadBuffer.fill(mIndexData);
     uniformUploadBuffer.fill((void*)&mvpData, uniformBufferSize);
 
-    glm::vec3 cubePositions[] = {
-        glm::vec3(0.0f,  0.0f,  0.0f),
-        glm::vec3(2.0f,  5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3(2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f,  3.0f, -7.5f),
-        glm::vec3(1.3f, -2.0f, -2.5f),
-        glm::vec3(1.5f,  2.0f, -2.5f),
-        glm::vec3(1.5f,  0.2f, -1.5f),
-        glm::vec3(-1.3f,  1.0f, -1.5f)
-    };
-
-    for (size_t i = 0; i < cubeCount; ++i)
-    {
-        uint32_t offset = (mVertexData.size() * sizeof(decltype(mVertexData)::value_type)) * i;
-
-        auto cpVertexData = mVertexData;
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, cubePositions[i]);
-        float angle = 20.0f * i;
-        model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-
-        for (size_t v = 0; v < cpVertexData.size(); v++)
-        {
-            auto& vertex = cpVertexData[v];
-            glm::vec4 transformedVertex{ vertex.position[0], vertex.position[1], vertex.position[2], 1.0 };
-            transformedVertex = model * transformedVertex;
-
-            vertex.position[0] = transformedVertex.x;
-            vertex.position[1] = transformedVertex.y;
-            vertex.position[2] = transformedVertex.z;
-        }
-
-        vertexUploadBuffer.fill(cpVertexData, offset);
-    }
-
-    mVertexBuffer  = utils::createDeviceBuffer(vertexBufferSize, vertUsage);
-    mIndexBuffer   = utils::createDeviceBuffer(indexBufferSize,  indUsage);
+    mVertexBuffer = utils::createDeviceBuffer(vertexBufferSize, vertUsage);
+    mIndexBuffer  = utils::createDeviceBuffer(indexBufferSize, indUsage);
     mUniformBuffer = std::move(uniformUploadBuffer);
 
     if (*mVertexBuffer  == VK_NULL_HANDLE ||
@@ -199,21 +160,9 @@ void ExampleA::createBuffers()
         throw std::runtime_error("Failed to create device buffers.");
     }
 
-    vk::BufferMemoryBarrier barrier{};
-    barrier.srcAccessMask       = vk::AccessFlagBits::eTransferWrite;
-    barrier.dstAccessMask       = vk::AccessFlagBits::eMemoryRead;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.offset              = 0;
-    barrier.size                = VK_WHOLE_SIZE;
-
-    std::array<vk::BufferMemoryBarrier, 2> barriers{};
-
-    barriers[0] = barrier;
-    barriers[1] = barrier;
-
-    barriers[0].buffer = *mVertexBuffer;
-    barriers[1].buffer = *mIndexBuffer;
+    std::array<vk::MemoryBarrier, 1> barriers{};
+    barriers[0].srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+    barriers[0].dstAccessMask = vk::AccessFlagBits::eMemoryRead;
 
     mTransferCmd.reset();
 
@@ -222,19 +171,24 @@ void ExampleA::createBuffers()
 
     mTransferCmd.begin(beginInfo);
 
+    // https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#synchronization-submission-host-writes
+    // Submission guarantees the host write being complete. No need the following barrier before transfer:
+    // {
+    //   std::array<vk::MemoryBarrier, 1> hostMemBarriers{};
+    //   hostMemBarriers[0].srcAccessMask = vk::AccessFlagBits::eHostWrite;
+    //   hostMemBarriers[0].dstAccessMask = vk::AccessFlagBits::eTransferRead;
+    //   mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits{}, hostMemBarriers, {}, {});
+    // }
+    // When an event is used to synchronize host writes and queue executions (submission happens before the host write), such barrier is necessary.
+
     vk::BufferCopy copyRegion{ 0, 0, vertexBufferSize };
     mTransferCmd.copyBuffer(*vertexUploadBuffer, *mVertexBuffer, { copyRegion });
 
     copyRegion.size = indexBufferSize;
     mTransferCmd.copyBuffer(*indexUploadBuffer, *mIndexBuffer, { copyRegion });
 
-    // The barriers are useless because of queue idle (added for demonstration)
-    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, {}, barriers, {});
-
-    barrier.buffer        = *mUniformBuffer;
-    barrier.srcAccessMask = vk::AccessFlagBits::eHostWrite;
-
-    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, {}, { barrier }, {});
+    // The barriers are useless because of queue idle and added for demonstration
+    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, barriers, {}, {});
 
     mTransferCmd.end();
 
@@ -420,7 +374,7 @@ void ExampleA::updateUniformBuffer()
 {
     const auto mvpData = getMVP();
 
-    auto pos = (mCurrSwImIndex + 1) % mSwapChainImages.size();
+    auto pos = mCurrSwImIndex;
 
     mUniformBuffer.fill((void*)&mvpData, sizeof(mvpData), sizeof(MVP) * pos);
 }
@@ -432,23 +386,7 @@ void ExampleA::prepareDrawCommands()
     vk::CommandBufferBeginInfo beginInfo{};
     beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 
-    cmd.begin(beginInfo);
-
-    vk::BufferMemoryBarrier barrier{};
-    barrier.srcAccessMask       = vk::AccessFlagBits::eHostWrite;
-    barrier.dstAccessMask       = vk::AccessFlagBits::eMemoryRead;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.offset              = 0;
-    barrier.size                = VK_WHOLE_SIZE;
-    barrier.buffer              = *mUniformBuffer;
-
-    std::array<vk::BufferMemoryBarrier, 1> barriers{ barrier };
-
-    //cmd.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, {}, barriers, {});
-
     const auto& ctx = RHIContext::get();
-
     auto capabilities = ctx.gpu().getSurfaceCapabilitiesKHR(*ctx.surface());
 
     const uint32_t width  = capabilities.currentExtent.width;
@@ -468,6 +406,7 @@ void ExampleA::prepareDrawCommands()
     renderPassBeginInfo.pClearValues             = clearValues;
     renderPassBeginInfo.framebuffer              = *mFrameBuffers[mCurrSwImIndex];
 
+    cmd.begin(beginInfo);
     cmd.beginRenderPass(renderPassBeginInfo, SubpassContents::eInline);
 
     vk::Viewport viewport{};
@@ -486,7 +425,7 @@ void ExampleA::prepareDrawCommands()
     cmd.setViewport(0, viewpors);
 
     vk::Rect2D scissor{};
-    scissor.extent.width = width;
+    scissor.extent.width  = width;
     scissor.extent.height = height;
     scissor.offset.x      = 0;
     scissor.offset.y      = 0;
@@ -495,25 +434,15 @@ void ExampleA::prepareDrawCommands()
     cmd.setScissor(0, scissors);
 
     std::vector<uint32_t> dynamicOffsets{ static_cast<uint32_t>(sizeof(MVP)) * mCurrSwImIndex };
+    VkDeviceSize verBufferOffset = 0;
 
     cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *mPipelineLayout, 0, { *mDescriptorSet }, dynamicOffsets);
     cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, *mPipeline);
-
-    const auto cubeCount = 10;
-
     cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
-
-    for (size_t i = 0; i < cubeCount; i++)
-    {
-        VkDeviceSize offset = (mVertexData.size() * sizeof(decltype(mVertexData)::value_type)) * i;
-        cmd.bindVertexBuffers(0, { *mVertexBuffer }, { offset });
-        cmd.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
-    }
-
-    //VkDeviceSize offset = { 0 };
-    //cmd.bindVertexBuffers(0, { *mVertexBuffer }, { offset });
-    //cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
-    //cmd.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
+    cmd.bindVertexBuffers(0, { *mVertexBuffer }, { 0 });
+    cmd.bindVertexBuffers(0, { *mVertexBuffer }, { verBufferOffset });
+    cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
+    cmd.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
     cmd.endRenderPass();
 
     cmd.end();
