@@ -105,7 +105,7 @@ protected:
         {
             glm::mat4 model = glm::mat4(1.0f);
             model           = glm::translate(model, mBoxPositions[i]);
-            float angle     = rand() % 60;
+            float angle     = rand() % 360;
             model           = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
 
             for (size_t v = 0; v < cubeVertices.size(); ++v)
@@ -163,12 +163,6 @@ protected:
         viewport.minDepth = (float)0.0f;
         viewport.maxDepth = (float)1.0f;
 
-        // View port transformation flipping (like in OpenGL)
-        //viewport.height = -(float)height;
-        //viewport.width  = (float)width;
-        //viewport.x      = 0;
-        //viewport.y      = height;
-
         std::vector<vk::Viewport> viewpors{ viewport };
         cmd.setViewport(0, viewpors);
 
@@ -182,12 +176,10 @@ protected:
         cmd.setScissor(0, scissors);
 
         std::vector<uint32_t> dynamicOffsets{ static_cast<uint32_t>(sizeof(MVP)) * mCurrSwImIndex };
-        VkDeviceSize verBufferOffset = 0;
 
         cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *mPipelineLayout, 0, { *mDescriptorSet }, dynamicOffsets);
         cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, *mPipeline);
         cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
-        cmd.bindVertexBuffers(0, { *mVertexBuffer }, { verBufferOffset });
 
         const size_t boxesCount = mBoxPositions.size();
         for (size_t i = 0; i < boxesCount; i++)
