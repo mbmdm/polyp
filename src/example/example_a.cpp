@@ -439,7 +439,6 @@ void ExampleA::prepareDrawCommands()
     cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *mPipelineLayout, 0, { *mDescriptorSet }, dynamicOffsets);
     cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, *mPipeline);
     cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
-    cmd.bindVertexBuffers(0, { *mVertexBuffer }, { 0 });
     cmd.bindVertexBuffers(0, { *mVertexBuffer }, { verBufferOffset });
     cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
     cmd.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
