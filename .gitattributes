@@ -1,0 +1,2 @@
+assets/models/wuson.obj filter=lfs diff=lfs merge=lfs -text
+assets/models/wuson.mtl filter=lfs diff=lfs merge=lfs -text
