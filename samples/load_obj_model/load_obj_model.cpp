@@ -37,7 +37,7 @@ protected:
     ModelsData loadModel() override
     {
         std::string path = std::string(POLYP_ASSETS_LOCATION) + "models/wuson.obj";
-        auto modelLoader      = polyp::ModelLoader::loadModel(path);
+        auto modelLoader = polyp::ModelLoader::loadModel(path);
 
         if (std::string msg; modelLoader.empty() && modelLoader.hasError(msg))
             POLYPFATAL("%s", msg.c_str());
