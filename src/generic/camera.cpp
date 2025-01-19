@@ -7,9 +7,7 @@ void Camera::reset(glm::vec3 position, float yaw, float pitch)
     mPosition = position;
     mYaw = mYaw;
     mPitch = pitch;
-
-    dirtyView        = true;
-    dirtyOrientation = true;
+    updateView();
 }
 
 glm::mat4 Camera::view()
@@ -55,6 +53,12 @@ void Camera::procesMouse(float xoffset, float yoffset, float deltaTime)
 {
     xoffset *= mSensitivity * deltaTime;
     yoffset *= mSensitivity * deltaTime;
+
+    if (mWorldUp.y < 0)
+    {
+        xoffset *= -1;
+        yoffset *= -1;
+    }
 
     mYaw   += xoffset;
     mPitch += yoffset;
