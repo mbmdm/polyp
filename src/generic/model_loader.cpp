@@ -8,7 +8,7 @@
 
 namespace polyp {
 
-ModelLoader ModelLoader::loadModel(const std::string& path)
+ModelLoader ModelLoader::load(const std::string& path)
 {
     ModelLoader output;
 

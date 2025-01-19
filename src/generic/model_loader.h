@@ -11,7 +11,7 @@ namespace polyp {
 class ModelLoader
 {
 public:
-    static ModelLoader loadModel(const std::string& path);
+    static ModelLoader load(const std::string& path);
 
     const std::vector<glm::vec3>& positions() const { return mPositions; }
     const std::vector<uint32_t>&  indices()   const { return mIndices; }

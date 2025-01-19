@@ -37,27 +37,27 @@ protected:
     ModelsData loadModel() override
     {
         std::string path = std::string(POLYP_ASSETS_LOCATION) + "models/wuson.obj";
-        auto modelLoader = polyp::ModelLoader::loadModel(path);
+        auto loader      = polyp::ModelLoader::load(path);
 
-        if (std::string msg; modelLoader.empty() && modelLoader.hasError(msg))
+        if (std::string msg; loader.empty() && loader.hasError(msg))
             POLYPFATAL("%s", msg.c_str());
-        else if (std::string msg; modelLoader.hasError(msg))
+        else if (std::string msg; loader.hasError(msg))
             POLYPWARN("%s", msg.c_str());
 
-        std::vector<Vertex> vertexData(modelLoader.positions().size());
+        std::vector<Vertex> vertexData(loader.positions().size());
 
         float defaultColor[3] = { 1.0f, 1.0f, 1.0f };
 
         for (size_t i = 0; i < vertexData.size(); ++i)
         {
-            vertexData[i].position[0] = modelLoader.positions()[i].x;
-            vertexData[i].position[1] = modelLoader.positions()[i].y;
-            vertexData[i].position[2] = modelLoader.positions()[i].z;
+            vertexData[i].position[0] = loader.positions()[i].x;
+            vertexData[i].position[1] = loader.positions()[i].y;
+            vertexData[i].position[2] = loader.positions()[i].z;
             memcpy_s(vertexData[i].color, sizeof(vertexData[i].color),
                      defaultColor,        sizeof(defaultColor));
         }
 
-        return std::make_tuple(std::move(vertexData), modelLoader.indices());
+        return std::make_tuple(std::move(vertexData), loader.indices());
     }
 };
 
