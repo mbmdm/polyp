@@ -92,9 +92,9 @@ std::tuple<Image, ImageView> createDepthStencil()
     viewCreateInfo.subresourceRange.levelCount     = 1;
     viewCreateInfo.subresourceRange.baseArrayLayer = 0;
     viewCreateInfo.subresourceRange.layerCount     = 1;
-    
+
     view = device.createImageView(viewCreateInfo);
-    
+
     return std::make_tuple(std::move(image), std::move(view));
 }
 

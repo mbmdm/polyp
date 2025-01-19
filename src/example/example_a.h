@@ -49,6 +49,11 @@ protected:
         vulkan::ImageView view = VK_NULL_HANDLE;
     } mDepthStencil;
 
+    struct
+    {
+        bool solid = true;
+    } mRenderOptions;
+
 private:
     void createBuffers();
     void createLayouts();

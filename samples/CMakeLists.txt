@@ -1,5 +1,7 @@
 ﻿cmake_minimum_required(VERSION 3.20)
 
+add_compile_definitions("POLYP_ASSETS_LOCATION=\"../../../assets/\"")
+
 MACRO(SUBDIRLIST result curdir)
   FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
   SET(dirlist "")
@@ -51,3 +53,4 @@ buildSample("black_screen")
 buildSample("simple_triangle")
 buildSample("simple_box")
 buildSample("simple_many_boxes")
+buildSample("load_obj_model")

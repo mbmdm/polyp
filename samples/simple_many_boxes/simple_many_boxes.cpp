@@ -12,9 +12,7 @@ class SimpleBox final : public example::ExampleA
 public:
     SimpleBox()
     {
-        glm::vec3 pos = constants::kCameraInitPos;
-        pos.z += mDeviation * 5;
-        mCamera.position(pos);
+        mCamera.processKeyboard(Camera::Direction::Backward, mDeviation * 5);
         generatePositions();
     }
 
