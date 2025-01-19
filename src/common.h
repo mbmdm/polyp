@@ -74,10 +74,11 @@ inline constexpr float     kPitch                   = 0.0f;
 inline constexpr float     kSensitivity             = 50.f;
 inline constexpr float     kZoom                    = 45.0f;
 inline constexpr float     kMoveSpeed               = 1.0f;
-inline constexpr glm::vec3 kCameraInitPos           = glm::vec3(0.0f, 0.0f, 3.0f);
+inline constexpr glm::vec3 kCameraInitPos           = glm::vec3(0.0f,  0.0f, 3.0f);
+inline constexpr glm::vec3 kCameraWorldUp           = glm::vec3(0.0f, -1.0f, 0.0f);
 
 /// specific vulkan constants
-inline constexpr auto kVkLibraryName                = "vulkan-1.dll";
+inline constexpr auto      kVkLibraryName           = "vulkan-1.dll";
 
 } // namespace constants
 } // namespace polyp

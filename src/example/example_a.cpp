@@ -274,7 +274,7 @@ void ExampleA::createPipeline()
 
     // Rasterization state
     vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo;
-    rasterizationStateCreateInfo.polygonMode             = vk::PolygonMode::eFill; 
+    rasterizationStateCreateInfo.polygonMode             = vk::PolygonMode::eFill;
     rasterizationStateCreateInfo.cullMode                = vk::CullModeFlagBits::eNone;
     rasterizationStateCreateInfo.frontFace               = vk::FrontFace::eCounterClockwise;
     rasterizationStateCreateInfo.depthClampEnable        = vk::False;
@@ -367,6 +367,12 @@ void ExampleA::createPipeline()
     pipeCreateInfo.pDepthStencilState  = &depthStencilStateCreateInfo;
     pipeCreateInfo.pDynamicState       = &dynamicStateCreateInfo;
 
+    // Process render options
+    {
+        if (!mRenderOptions.solid)
+            rasterizationStateCreateInfo.polygonMode = vk::PolygonMode::eLine;
+    }
+
     mPipeline = RHIContext::get().device().createGraphicsPipeline(VK_NULL_HANDLE, pipeCreateInfo);
 }
 
@@ -416,10 +422,10 @@ void ExampleA::prepareDrawCommands()
     viewport.maxDepth = (float)1.0f;
 
     // View port transformation flipping (like in OpenGL)
-    //viewport.height = -(float)height;
-    //viewport.width  = (float)width;
-    //viewport.x      = 0;
-    //viewport.y      = height;
+    // viewport.height = -(float)height;
+    // viewport.width  = (float)width;
+    // viewport.x      = 0;
+    // viewport.y      = height;
 
     std::vector<vk::Viewport> viewpors{ viewport };
     cmd.setViewport(0, viewpors);

@@ -7,7 +7,8 @@ set(sources
             ${CMAKE_CURRENT_SOURCE_DIR}/example/example_base.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/example/example_a.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/generic/camera.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/generic/application.cpp)
+            ${CMAKE_CURRENT_SOURCE_DIR}/generic/application.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/generic/model_loader.cpp)
 
 set(includes
              ${CMAKE_CURRENT_SOURCE_DIR}
@@ -33,6 +34,7 @@ add_library(vkEngine STATIC ${sources})
 target_include_directories(vkEngine PUBLIC ${includes})
 
 target_link_libraries(vkEngine glm
+                               tinyobjloader
                                VulkanMemoryAllocator)
 
 set_target_properties(vkEngine PROPERTIES FOLDER "src")
