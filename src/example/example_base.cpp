@@ -70,7 +70,7 @@ bool ExampleBase::onInit(const WindowInitializedEventArgs& args)
     onResize(resizeArgs);
 
     createDrawCmds();
-    
+
     if (mDrawCmds.size() != mSwapChainImages.size())
         POLYPFATAL("Failed to create command buffers and fences.");
 
@@ -87,7 +87,7 @@ bool ExampleBase::onResize(const WindowResizeEventArgs& args)
         mPauseDrawing = true;
         return true;
     }
-    
+
     mPauseDrawing = false;
 
     const auto& device    = RHIContext::get().device();
@@ -128,7 +128,7 @@ bool ExampleBase::onResize(const WindowResizeEventArgs& args)
         auto semaphore = device.createSemaphore(semaphoreCreateInfo);
         if (*semaphore == VK_NULL_HANDLE)
             POLYPFATAL("Failed to create semaphore.");
-        
+
         mSemaphores.push_back(std::move(semaphore));
     }
 
@@ -137,7 +137,7 @@ bool ExampleBase::onResize(const WindowResizeEventArgs& args)
 
 void ExampleBase::onMouseClick(const MouseClickEventArgs& args)
 {
-    if (args.button == MouseButton::Left && args.action == MouseActioin::Click) 
+    if (args.button == MouseButton::Left && args.action == MouseActioin::Click)
     {
         mLastXMousePos = 0.f;
         mLastYMousePos = 0.f;
@@ -151,6 +151,9 @@ void ExampleBase::onMouseClick(const MouseClickEventArgs& args)
 void ExampleBase::onMovement(const MovementEventArgs& args)
 {
     auto deltaTime = (1 / mFPSCounter.curfps());
+
+    if (args.HasReset())
+        POLYPTODO("Reset camera");
 
     if (args.HasMotion())
     {

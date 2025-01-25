@@ -8,6 +8,16 @@
 
 namespace polyp {
 
+struct BoundingBox
+{
+    float     width;
+    float     length;
+    float     height;
+    glm::vec3 center;
+
+    std::vector<glm::vec3> vertices();
+};
+
 class ModelLoader
 {
 public:
@@ -16,6 +26,12 @@ public:
     const std::vector<glm::vec3>& positions() const { return mPositions; }
     const std::vector<uint32_t>&  indices()   const { return mIndices; }
     const std::vector<glm::vec3>& colors()    const { return mColors; }
+
+    BoundingBox boundingBox() const { return mBoundingBox; }
+
+    glm::vec3 lookPosition() const;
+
+    glm::vec3 center() const { return mBoundingBox.center; }
 
     bool empty() const { return mPositions.empty(); }
 
@@ -28,7 +44,8 @@ private:
     std::vector<glm::vec3> mColors;
     std::vector<uint32_t>  mIndices;
 
-    std::stringstream mErrors;
+    BoundingBox            mBoundingBox;
+    std::stringstream      mErrors;
 };
 
 }
