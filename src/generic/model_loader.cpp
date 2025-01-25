@@ -30,6 +30,10 @@ ModelLoader ModelLoader::load(const std::string& path)
 
     output.mErrors << "TODO: material, normal and texcoord are not supported yet" << std::endl;
 
+    float minx, maxx, miny, maxy, minz, maxz;
+    minx = miny = minz = std::numeric_limits<float>::max();
+    maxx = maxy = maxz = std::numeric_limits<float>::min();
+
     for (size_t shapeIdx = 0; shapeIdx < shapes.size(); ++shapeIdx)
     {
         const auto& mesh = shapes[shapeIdx].mesh;
@@ -51,6 +55,15 @@ ModelLoader ModelLoader::load(const std::string& path)
                 position.y = attrib.vertices[3 * size_t(idx.vertex_index) + 1];
                 position.z = attrib.vertices[3 * size_t(idx.vertex_index) + 2];
 
+                #define UPDATE_MIN_MAX(dim) do {                   \
+                    min##dim = std::min(min##dim, position.##dim); \
+                    max##dim = std::max(max##dim, position.##dim); \
+                    } while(false)
+
+                UPDATE_MIN_MAX(x);
+                UPDATE_MIN_MAX(y);
+                UPDATE_MIN_MAX(z);
+
                 color.r = attrib.colors[3*size_t(idx.vertex_index) + 0];
                 color.g = attrib.colors[3*size_t(idx.vertex_index) + 1];
                 color.b = attrib.colors[3*size_t(idx.vertex_index) + 2];
@@ -63,7 +76,22 @@ ModelLoader ModelLoader::load(const std::string& path)
         }
     }
 
+    output.mBoundingBox.length = (maxx - minx);
+    output.mBoundingBox.height = (maxy - miny);
+    output.mBoundingBox.width  = (maxz - minz);
+
+    output.mBoundingBox.center.x = minx + (output.mBoundingBox.length / 2);
+    output.mBoundingBox.center.y = miny + (output.mBoundingBox.height / 2);
+    output.mBoundingBox.center.z = minz + (output.mBoundingBox.width  / 2);
+
     return output;
+}
+
+glm::vec3 ModelLoader::lookPosition() const
+{
+    glm::vec3 position = mBoundingBox.center;
+    position.z += (mBoundingBox.width) / 2 + (mBoundingBox.height / 2) * 3;
+    return position;
 }
 
 bool ModelLoader::hasError(std::string& message) const
@@ -74,6 +102,63 @@ bool ModelLoader::hasError(std::string& message) const
     message = mErrors.str();
 
     return true;
+}
+
+std::vector<glm::vec3> BoundingBox::vertices()
+{
+    float minx = center.x - length / 2;
+    float maxx = center.x + length / 2;
+    float miny = center.y - height / 2;
+    float maxy = center.y + height / 2;
+    float minz = center.z - width  / 2;
+    float maxz = center.z + width  / 2;
+
+    std::vector<glm::vec3>  vertices =
+    {
+        { minx, miny, minz },
+        { maxx, miny, minz },
+        { maxx, maxy, minz },
+        { maxx, maxy, minz },
+        { minx, maxy, minz },
+        { minx, miny, minz },
+
+        { minx, miny, maxz },
+        { maxx, miny, maxz },
+        { maxx, maxy, maxz },
+        { maxx, maxy, maxz },
+        { minx, maxy, maxz },
+        { minx, miny, maxz },
+
+        { minx, maxy, maxz },
+        { minx, maxy, minz },
+        { minx, miny, minz },
+        { minx, miny, minz },
+        { minx, miny, maxz },
+        { minx, maxy, maxz },
+
+        { maxx, maxy, maxz },
+        { maxx, maxy, minz },
+        { maxx, miny, minz },
+        { maxx, miny, minz },
+        { maxx, miny, maxz },
+        { maxx, maxy, maxz },
+
+        { minx, miny, minz },
+        { maxx, miny, minz },
+        { maxx, miny, maxz },
+        { maxx, miny, maxz },
+        { minx, miny, maxz },
+        { minx, miny, minz },
+
+        { minx, maxy, minz },
+        { maxx, maxy, minz },
+        { maxx, maxy, maxz },
+        { maxx, maxy, maxz },
+        { minx, maxy, maxz },
+        { minx, maxy, minz }
+    };
+
+    return vertices;
 }
 
 }

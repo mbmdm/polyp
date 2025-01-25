@@ -69,6 +69,8 @@ struct MovementEventArgs
 
     } mouse;
 
+    bool reset = false;
+
     bool HasMotion() const
     {
         return move.ahead || move.back || move.righ || move.left || move.up || move.down;
@@ -82,6 +84,11 @@ struct MovementEventArgs
     bool HasWheel() const
     {
         return mouse.wheel != 0;
+    }
+
+    bool HasReset() const
+    {
+        return reset;
     }
 };
 

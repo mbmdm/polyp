@@ -32,5 +32,6 @@
 
 # Build location
 _build/*
+assets/staff/*
 
 .vscode
