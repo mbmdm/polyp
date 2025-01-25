@@ -29,9 +29,8 @@ class ExampleBase
 {
 public:
     ExampleBase() :
-       mCamera{ constants::kCameraInitPos, constants::kCameraWorldUp,
-                constants::kYaw, constants::kPitch }
-    { 
+       mCamera{ constants::kCameraInitPos, constants::kCameraWorldUp, constants::kCameraInitLookAt }
+    {
         mCamera.speed(constants::kMoveSpeed);
         mCamera.sensitivity(constants::kSensitivity);
     }

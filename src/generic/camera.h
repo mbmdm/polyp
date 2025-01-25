@@ -21,10 +21,9 @@ public:
         Down,
     };
 
-    Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch) :
-        mPosition{ position }, mWorldUp{ worldUp }, mYaw{ yaw }, mPitch{ pitch }
+    Camera(glm::vec3 position, glm::vec3 worldUp, glm::vec3 lookAt): mWorldUp{ worldUp }
     {
-        updateView();
+        reset(position, lookAt);
     }
 
     void processKeyboard(Direction direction, float deltaTime);
@@ -36,7 +35,7 @@ public:
     float speed() const { return mSpeed; };
     void speed(float speed) { mSpeed = speed; };
 
-    void reset(glm::vec3 position, float yaw, float pitch);
+    void reset(glm::vec3 position, glm::vec3 lookAt);
 
     glm::mat4 view();
 
@@ -48,9 +47,10 @@ private:
     glm::mat4 mCachedView;
 
     glm::vec3 mPosition;
+    glm::vec3 mDefaultPosition;
 
-    float mYaw;   // Euler Angle yaw
-    float mPitch; // Euler Angle pitch
+    float mYaw   = -90.0f; // Euler Angle yaw
+    float mPitch =   0.0f; // Euler Angle pitch
 
     float mSpeed       = 1.0; // movement speed
     float mSensitivity = 1.0; // mouse sensitivity

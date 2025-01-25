@@ -2,12 +2,21 @@
 
 namespace polyp {
 
-void Camera::reset(glm::vec3 position, float yaw, float pitch)
+void Camera::reset(glm::vec3 position, glm::vec3 lookAt)
 {
     mPosition = position;
-    mYaw = mYaw;
-    mPitch = pitch;
-    updateView();
+
+    glm::vec3 direction = glm::normalize(lookAt - position);
+
+    mPitch = glm::degrees(asin(direction.y));
+    if (mPitch > 89.0f)
+        mPitch = 89.0f;
+    else if (mPitch < -89.0f)
+        mPitch = -89.0f;
+    mYaw = glm::degrees(std::atan(direction.z / direction.x));
+
+    dirtyOrientation = true;
+    dirtyView        = true;
 }
 
 glm::mat4 Camera::view()
