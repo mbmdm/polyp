@@ -255,7 +255,7 @@ void Application::run()
                     else if (key == VK_CONTROL)
                         movement.move.down = false;
                     else if (key == VK_END)
-                        movement.reset = true;
+                        movement.reset = false;
 
                     key = std::tolower(key);
 
