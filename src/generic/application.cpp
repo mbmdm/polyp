@@ -9,6 +9,7 @@
 
 #include <unordered_map>
 #include <thread>
+#include <cctype>
 
 namespace {
 
