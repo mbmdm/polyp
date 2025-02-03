@@ -32,8 +32,14 @@
 #endif // !ENGINE_MAJOR_VERSION
 
 #ifndef ENGINE_MINOR_VERSION
-#define ENGINE_MINOR_VERSION 1
+#define ENGINE_MINOR_VERSION 0
 #endif // !ENGINE_MONOR_VERSION
+
+#ifndef ENGINE_PATCH_VERSION
+#define ENGINE_PATCH_VERSION 1
+#endif // !ENGINE_MONOR_VERSION
+
+#define ENGINE_VERSION (ENGINE_MAJOR_VERSION << 16) + (ENGINE_MINOR_VERSION << 8) + ENGINE_PATCH_VERSION
 
 #ifndef ENGINE_NAME
 #define ENGINE_NAME "POLYP"
@@ -61,9 +67,6 @@ namespace constants {
 inline constexpr auto      kWindowTitle             = "Polypious (by Polyp &Ko)";
 inline constexpr auto      kWindowClassName         = "PolypWindowClass";
 inline constexpr auto      kInternalApplicationName = "Polyp";
-inline constexpr auto      kMajorVersion            = 99LU;
-inline constexpr auto      kMinorVersion            = 99LU;
-inline constexpr auto      kPatchVersion            = 99LU;
 
 /// Vulkan constants
 inline constexpr auto      kFenceTimeout            = 2'000'000'000ULL;

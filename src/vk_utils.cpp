@@ -16,7 +16,7 @@ RHIContext::CreateInfo getCreateInfo<RHIContext::CreateInfo>()
         {1, vk::QueueFlagBits::eGraphics, true}
     };
 
-   return RHIContext::CreateInfo {
+    return RHIContext::CreateInfo {
          {kInternalApplicationName, 1},         // CreateInfo::Application
          RHIContext::CreateInfo::GPU::Powerful, // CreateInfo::GPU
          {NULL, NULL},                          // CreateInfo::Surface

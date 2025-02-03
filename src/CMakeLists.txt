@@ -15,7 +15,8 @@ set(includes
              ${CMAKE_CURRENT_SOURCE_DIR}/vk
              ${CMAKE_CURRENT_SOURCE_DIR}/generic
              ${CMAKE_CURRENT_SOURCE_DIR}/example
-             ${VULKANSDK_INCLUDE_DIR})
+             ${VULKANSDK_INCLUDE_DIR}
+             ${STB_LOCATION})
 
 set(headers
             ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.h

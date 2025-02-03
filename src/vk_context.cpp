@@ -45,7 +45,7 @@ void RHIContext::init(const CreateInfo::Application& info)
 {
     mCreateInfo.app = info;
 
-    ApplicationInfo applicationInfo(info.name.c_str(), info.version, ENGINE_NAME, (ENGINE_MAJOR_VERSION << 16 + ENGINE_MINOR_VERSION), ENGINE_VK_VERSION);
+    ApplicationInfo applicationInfo(info.name.c_str(), info.version, ENGINE_NAME, ENGINE_VERSION, ENGINE_VK_VERSION);
 
     std::vector<const char*> extensions{
         VK_KHR_SURFACE_EXTENSION_NAME,
