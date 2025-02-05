@@ -1,6 +1,7 @@
 #include "application.h"
 
 #include <os_utils.h>
+#include <global.h>
 
 #ifdef WIN32
 #include <windowsx.h>
@@ -14,8 +15,6 @@
 namespace {
 
 using namespace polyp;
-
-const char* kPolypWindowClassName = "PolypWindowClass";
 
 enum class UserMessage
 {
@@ -119,7 +118,7 @@ bool Application::init(const char* title, int width, int height)
         LoadCursor(nullptr, IDC_ARROW),      // HCURSOR   hCursor
         (HBRUSH)(COLOR_WINDOW + 1),          // HBRUSH    hbrBackground
         nullptr,                             // LPCSTR    lpszMenuName
-        kPolypWindowClassName,               // LPCSTR    lpszClassName
+        POLYP_WIN_CLASS_NAME,                // LPCSTR    lpszClassName
         nullptr                              // HICON     hIconSm
     };
 
@@ -127,7 +126,7 @@ bool Application::init(const char* title, int width, int height)
         return false;
     }
 
-    mWindowHandle = CreateWindow(kPolypWindowClassName, title, WS_OVERLAPPEDWINDOW, 0, 0, width, height, nullptr, nullptr, mWindowInstance, nullptr);
+    mWindowHandle = CreateWindow(POLYP_WIN_CLASS_NAME, title, WS_OVERLAPPEDWINDOW, 0, 0, width, height, nullptr, nullptr, mWindowInstance, nullptr);
     if (!mWindowHandle) {
         return false;
     }
@@ -161,7 +160,7 @@ void Application::run()
         }
     };
     std::thread trackCursorThread{ trackCursorFunc, mWindowHandle, std::ref(trackCursor), std::ref(mStopRendering) };
-    
+
     while (!mStopRendering.load())
     {
         while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
@@ -300,7 +299,7 @@ void Application::destroyWindow()
         mWindowHandle = NULL;
     }
     if (mWindowInstance) {
-        UnregisterClass(kPolypWindowClassName, mWindowInstance);
+        UnregisterClass(POLYP_WIN_CLASS_NAME, mWindowInstance);
         mWindowInstance = NULL;
     }
 }

@@ -104,7 +104,7 @@ bool ExampleBase::onResize(const WindowResizeEventArgs& args)
     for (auto i = 0; i < mSwapChainImages.size(); ++i)
     {
         vk::ImageViewCreateInfo viewCreateInfo{};
-        viewCreateInfo.format     = vk::Format::eB8G8R8A8Unorm;
+        viewCreateInfo.format     = swapchain.getImageFormatPLP();
         viewCreateInfo.components =
         {
             VK_COMPONENT_SWIZZLE_R,

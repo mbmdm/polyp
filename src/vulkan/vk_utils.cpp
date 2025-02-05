@@ -100,13 +100,14 @@ std::tuple<Image, ImageView> createDepthStencil()
 
 RenderPass createRenderPass()
 {
-    const auto& gpu     = RHIContext::get().gpu();
-    const auto& device  = RHIContext::get().device();
+    const auto& gpu       = RHIContext::get().gpu();
+    const auto& device    = RHIContext::get().device();
+    const auto& swapchain = RHIContext::get().swapchain();
 
     std::array<vk::AttachmentDescription, 2> attachments = {};
 
     // Color attachment
-    attachments[0].format         = vk::Format::eB8G8R8A8Unorm;
+    attachments[0].format         = swapchain.getImageFormatPLP();
     attachments[0].samples        = vk::SampleCountFlagBits::e1;
     attachments[0].loadOp         = vk::AttachmentLoadOp::eClear;
     attachments[0].storeOp        = vk::AttachmentStoreOp::eStore;
@@ -232,7 +233,7 @@ ShaderModule loadSPIRV(std::string path)
     }
 
     if (!code) {
-        POLYPFATAL("Failed to load SPIR-V file");
+        POLYPERROR("Failed to load SPIR-V file");
         return VK_NULL_HANDLE;
     }
 

@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
 set(sources
-            ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/vulkan/vk_common.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/vulkan/vk_utils.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/vulkan/vk_context.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/example/example_base.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/example/example_a.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/generic/camera.cpp
@@ -12,16 +12,16 @@ set(sources
 
 set(includes
              ${CMAKE_CURRENT_SOURCE_DIR}
-             ${CMAKE_CURRENT_SOURCE_DIR}/vk
+             ${CMAKE_CURRENT_SOURCE_DIR}/vulkan
              ${CMAKE_CURRENT_SOURCE_DIR}/generic
              ${CMAKE_CURRENT_SOURCE_DIR}/example
              ${VULKANSDK_INCLUDE_DIR}
              ${STB_LOCATION})
 
 set(headers
-            ${CMAKE_CURRENT_SOURCE_DIR}/vk_common.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/vk_utils.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/vk_context.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vulkan/vk_common.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vulkan/vk_utils.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/vulkan/vk_context.h
             ${CMAKE_CURRENT_SOURCE_DIR}/common.h
             ${CMAKE_CURRENT_SOURCE_DIR}/generic/os_utils.h
             ${CMAKE_CURRENT_SOURCE_DIR}/generic/fps_counter.h
