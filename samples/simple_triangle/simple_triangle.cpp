@@ -17,13 +17,13 @@ protected:
     {
         auto vert  = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
         auto index = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
-        
+
         return std::make_tuple(std::move(vert), std::move(index));
     }
 
     ModelsData loadModel() override
     {
-        std::vector<Vertex> vertexData = 
+        std::vector<Vertex> vertexData =
         {
             { {  0.6f,  0.6f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
             { { -0.6f,  0.6f, 0.0f }, { 0.0f, 1.0f, 0.0f } },

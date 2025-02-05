@@ -15,7 +15,6 @@ using namespace vk;
 
 using Context             = vk::raii::Context;
 using SurfaceKHR          = vk::raii::SurfaceKHR;
-using SwapchainKHR        = vk::raii::SwapchainKHR;
 using ImageView           = vk::raii::ImageView;
 using RenderPass          = vk::raii::RenderPass;
 using Queue               = vk::raii::Queue;
@@ -35,6 +34,7 @@ using ShaderModule        = vk::raii::ShaderModule;
 class PhysicalDevice;
 class Instance;
 class Device;
+class SwapchainKHR;
 class Image;
 class Buffer;
 
@@ -63,6 +63,8 @@ public:
     bool isDiscretePLP() const;
 
     Format getDepthFormatPLP() const;
+
+    vk::SurfaceFormatKHR getColorFormatPLP(const SurfaceKHR& surface) const;
 
     std::string toStringPLP() const;
 };
@@ -142,10 +144,54 @@ public:
 
     Buffer createBufferPLP(const BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocationCreateInfo) const;
 
+    SwapchainKHR createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) const;
+
 private:
     VmaAllocator mAllocatorVMA = { VK_NULL_HANDLE };
 
     void init(vk::raii::PhysicalDevice const& gpu);
+};
+
+class SwapchainKHR : public vk::raii::SwapchainKHR
+{
+public:
+    friend class Device;
+
+    SwapchainKHR(std::nullptr_t ptr) :
+        vk::raii::SwapchainKHR(ptr)
+    { }
+
+    SwapchainKHR(SwapchainKHR&& rhv) noexcept :
+        vk::raii::SwapchainKHR(static_cast<vk::raii::SwapchainKHR&&>(rhv))
+    {
+        std::swap(mInfo, rhv.mInfo);
+    }
+
+    SwapchainKHR& operator=(SwapchainKHR&& rhv) noexcept
+    {
+        vk::raii::SwapchainKHR::operator=(static_cast<vk::raii::SwapchainKHR&&>(rhv));
+
+        std::swap(mInfo, rhv.mInfo);
+
+        return *this;
+    }
+
+    ~SwapchainKHR() = default;
+
+    Format getImageFormatPLP() const { return mInfo.format; }
+
+private:
+    SwapchainKHR(Device const&                       device,
+                 SwapchainCreateInfoKHR const&       createInfo,
+                 Optional<const AllocationCallbacks> allocator = nullptr) :
+        vk::raii::SwapchainKHR(device, createInfo, allocator)
+    {
+        mInfo.format = createInfo.imageFormat;
+    }
+
+    struct {
+        Format format = static_cast<Format>(VK_FORMAT_MAX_ENUM);
+    } mInfo;
 };
 
 class Image : protected vk::raii::Image

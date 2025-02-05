@@ -34,8 +34,6 @@ bool ExampleA::postInit()
 
     POLYPDEBUG("Initialization finished");
 
-    mCamera.speed(mCamera.speed() * 5);
-
     return true;
 }
 
@@ -134,8 +132,8 @@ void ExampleA::createBuffers()
 
     VkMemoryPropertyFlags uniformMemFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-    auto vertexUploadBuffer = utils::createUploadBuffer(vertexBufferSize);
-    auto indexUploadBuffer  = utils::createUploadBuffer(indexBufferSize);
+    auto vertexUploadBuffer  = utils::createUploadBuffer(vertexBufferSize);
+    auto indexUploadBuffer   = utils::createUploadBuffer(indexBufferSize);
     auto uniformUploadBuffer = utils::createUploadBuffer(uniformBufferSize, uplUsage, uniformMemFlags);
 
     if (*vertexUploadBuffer  == VK_NULL_HANDLE ||
@@ -149,8 +147,8 @@ void ExampleA::createBuffers()
     indexUploadBuffer.fill(mIndexData);
     uniformUploadBuffer.fill((void*)&mvpData, uniformBufferSize);
 
-    mVertexBuffer = utils::createDeviceBuffer(vertexBufferSize, vertUsage);
-    mIndexBuffer  = utils::createDeviceBuffer(indexBufferSize, indUsage);
+    mVertexBuffer  = utils::createDeviceBuffer(vertexBufferSize, vertUsage);
+    mIndexBuffer   = utils::createDeviceBuffer(indexBufferSize, indUsage);
     mUniformBuffer = std::move(uniformUploadBuffer);
 
     if (*mVertexBuffer  == VK_NULL_HANDLE ||
@@ -203,22 +201,22 @@ void ExampleA::createBuffers()
 void ExampleA::createLayouts()
 {
     auto& device = RHIContext::get().device();
-    
+
     vk::DescriptorSetLayoutBinding layoutBindingInfo{}; // uniform buffer for vertex shader
     layoutBindingInfo.descriptorType  = vk::DescriptorType::eUniformBufferDynamic;
     layoutBindingInfo.descriptorCount = 1;
     layoutBindingInfo.stageFlags      = vk::ShaderStageFlagBits::eVertex;
-    
+
     vk::DescriptorSetLayoutCreateInfo dsLayoutCreateInfo{};
     dsLayoutCreateInfo.bindingCount = 1;
     dsLayoutCreateInfo.pBindings    = &layoutBindingInfo;
-    
+
     mDSLayout = device.createDescriptorSetLayout(dsLayoutCreateInfo);
-    
+
     vk::PipelineLayoutCreateInfo pipeLayoutCreateInfo{};
     pipeLayoutCreateInfo.setLayoutCount = 1;
     pipeLayoutCreateInfo.pSetLayouts    = &*mDSLayout;
-    
+
     mPipelineLayout = device.createPipelineLayout(pipeLayoutCreateInfo);
 }
 
@@ -237,7 +235,7 @@ void ExampleA::createDS()
     dsPoolCreateInfo.flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 
     mDesriptorPool = device.createDescriptorPool(dsPoolCreateInfo);
-    
+
     vk::DescriptorSetAllocateInfo dsAllocInfo{};
     dsAllocInfo.descriptorPool     = *mDesriptorPool;
     dsAllocInfo.descriptorSetCount = 1;
@@ -284,7 +282,7 @@ void ExampleA::createPipeline()
 
     // Blend state
     vk::PipelineColorBlendAttachmentState blendAttachmentState{};
-    blendAttachmentState.colorWriteMask = ColorComponentFlagBits::eA | ColorComponentFlagBits::eR | 
+    blendAttachmentState.colorWriteMask = ColorComponentFlagBits::eA | ColorComponentFlagBits::eR |
                                           ColorComponentFlagBits::eG | ColorComponentFlagBits::eB;
     blendAttachmentState.blendEnable    = vk::False;
 

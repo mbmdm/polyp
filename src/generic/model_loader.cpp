@@ -16,7 +16,7 @@ ModelLoader ModelLoader::load(const std::string& path)
 
     if (!reader.ParseFromFile(path))
     {
-        output.mErrors << "Failed to parse model " << path << std::endl;
+        output.mErrors << "Failed to parse model " << path << ". ";
         if (!reader.Error().empty())
             output.mErrors << "Internal error: " << reader.Error() << std::endl;
         return output;
