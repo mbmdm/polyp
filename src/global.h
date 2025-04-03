@@ -18,22 +18,19 @@
 #include <type_traits>
 #include <thread>
 
-#define CHECKRET(expr)                             \
-{                                                  \
-    auto temp = expr;                              \
-    if (temp != VK_SUCCESS) {                      \
-    printf("Expression %s\n", #expr);              \
-    printf("Failed with result = %lu\n", temp);    \
-    exit(1);}                                      \
-}
-
 #ifndef ENGINE_MAJOR_VERSION
 #define ENGINE_MAJOR_VERSION 1
 #endif // !ENGINE_MAJOR_VERSION
 
 #ifndef ENGINE_MINOR_VERSION
-#define ENGINE_MINOR_VERSION 1
+#define ENGINE_MINOR_VERSION 0
 #endif // !ENGINE_MONOR_VERSION
+
+#ifndef ENGINE_PATCH_VERSION
+#define ENGINE_PATCH_VERSION 1
+#endif // !ENGINE_MONOR_VERSION
+
+#define ENGINE_VERSION (ENGINE_MAJOR_VERSION << 16) + (ENGINE_MINOR_VERSION << 8) + ENGINE_PATCH_VERSION
 
 #ifndef ENGINE_NAME
 #define ENGINE_NAME "POLYP"
@@ -55,16 +52,20 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #endif // !VMA_DYNAMIC_VULKAN_FUNCTIONS
 
+#ifndef POLYP_WIN_CLASS_NAME
+#define POLYP_WIN_CLASS_NAME "PolypWindowClass"
+#endif
+
+#ifndef POLYP_WIN_TITLE
+#define POLYP_WIN_TITLE "Polypious (by Polyp &Ko)"
+#endif
+
+#ifndef POLYP_WIN_APP_NAME
+#define POLYP_WIN_APP_NAME "Polyp"
+#endif
+
 namespace polyp {
 namespace constants {
-
-inline constexpr auto      kWindowTitle             = "Polypious (by Polyp &Ko)";
-inline constexpr auto      kWindowClassName         = "PolypWindowClass";
-inline constexpr auto      kInternalApplicationName = "Polyp";
-inline constexpr auto      kMajorVersion            = 99LU;
-inline constexpr auto      kMinorVersion            = 99LU;
-inline constexpr auto      kPatchVersion            = 99LU;
-
 /// Vulkan constants
 inline constexpr auto      kFenceTimeout            = 2'000'000'000ULL;
 
@@ -75,9 +76,6 @@ inline constexpr float     kMoveSpeed               = 1.0f;
 inline constexpr glm::vec3 kCameraInitPos           = glm::vec3(0.0f,  0.0f, 3.0f);
 inline constexpr glm::vec3 kCameraInitLookAt        = glm::vec3(0.0f,  0.0f, 0.0f);
 inline constexpr glm::vec3 kCameraWorldUp           = glm::vec3(0.0f, -1.0f, 0.0f);
-
-/// specific vulkan constants
-inline constexpr auto      kVkLibraryName           = "vulkan-1.dll";
 
 } // namespace constants
 } // namespace polyp

@@ -19,9 +19,9 @@ public:
             uint32_t    version;
         } app;
 
-        enum class GPU 
-        { 
-            Powerful 
+        enum class GPU
+        {
+            Powerful
         } gpu;
 
         struct Surface
@@ -62,7 +62,7 @@ public:
     const PhysicalDevice&      gpu() const { return mGPU; }
     const SurfaceKHR&      surface() const { return mSurface; }
     const Device&           device() const { return mDevice; }
-    const SwapchainKHR&  swapchain() const { return mSwapchain; }
+    const Swapchain&     swapchain() const { return mSwapchain; }
 
     uint32_t queueFamily(QueueFlags flags) const;
 
@@ -84,9 +84,9 @@ public:
 
     bool ready() const noexcept
     {
-        return (*mInstance  != VK_NULL_HANDLE && 
-                *mGPU       != VK_NULL_HANDLE && 
-                *mDevice    != VK_NULL_HANDLE && 
+        return (*mInstance  != VK_NULL_HANDLE &&
+                *mGPU       != VK_NULL_HANDLE &&
+                *mDevice    != VK_NULL_HANDLE &&
                 *mSwapchain != VK_NULL_HANDLE);
     }
 
@@ -100,7 +100,7 @@ private:
     PhysicalDevice      mGPU = { VK_NULL_HANDLE };
     Device           mDevice = { VK_NULL_HANDLE };
     SurfaceKHR      mSurface = { VK_NULL_HANDLE };
-    SwapchainKHR  mSwapchain = { VK_NULL_HANDLE };
+    Swapchain     mSwapchain = { VK_NULL_HANDLE };
 
     std::map<QueueFlags, uint32_t> mQueueFamilies = {};
     CreateInfo                     mCreateInfo    = {};

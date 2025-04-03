@@ -24,31 +24,34 @@ VkDeviceSize PhysicalDevice::getDeviceMemoryPLP() const
     vk::PhysicalDeviceMemoryProperties memProperties = getMemoryProperties();
 
     std::vector<size_t> targetHeapsIdx;
-    for (size_t heapTypeIdx = 0; heapTypeIdx < memProperties.memoryTypeCount; ++heapTypeIdx) {
-        if (memProperties.memoryTypes[heapTypeIdx].propertyFlags & MemoryPropertyFlagBits::eDeviceLocal) {
+    for (size_t heapTypeIdx = 0; heapTypeIdx < memProperties.memoryTypeCount; ++heapTypeIdx)
+    {
+        if (memProperties.memoryTypes[heapTypeIdx].propertyFlags & MemoryPropertyFlagBits::eDeviceLocal)
+        {
             targetHeapsIdx.push_back(memProperties.memoryTypes[heapTypeIdx].heapIndex);
         }
     }
 
-    if (targetHeapsIdx.empty()) {
+    if (targetHeapsIdx.empty())
         return output;
-    }
 
     //remove the same indexes if exist
     std::sort(targetHeapsIdx.begin(), targetHeapsIdx.end(), std::less<size_t>());
     auto currItr = targetHeapsIdx.begin() + 1;
-    while (currItr != targetHeapsIdx.end()) {
-        if (*currItr == *(currItr - 1)) {
+    while (currItr != targetHeapsIdx.end())
+    {
+        if (*currItr == *(currItr - 1))
+        {
             currItr = targetHeapsIdx.erase(currItr);
         }
-        else {
+        else
+        {
             currItr++;
         }
     }
 
-    for (size_t i = 0; i < targetHeapsIdx.size(); i++) {
+    for (size_t i = 0; i < targetHeapsIdx.size(); i++)
         output += memProperties.memoryHeaps[targetHeapsIdx[i]].size;
-    }
 
     return output;
 }
@@ -61,7 +64,8 @@ bool PhysicalDevice::isDiscretePLP() const
 
 Format PhysicalDevice::getDepthFormatPLP() const
 {
-    std::vector<vk::Format> dsDesiredFormats = {
+    std::vector<vk::Format> desiredFormats =
+    {
         vk::Format::eD32SfloatS8Uint,
         vk::Format::eD32Sfloat,
         vk::Format::eD24UnormS8Uint,
@@ -69,16 +73,35 @@ Format PhysicalDevice::getDepthFormatPLP() const
         vk::Format::eD16Unorm
     };
 
-    auto depthFormat = vk::Format::eUndefined;
-    for (const auto& format : dsDesiredFormats) {
+    for (const auto& format : desiredFormats)
+    {
         auto props = getFormatProperties(format);
-        if (props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment) {
-            depthFormat = format;
-            break;
-        }
+        if (props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment)
+            return format;
     }
 
-    return depthFormat;
+    vk::detail::throwResultException(Result::eErrorOutOfHostMemory, __FUNCTION__);
+
+    return static_cast<vk::Format>(VK_FORMAT_MAX_ENUM);
+}
+
+vk::SurfaceFormatKHR PhysicalDevice::getColorFormatPLP(const SurfaceKHR& surface) const
+{
+    std::vector<vk::Format> desiredFormats = { vk::Format::eR8G8B8A8Unorm };
+
+    auto available = getSurfaceFormatsKHR(*surface);
+
+    for (size_t i = 0; i < available.size(); ++i)
+    {
+        auto it = std::find(desiredFormats.begin(), desiredFormats.end(), available[i].format);
+        if (it != desiredFormats.end())
+            return available[i];
+    }
+
+    vk::detail::throwResultException(Result::eErrorOutOfHostMemory, __FUNCTION__);
+
+    return vk::SurfaceFormatKHR{ static_cast<vk::Format>(VK_FORMAT_MAX_ENUM),
+                                 static_cast<ColorSpaceKHR>(VK_COLOR_SPACE_MAX_ENUM_KHR) };
 }
 
 std::string PhysicalDevice::toStringPLP() const
@@ -99,7 +122,7 @@ uint64_t PhysicalDevice::getPerformanceRatioPLP() const
     uint64_t ratio = getDeviceMemoryPLP() >> 20;
     if (!isDiscretePLP())
         ratio |= 1ULL << 32;
-    
+
     return ratio;
 }
 
@@ -107,23 +130,35 @@ bool PhysicalDevice::supportPLP(const SurfaceKHR& surface, PresentModeKHR mode) 
 {
     auto capabilities = getSurfaceCapabilitiesKHR(*surface);
     if (capabilities.currentExtent.width == UINT32_MAX ||
-        capabilities.currentExtent.height == UINT32_MAX) {
+        capabilities.currentExtent.height == UINT32_MAX)
+    {
         return false;
     }
     else if (capabilities.currentExtent.width == 0 ||
-        capabilities.currentExtent.height == 0) {
+        capabilities.currentExtent.height == 0)
+    {
         return false;
     }
 
     auto presentModes = getSurfacePresentModesKHR(*surface);
-    for (size_t i = 0; i < presentModes.size(); ++i) {
-        if (presentModes[i] == mode) {
+    for (size_t i = 0; i < presentModes.size(); ++i)
+    {
+        if (presentModes[i] == mode)
+        {
             return true;
             break;
         }
     }
 
     return false;
+}
+
+Format Swapchain::getImageFormatPLP() const
+{
+    if (mInfo.format == static_cast<vk::Format>(VK_FORMAT_MAX_ENUM))
+        vk::detail::throwResultException(Result::eErrorOutOfHostMemory, __FUNCTION__);
+
+    return mInfo.format;
 }
 
 Image::~Image()
@@ -142,12 +177,11 @@ Image Device::createImagePLP(const ImageCreateInfo& createInfo, const VmaAllocat
     vk::Image         resource;
     VmaAllocation     allocation;
     VmaAllocationInfo allocationInfo;
-    
-    auto res = vmaCreateImage(mAllocatorVMA, reinterpret_cast<const VkImageCreateInfo*>(&createInfo), 
+
+    auto res = vmaCreateImage(mAllocatorVMA, reinterpret_cast<const VkImageCreateInfo*>(&createInfo),
                               &allocationCreateInfo, reinterpret_cast<VkImage*>(&resource), &allocation, &allocationInfo);
-    if (res != VK_SUCCESS) {
+    if (res != VK_SUCCESS)
         detail::throwResultException(static_cast<vk::Result>(res), __FUNCTION__);
-    }
 
     return Image(*this, *reinterpret_cast<VkImage*>(&resource), allocation, allocationInfo);
 }
@@ -160,11 +194,16 @@ Buffer Device::createBufferPLP(const BufferCreateInfo& createInfo, const VmaAllo
 
     auto res = vmaCreateBuffer(mAllocatorVMA, reinterpret_cast<const VkBufferCreateInfo*>(&createInfo),
         &allocationCreateInfo, reinterpret_cast<VkBuffer*>(&resource), &allocation, &allocationInfo);
-    if (res != VK_SUCCESS) {
+
+    if (res != VK_SUCCESS)
         detail::throwResultException(static_cast<vk::Result>(res), __FUNCTION__);
-    }
 
     return Buffer(*this, *reinterpret_cast<VkBuffer*>(&resource), allocation, allocationInfo);
+}
+
+Swapchain Device::createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) const
+{
+    return Swapchain(*this, createInfo);
 }
 
 void Device::init(vk::raii::PhysicalDevice const& gpu)
@@ -189,7 +228,8 @@ void Device::init(vk::raii::PhysicalDevice const& gpu)
     allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
 
     auto vkres = vk::Result(vmaCreateAllocator(&allocatorCreateInfo, &mAllocatorVMA));
-    if (vkres != vk::Result::eSuccess) {
+    if (vkres != vk::Result::eSuccess)
+    {
         POLYPERROR("Failed to create VMA allocator.");
         mAllocatorVMA = VK_NULL_HANDLE;
     }
@@ -213,9 +253,8 @@ void Buffer::fill(void* data, VkDeviceSize size, VkDeviceSize offset)
 
     auto res = vmaCopyMemoryToAllocation(allocator, data, mAllocationVMA, offset, size);
 
-    if (res != VK_SUCCESS) {
+    if (res != VK_SUCCESS)
         detail::throwResultException(static_cast<vk::Result>(res), __FUNCTION__);
-    }
 }
 
 }

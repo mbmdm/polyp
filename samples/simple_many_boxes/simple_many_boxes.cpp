@@ -12,7 +12,6 @@ class SimpleBox final : public example::ExampleA
 public:
     SimpleBox()
     {
-        mCamera.processKeyboard(Camera::Direction::Backward, mDeviation * 5);
         generatePositions();
     }
 
@@ -121,6 +120,8 @@ protected:
 
         POLYPASSERT((vertexData.size() % mBoxCount) == 0 &&
                     (vertexData.size() / mBoxCount) == indexData.size());
+
+        mCamera.reset(glm::vec3(0.0, 0.0, (mDeviation * 5)), glm::vec3(0.0, 0.0, 0.0));
 
         return std::make_tuple(std::move(vertexData), std::move(indexData));
     }
