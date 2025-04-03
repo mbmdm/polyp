@@ -56,12 +56,16 @@
 #define POLYP_WIN_CLASS_NAME "PolypWindowClass"
 #endif
 
+#ifndef POLYP_WIN_TITLE
+#define POLYP_WIN_TITLE "Polypious (by Polyp &Ko)"
+#endif
+
+#ifndef POLYP_WIN_APP_NAME
+#define POLYP_WIN_APP_NAME "Polyp"
+#endif
+
 namespace polyp {
 namespace constants {
-
-inline constexpr auto      kWindowTitle             = "Polypious (by Polyp &Ko)";
-inline constexpr auto      kInternalApplicationName = "Polyp";
-
 /// Vulkan constants
 inline constexpr auto      kFenceTimeout            = 2'000'000'000ULL;
 

@@ -21,7 +21,7 @@ function(buildSample SAMPLE_NAME)
     file(GLOB SHADERS_GLSL "${SHADER_DIR_GLSL}/*.vert" "${SHADER_DIR_GLSL}/*.frag" "${SHADER_DIR_GLSL}/*.comp" "${SHADER_DIR_GLSL}/*.geom" "${SHADER_DIR_GLSL}/*.tesc" "${SHADER_DIR_GLSL}/*.tese" "${SHADER_DIR_GLSL}/*.mesh" "${SHADER_DIR_GLSL}/*.task" "${SHADER_DIR_GLSL}/*.rgen" "${SHADER_DIR_GLSL}/*.rchit" "${SHADER_DIR_GLSL}/*.rmiss" "${SHADER_DIR_GLSL}/*.rcall" "${SHADER_DIR_GLSL}/*.rahit" "${SHADER_DIR_GLSL}/*.rint" "${SHADER_DIR_GLSL}/*.glsl")
     foreach(GLSL ${SHADERS_GLSL})
         get_filename_component(FILE_NAME ${GLSL} NAME)
-        set(SPIRV_DIR "${CMAKE_CURRENT_BINARY_DIR}/Debug/shaders/${SAMPLE_NAME}")
+        set(SPIRV_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/shaders/${SAMPLE_NAME}")
         set(SPIRV "${SPIRV_DIR}/${FILE_NAME}.spv")
         add_custom_command(
             OUTPUT ${SPIRV}
@@ -35,7 +35,7 @@ function(buildSample SAMPLE_NAME)
     target_link_options(${SAMPLE_NAME} PRIVATE ${SUBSYSTEM_LINKER_OPTIONS})
     target_link_libraries(${SAMPLE_NAME} glm vkEngine)
     target_include_directories(${SAMPLE_NAME} PRIVATE ${VULKAN_HEADERS_INCLUDE_LOCATION})
-    set_target_properties(${SAMPLE_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Debug")
+    set_target_properties(${SAMPLE_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
     set_target_properties(${SAMPLE_NAME} PROPERTIES FOLDER "samples")
 endfunction(buildSample)
 

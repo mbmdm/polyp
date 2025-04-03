@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.h"
+#include <global.h>
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan_raii.hpp>
@@ -34,14 +34,14 @@ using ShaderModule        = vk::raii::ShaderModule;
 class PhysicalDevice;
 class Instance;
 class Device;
-class SwapchainKHR;
+class Swapchain;
 class Image;
 class Buffer;
 
 class PhysicalDevice : public vk::raii::PhysicalDevice
 {
 public:
-    PhysicalDevice(vk::raii::Instance const& instance, 
+    PhysicalDevice(vk::raii::Instance const& instance,
                    VkPhysicalDevice          physicalDevice) :
         vk::raii::PhysicalDevice(instance, physicalDevice)
     { }
@@ -72,8 +72,8 @@ public:
 class Instance : public vk::raii::Instance
 {
 public:
-    Instance(vk::raii::Context const&           context, 
-            InstanceCreateInfo const&           createInfo, 
+    Instance(vk::raii::Context const&           context,
+            InstanceCreateInfo const&           createInfo,
             Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::Instance(context, createInfo, allocator)
     { }
@@ -144,7 +144,7 @@ public:
 
     Buffer createBufferPLP(const BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocationCreateInfo) const;
 
-    SwapchainKHR createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) const;
+    Swapchain createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) const;
 
 private:
     VmaAllocator mAllocatorVMA = { VK_NULL_HANDLE };
@@ -152,22 +152,26 @@ private:
     void init(vk::raii::PhysicalDevice const& gpu);
 };
 
-class SwapchainKHR : public vk::raii::SwapchainKHR
+class Swapchain : public vk::raii::SwapchainKHR
 {
 public:
     friend class Device;
 
-    SwapchainKHR(std::nullptr_t ptr) :
+    Swapchain(std::nullptr_t ptr) :
         vk::raii::SwapchainKHR(ptr)
     { }
 
-    SwapchainKHR(SwapchainKHR&& rhv) noexcept :
+    Swapchain() = delete;
+    Swapchain(const Swapchain&) = delete;
+    Swapchain& operator=(const Swapchain&) = delete;
+
+    Swapchain(Swapchain&& rhv) noexcept :
         vk::raii::SwapchainKHR(static_cast<vk::raii::SwapchainKHR&&>(rhv))
     {
         std::swap(mInfo, rhv.mInfo);
     }
 
-    SwapchainKHR& operator=(SwapchainKHR&& rhv) noexcept
+    Swapchain& operator=(Swapchain&& rhv) noexcept
     {
         vk::raii::SwapchainKHR::operator=(static_cast<vk::raii::SwapchainKHR&&>(rhv));
 
@@ -176,21 +180,21 @@ public:
         return *this;
     }
 
-    ~SwapchainKHR() = default;
+    ~Swapchain() = default;
 
-    Format getImageFormatPLP() const { return mInfo.format; }
+    Format getImageFormatPLP() const;
 
 private:
-    SwapchainKHR(Device const&                       device,
-                 SwapchainCreateInfoKHR const&       createInfo,
-                 Optional<const AllocationCallbacks> allocator = nullptr) :
+    Swapchain(Device const&                       device,
+              SwapchainCreateInfoKHR const&       createInfo,
+              Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::SwapchainKHR(device, createInfo, allocator)
     {
         mInfo.format = createInfo.imageFormat;
     }
 
     struct {
-        Format format = static_cast<Format>(VK_FORMAT_MAX_ENUM);
+        Format format = static_cast<vk::Format>(VK_FORMAT_MAX_ENUM);
     } mInfo;
 };
 

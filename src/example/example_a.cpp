@@ -14,23 +14,10 @@ bool ExampleA::postInit()
 
     std::tie(mVertexData, mIndexData) = loadModel();
 
-    try
-    {
-        createBuffers();
-        createLayouts();
-        createDS();
-        createPipeline();
-    }
-    catch (const SystemError& err)
-    {
-        POLYPFATAL("Exception %d (%s), message %s", err.code().value(), err.code().message().c_str(), err.what());
-        return false;
-    }
-    catch (...)
-    {
-        POLYPFATAL("Internal fatal error during initialization.");
-        return false;
-    }
+    createBuffers();
+    createLayouts();
+    createDS();
+    createPipeline();
 
     POLYPDEBUG("Initialization finished");
 

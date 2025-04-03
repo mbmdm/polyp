@@ -258,9 +258,9 @@ void RHIContext::init(const CreateInfo::SwapChain& info)
     if (!mGPU.supportPLP(mSurface, createInfo.presentMode))
     {
         auto modes = mGPU.getSurfacePresentModesKHR(*mSurface);
-        if (modes.empty()) 
+        if (modes.empty())
         {
-            detail::throwResultException(Result::eErrorOutOfHostMemory, __FUNCTION__);
+            POLYPERROR("Requested presentation %s mode is not found.",  to_string(reqPresentMode).c_str());
             return;
         }
 

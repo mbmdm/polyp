@@ -64,7 +64,7 @@ bool PhysicalDevice::isDiscretePLP() const
 
 Format PhysicalDevice::getDepthFormatPLP() const
 {
-    std::vector<vk::Format> desiredFormats = 
+    std::vector<vk::Format> desiredFormats =
     {
         vk::Format::eD32SfloatS8Uint,
         vk::Format::eD32Sfloat,
@@ -73,27 +73,21 @@ Format PhysicalDevice::getDepthFormatPLP() const
         vk::Format::eD16Unorm
     };
 
-    auto depthFormat = vk::Format::eUndefined;
     for (const auto& format : desiredFormats)
     {
         auto props = getFormatProperties(format);
         if (props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment)
-        {
-            depthFormat = format;
-            break;
-        }
+            return format;
     }
 
-    return depthFormat;
+    vk::detail::throwResultException(Result::eErrorOutOfHostMemory, __FUNCTION__);
+
+    return static_cast<vk::Format>(VK_FORMAT_MAX_ENUM);
 }
 
 vk::SurfaceFormatKHR PhysicalDevice::getColorFormatPLP(const SurfaceKHR& surface) const
 {
-    std::vector<vk::Format> desiredFormats =
-    {
-        vk::Format::eR8G8B8A8Unorm,
-        vk::Format::eR8G8B8A8Unorm
-    };
+    std::vector<vk::Format> desiredFormats = { vk::Format::eR8G8B8A8Unorm };
 
     auto available = getSurfaceFormatsKHR(*surface);
 
@@ -104,7 +98,9 @@ vk::SurfaceFormatKHR PhysicalDevice::getColorFormatPLP(const SurfaceKHR& surface
             return available[i];
     }
 
-    return vk::SurfaceFormatKHR{ static_cast<vk::Format>(VK_FORMAT_MAX_ENUM), 
+    vk::detail::throwResultException(Result::eErrorOutOfHostMemory, __FUNCTION__);
+
+    return vk::SurfaceFormatKHR{ static_cast<vk::Format>(VK_FORMAT_MAX_ENUM),
                                  static_cast<ColorSpaceKHR>(VK_COLOR_SPACE_MAX_ENUM_KHR) };
 }
 
@@ -157,6 +153,14 @@ bool PhysicalDevice::supportPLP(const SurfaceKHR& surface, PresentModeKHR mode) 
     return false;
 }
 
+Format Swapchain::getImageFormatPLP() const
+{
+    if (mInfo.format == static_cast<vk::Format>(VK_FORMAT_MAX_ENUM))
+        vk::detail::throwResultException(Result::eErrorOutOfHostMemory, __FUNCTION__);
+
+    return mInfo.format;
+}
+
 Image::~Image()
 {
     if (mAllocationVMA != VK_NULL_HANDLE)
@@ -197,9 +201,9 @@ Buffer Device::createBufferPLP(const BufferCreateInfo& createInfo, const VmaAllo
     return Buffer(*this, *reinterpret_cast<VkBuffer*>(&resource), allocation, allocationInfo);
 }
 
-SwapchainKHR Device::createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) const
+Swapchain Device::createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) const
 {
-    return SwapchainKHR(*this, createInfo);
+    return Swapchain(*this, createInfo);
 }
 
 void Device::init(vk::raii::PhysicalDevice const& gpu)

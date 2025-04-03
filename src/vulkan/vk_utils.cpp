@@ -1,6 +1,8 @@
 #include "vk_utils.h"
 #include "vk_context.h"
 
+#include <global.h>
+
 #include <fstream>
 
 namespace polyp {
@@ -10,14 +12,12 @@ namespace utils {
 template<>
 RHIContext::CreateInfo getCreateInfo<RHIContext::CreateInfo>()
 {
-    using namespace constants;
-
     std::vector<RHIContext::CreateInfo::Queue> queInfos{
         {1, vk::QueueFlagBits::eGraphics, true}
     };
 
     return RHIContext::CreateInfo {
-         {kInternalApplicationName, 1},         // CreateInfo::Application
+         {POLYP_WIN_APP_NAME, 1},               // CreateInfo::Application
          RHIContext::CreateInfo::GPU::Powerful, // CreateInfo::GPU
          {NULL, NULL},                          // CreateInfo::Surface
          {queInfos, {}},                        // CreateInfo::Device
