@@ -192,7 +192,7 @@ void ExampleA::createBuffers(const UploadModelData& data)
 
 void ExampleA::createTextures(const UploadTextureData& data)
 {
-    POLYPTODO("Implement texture sample.")
+    POLYPTODO("Implement texture sample.");
 }
 
 void ExampleA::createLayouts()

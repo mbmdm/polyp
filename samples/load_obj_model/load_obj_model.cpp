@@ -33,6 +33,7 @@ protected:
 
         return output;
     }
+
     UploadModelData loadModel() override
     {
         UploadModelData output{};
@@ -84,6 +85,11 @@ protected:
         output.index.fill(indexData);
 
         return output;
+    }
+
+    UploadTextureData loadTexture() override
+    {
+        return {};
     }
 };
 

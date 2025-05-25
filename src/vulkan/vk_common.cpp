@@ -246,7 +246,7 @@ Buffer::~Buffer()
     }
 }
 
-void Buffer::fill(void* data, VkDeviceSize size, VkDeviceSize offset)
+void Buffer::fill(const void* data, VkDeviceSize size, VkDeviceSize offset)
 {
     auto& device = RHIContext::get().device();
     auto allocator = device.vmaAlocator();

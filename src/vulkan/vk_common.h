@@ -290,9 +290,9 @@ public:
         return vk::raii::Buffer::operator*();
     }
 
-    void fill(void* data, VkDeviceSize size, VkDeviceSize offset = 0);
+    void fill(const void* data, VkDeviceSize size, VkDeviceSize offset = 0);
 
-    template<typename Container>
+    template<typename Container, typename = std::enable_if<!std::is_pointer<Container>::value>::type>
     void fill(const Container& data, VkDeviceSize offset = 0)
     {
         auto size = sizeof(Container::value_type) * data.size();

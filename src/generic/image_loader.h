@@ -21,6 +21,8 @@ public:
 
     uint32_t channels() const { return mChannels; }
 
+    uint32_t size() const { return mWidth * mHeight * mChannels; }
+
     const std::byte* data() const { return mData.data(); }
 
 private:

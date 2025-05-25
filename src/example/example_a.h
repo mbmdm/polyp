@@ -55,9 +55,9 @@ protected:
 
     void                     updateUniformBuffer();
 
-    virtual ShaderData       loadShaders() = 0;
-    virtual UploadModelData  loadModel()   = 0;
-    virtual TextureData      loadTexture() = 0;
+    virtual ShaderData        loadShaders() = 0;
+    virtual UploadModelData   loadModel()   = 0;
+    virtual UploadTextureData loadTexture() = 0;
 
     CommandBuffer            mTransferCmd    = { VK_NULL_HANDLE };
     Buffer                   mVertexBuffer   = { VK_NULL_HANDLE };
