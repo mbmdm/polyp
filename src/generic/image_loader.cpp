@@ -36,6 +36,8 @@ ImageLoader ImageLoader::load(const std::string& path, uint32_t channels)
     memcpy(output.mData.data(), data, output.mData.size());
 
     stbi_image_free((void*)data);
+
+    return output;
 }
 
 bool ImageLoader::hasError(std::string& message) const

@@ -12,9 +12,13 @@ bool ExampleA::postInit()
 
     POLYPDEBUG("Primary command buffers created successfully");
 
-    std::tie(mVertexData, mIndexData) = loadModel();
+    const auto modelData = loadModel();
+    mDrawIndexCount = modelData.indexCount;
 
-    createBuffers();
+    const auto imageData = loadTexture();
+
+    createBuffers(modelData);
+    createTextures(imageData);
     createLayouts();
     createDS();
     createPipeline();
@@ -105,33 +109,33 @@ RHIContext::CreateInfo ExampleA::getRHICreateInfo()
     return info;
 }
 
-void ExampleA::createBuffers()
+void ExampleA::createBuffers(const UploadModelData& data)
 {
+    if (*data.vertex == VK_NULL_HANDLE || *data.index == VK_NULL_HANDLE || data.indexCount == 0)
+    {
+        POLYPFATAL("Incorrect model data.");
+        return;
+    }
+
     auto mvpData = getMVP();
 
-    const VkDeviceSize vertexBufferSize = mVertexData.size() * sizeof(decltype(mVertexData)::value_type);
-    const VkDeviceSize indexBufferSize  = mIndexData.size() * sizeof(decltype(mIndexData)::value_type);
+    const VkDeviceSize vertexBufferSize  = data.vertex.size();
+    const VkDeviceSize indexBufferSize   = data.index.size();
     const VkDeviceSize uniformBufferSize = sizeof(mvpData) * mSwapChainImages.size();
 
     const auto vertUsage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
     const auto indUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
-    const auto uplUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer;
+    const auto unifUsage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer;
 
     VkMemoryPropertyFlags uniformMemFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-    auto vertexUploadBuffer  = utils::createUploadBuffer(vertexBufferSize);
-    auto indexUploadBuffer   = utils::createUploadBuffer(indexBufferSize);
-    auto uniformUploadBuffer = utils::createUploadBuffer(uniformBufferSize, uplUsage, uniformMemFlags);
-
-    if (*vertexUploadBuffer  == VK_NULL_HANDLE ||
-        *indexUploadBuffer   == VK_NULL_HANDLE ||
-        *uniformUploadBuffer == VK_NULL_HANDLE)
+    auto uniformUploadBuffer = utils::createUploadBuffer(uniformBufferSize, unifUsage, uniformMemFlags);
+    if (*uniformUploadBuffer == VK_NULL_HANDLE)
     {
-        throw std::runtime_error("Failed to create upload buffers.");
+        POLYPFATAL("Failed to create upload buffers.");
+        return;
     }
 
-    vertexUploadBuffer.fill(mVertexData);
-    indexUploadBuffer.fill(mIndexData);
     uniformUploadBuffer.fill((void*)&mvpData, uniformBufferSize);
 
     mVertexBuffer  = utils::createDeviceBuffer(vertexBufferSize, vertUsage);
@@ -142,7 +146,8 @@ void ExampleA::createBuffers()
         *mIndexBuffer   == VK_NULL_HANDLE ||
         *mUniformBuffer == VK_NULL_HANDLE)
     {
-        throw std::runtime_error("Failed to create device buffers.");
+        POLYPFATAL("Failed to create device buffers.");
+        return;
     }
 
     std::array<vk::MemoryBarrier, 1> barriers{};
@@ -167,10 +172,10 @@ void ExampleA::createBuffers()
     // When an event is used to synchronize host writes and queue executions (submission happens before the host write), such barrier is necessary.
 
     vk::BufferCopy copyRegion{ 0, 0, vertexBufferSize };
-    mTransferCmd.copyBuffer(*vertexUploadBuffer, *mVertexBuffer, { copyRegion });
+    mTransferCmd.copyBuffer(*data.vertex, *mVertexBuffer, { copyRegion });
 
     copyRegion.size = indexBufferSize;
-    mTransferCmd.copyBuffer(*indexUploadBuffer, *mIndexBuffer, { copyRegion });
+    mTransferCmd.copyBuffer(*data.index, *mIndexBuffer, { copyRegion });
 
     // The barriers are useless because of queue idle and added for demonstration
     mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, barriers, {}, {});
@@ -183,6 +188,11 @@ void ExampleA::createBuffers()
 
     mQueue.submit(submitInfo);
     mQueue.waitIdle();
+}
+
+void ExampleA::createTextures(const UploadTextureData& data)
+{
+    POLYPTODO("Implement texture sample.")
 }
 
 void ExampleA::createLayouts()
@@ -432,7 +442,7 @@ void ExampleA::prepareDrawCommands()
     cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
     cmd.bindVertexBuffers(0, { *mVertexBuffer }, { verBufferOffset });
     cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
-    cmd.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
+    cmd.drawIndexed(mDrawIndexCount, 1, 0, 0, 1);
     cmd.endRenderPass();
 
     cmd.end();

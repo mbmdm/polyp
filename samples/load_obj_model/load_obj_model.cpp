@@ -24,16 +24,19 @@ protected:
         return info;
     }
 
-    ShadersData loadShaders() override
+    ShaderData loadShaders() override
     {
-        auto vert  = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
-        auto index = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
+        ShaderData output{};
 
-        return std::make_tuple(std::move(vert), std::move(index));
+        output.vertex   = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
+        output.fragment = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
+
+        return output;
     }
-
-    ModelsData loadModel() override
+    UploadModelData loadModel() override
     {
+        UploadModelData output{};
+
         std::string path = gModelPath;
         if (path.empty())
             path = std::string(POLYP_ASSETS_LOCATION) + "models/wuson.obj";
@@ -48,7 +51,7 @@ protected:
         mCamera.reset(loader.lookPosition(), loader.center());
 
         std::vector<glm::vec3> positions = loader.positions();
-        std::vector<uint32_t>  indices   = loader.indices();
+        std::vector<uint32_t>  indexData = loader.indices();
 
         std::vector<Vertex> vertexData(positions.size());
 
@@ -63,7 +66,24 @@ protected:
                      defaultColor,        sizeof(defaultColor));
         }
 
-        return std::make_tuple(std::move(vertexData), std::move(indices));
+        output.indexCount = indexData.size();
+
+        const VkDeviceSize vertexBufferSize = vertexData.size() * sizeof(decltype(vertexData)::value_type);
+        const VkDeviceSize indexBufferSize  = indexData.size()  * sizeof(decltype(indexData)::value_type);
+
+        output.vertex = utils::createUploadBuffer(vertexBufferSize);
+        output.index  = utils::createUploadBuffer(indexBufferSize);
+
+        if (*output.vertex  == VK_NULL_HANDLE || *output.index   == VK_NULL_HANDLE)
+        {
+            POLYPFATAL("Failed to create upload buffers.");
+            return {};
+        }
+
+        output.vertex.fill(vertexData);
+        output.index.fill(indexData);
+
+        return output;
     }
 };
 

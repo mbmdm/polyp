@@ -15,6 +15,14 @@ public:
 
     bool hasError(std::string& message) const;
 
+    uint32_t width() const { return mWidth; }
+
+    uint32_t height() const { return mHeight; }
+
+    uint32_t channels() const { return mChannels; }
+
+    const std::byte* data() const { return mData.data(); }
+
 private:
     ImageLoader() = default;
 

@@ -236,10 +236,10 @@ public:
     }
 
 private:
-    Image(Device const& device,
+    Image(Device const&                       device,
           VkImage                             image,
           VmaAllocation                       vmaAllocation,
-          VmaAllocationInfo const& vmaAllocationInfo,
+          VmaAllocationInfo const&            vmaAllocationInfo,
           Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::Image(device, image, allocator)
     {
@@ -267,6 +267,7 @@ public:
     Buffer(Buffer&& rhv) noexcept :
         vk::raii::Buffer(static_cast<vk::raii::Buffer&&>(rhv))
     {
+        std::swap(mResourceSize,      rhv.mResourceSize);
         std::swap(mAllocationVMA,     rhv.mAllocationVMA);
         std::swap(mAllocationVMAInfo, rhv.mAllocationVMAInfo);
     }
@@ -275,6 +276,7 @@ public:
     {
         vk::raii::Buffer::operator=(static_cast<vk::raii::Buffer&&>(rhv));
 
+        std::swap(mResourceSize,      rhv.mResourceSize);
         std::swap(mAllocationVMA,     rhv.mAllocationVMA);
         std::swap(mAllocationVMAInfo, rhv.mAllocationVMAInfo);
 
@@ -297,18 +299,26 @@ public:
         fill((void*)data.data(), size, offset);
     }
 
+    VkDeviceSize size() const
+    {
+        return mResourceSize;
+    }
+
 private:
-    Buffer(Device const& device,
+    Buffer(Device const&                       device,
            VkBuffer                            buffer,
+           const BufferCreateInfo&             createInfo,
            VmaAllocation                       vmaAllocation,
-           VmaAllocationInfo const& vmaAllocationInfo,
+           const VmaAllocationInfo&            vmaAllocationInfo,
            Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::Buffer(device, buffer, allocator)
     {
-        mAllocationVMA = vmaAllocation;
+        mResourceSize      = createInfo.size;
+        mAllocationVMA     = vmaAllocation;
         mAllocationVMAInfo = vmaAllocationInfo;
     }
 
+    VkDeviceSize           mResourceSize = 0;
     VmaAllocation         mAllocationVMA = VK_NULL_HANDLE;
     VmaAllocationInfo mAllocationVMAInfo = {};
 };

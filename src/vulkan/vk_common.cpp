@@ -198,7 +198,7 @@ Buffer Device::createBufferPLP(const BufferCreateInfo& createInfo, const VmaAllo
     if (res != VK_SUCCESS)
         detail::throwResultException(static_cast<vk::Result>(res), __FUNCTION__);
 
-    return Buffer(*this, *reinterpret_cast<VkBuffer*>(&resource), allocation, allocationInfo);
+    return Buffer(*this, *reinterpret_cast<VkBuffer*>(&resource), createInfo, allocation, allocationInfo);
 }
 
 Swapchain Device::createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) const
