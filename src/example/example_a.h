@@ -48,6 +48,16 @@ protected:
         bool solid = true;
     };
 
+    struct Texture
+    {
+        Image           image   = { VK_NULL_HANDLE };
+        ImageView       view    = { VK_NULL_HANDLE };
+        Sampler         sampler = { VK_NULL_HANDLE };
+        vk::ImageLayout layout  = vk::ImageLayout::eUndefined;
+        uint32_t        width   = 0;
+        uint32_t        height  = 0;
+    };
+
     void                     draw()             override;
     bool                     postInit()         override;
     bool                     postResize()       override;
@@ -72,6 +82,7 @@ protected:
     std::vector<Framebuffer> mFrameBuffers   = {};
     DepthStencilData         mDepthStencil   = {};
     RenderOptions            mRenderOptions  = {};
+    Texture                  mTexture        = {};
     uint32_t                 mDrawIndexCount = 0;
 
 private:

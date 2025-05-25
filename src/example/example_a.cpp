@@ -150,10 +150,6 @@ void ExampleA::createBuffers(const UploadModelData& data)
         return;
     }
 
-    std::array<vk::MemoryBarrier, 1> barriers{};
-    barriers[0].srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-    barriers[0].dstAccessMask = vk::AccessFlagBits::eMemoryRead;
-
     mTransferCmd.reset();
 
     vk::CommandBufferBeginInfo beginInfo{};
@@ -178,7 +174,12 @@ void ExampleA::createBuffers(const UploadModelData& data)
     mTransferCmd.copyBuffer(*data.index, *mIndexBuffer, { copyRegion });
 
     // The barriers are useless because of queue idle and added for demonstration
-    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, barriers, {}, {});
+    {
+        std::array<vk::MemoryBarrier, 1> barriers{};
+        barriers[0].srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+        barriers[0].dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+        mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, barriers, {}, {});
+    }
 
     mTransferCmd.end();
 
@@ -192,7 +193,125 @@ void ExampleA::createBuffers(const UploadModelData& data)
 
 void ExampleA::createTextures(const UploadTextureData& data)
 {
+    const auto& device = RHIContext::get().device();
+
+    mTexture.width  = data.width;
+    mTexture.height = data.height;
+
+    vk::Format format = vk::Format::eUndefined;
+    if (data.channels == 3)
+    {
+        format = vk::Format::eR8G8B8Unorm;
+    }
+    else
+    {
+        POLYPFATAL("Unexpected image format.");
+        return;
+    }
+
+    ImageCreateInfo imCreateInfo{};
+    imCreateInfo.imageType   = vk::ImageType::e2D;
+    imCreateInfo.format      = format;
+    imCreateInfo.extent      = vk::Extent3D(mTexture.width, mTexture.height, 1);
+    imCreateInfo.mipLevels   = 1;
+    imCreateInfo.arrayLayers = 1;
+    imCreateInfo.samples     = vk::SampleCountFlagBits::e1;
+    imCreateInfo.tiling      = vk::ImageTiling::eOptimal;
+    imCreateInfo.usage       = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+
+    VmaAllocationCreateInfo allocCreateInfo{};
+    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+
+    mTexture.image = device.createImagePLP(imCreateInfo, allocCreateInfo);
+    if (*mTexture.image == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create texture.");
+        return;
+    }
+
+    vk::ImageSubresourceRange subImageRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+
+    vk::ImageViewCreateInfo viewCreateInfo{};
+    viewCreateInfo.viewType         = ImageViewType::e2D;
+    viewCreateInfo.image            = *mTexture.image;
+    viewCreateInfo.format           = imCreateInfo.format;
+    viewCreateInfo.subresourceRange = subImageRange;
+
+    mTexture.view = device.createImageView(viewCreateInfo);
+    if (*mTexture.view == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create image view for texture.");
+        return;
+    }
+
+    mTransferCmd.reset();
+
+    vk::CommandBufferBeginInfo beginInfo{};
+    beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+    mTransferCmd.begin(beginInfo);
+
+    std::array<vk::ImageMemoryBarrier, 1> barriers{};
+    barriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barriers[0].image               = *mTexture.image;
+    barriers[0].subresourceRange    = subImageRange;
+    barriers[0].srcAccessMask       = vk::AccessFlagBits::eNoneKHR;
+    barriers[0].dstAccessMask       = vk::AccessFlagBits::eTransferWrite;
+    barriers[0].oldLayout           = vk::ImageLayout::eUndefined;
+    barriers[0].newLayout           = vk::ImageLayout::eTransferDstOptimal;
+
+    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits{}, {}, {}, barriers);
+    
+    vk::BufferImageCopy copyRegion{};
+    copyRegion.bufferOffset     = 0;
+    copyRegion.imageOffset      = vk::Offset3D{0, 0, 0};
+    copyRegion.imageExtent      = vk::Extent3D(data.width, data.height, 1);
+    copyRegion.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1);
+    
+    mTransferCmd.copyBufferToImage(*data.texture, *mTexture.image, ImageLayout::eTransferDstOptimal, copyRegion);
+
+    barriers[0].srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+    barriers[0].dstAccessMask = vk::AccessFlagBits::eShaderRead;
+    barriers[0].oldLayout     = vk::ImageLayout::eTransferDstOptimal;
+    barriers[0].newLayout     = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, vk::DependencyFlagBits{}, {}, {}, barriers);
+
+    mTexture.layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+    mTransferCmd.end();
+
+    vk::SubmitInfo submitInfo{};
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &*mTransferCmd;
+
+    mQueue.submit(submitInfo);
+
+
+
+
+
+
+
+
+
+
+
+
     POLYPTODO("Implement texture sample.");
+
+
+
+
+
+
+
+
+
+
+
+    mQueue.waitIdle();
 }
 
 void ExampleA::createLayouts()
