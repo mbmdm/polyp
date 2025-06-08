@@ -193,7 +193,14 @@ void ExampleA::createBuffers(const UploadModelData& data)
 
 void ExampleA::createTextures(const UploadTextureData& data)
 {
+    if (*data.texture == VK_NULL_HANDLE || data.width * data.height * data.channels == 0)
+    {
+        POLYPDEBUG("No texture data provided.");
+        return;
+    }
+
     const auto& device = RHIContext::get().device();
+    const auto& gpu    = RHIContext::get().gpu();
 
     mTexture.width  = data.width;
     mTexture.height = data.height;
@@ -288,28 +295,25 @@ void ExampleA::createTextures(const UploadTextureData& data)
 
     mQueue.submit(submitInfo);
 
+    SamplerCreateInfo samplerInfo{};
+    samplerInfo.magFilter  = Filter::eLinear;
+    samplerInfo.minFilter  = Filter::eLinear;
+    samplerInfo.mipmapMode = SamplerMipmapMode::eLinear;
+    samplerInfo.maxLod     = VK_LOD_CLAMP_NONE;
 
+    if (device.getEnabledFeatures().samplerAnisotropy)
+    {
+        POLYPDEBUG("Create sample with anisotropy");
+        samplerInfo.anisotropyEnable = true;
+        samplerInfo.maxAnisotropy = gpu.getProperties().limits.maxSamplerAnisotropy;
+    }
 
-
-
-
-
-
-
-
-
-
-    POLYPTODO("Implement texture sample.");
-
-
-
-
-
-
-
-
-
-
+    mTexture.sampler = device.createSampler(samplerInfo);
+    if (*mTexture.sampler == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create texture sampler.");
+        return;
+    }
 
     mQueue.waitIdle();
 }
@@ -318,39 +322,55 @@ void ExampleA::createLayouts()
 {
     auto& device = RHIContext::get().device();
 
-    vk::DescriptorSetLayoutBinding layoutBindingInfo{}; // uniform buffer for vertex shader
-    layoutBindingInfo.descriptorType  = vk::DescriptorType::eUniformBufferDynamic;
-    layoutBindingInfo.descriptorCount = 1;
-    layoutBindingInfo.stageFlags      = vk::ShaderStageFlagBits::eVertex;
+    std::array<DescriptorSetLayoutBinding, 2> bindingInfos {
+        DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBufferDynamic, 1,  vk::ShaderStageFlagBits::eVertex),
+        DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, 1,  vk::ShaderStageFlagBits::eFragment),
+    };
 
     vk::DescriptorSetLayoutCreateInfo dsLayoutCreateInfo{};
-    dsLayoutCreateInfo.bindingCount = 1;
-    dsLayoutCreateInfo.pBindings    = &layoutBindingInfo;
+    dsLayoutCreateInfo.pBindings    = bindingInfos.data();
+    dsLayoutCreateInfo.bindingCount = (*mTexture.sampler != VK_NULL_HANDLE) ? 2 : 1;
 
     mDSLayout = device.createDescriptorSetLayout(dsLayoutCreateInfo);
+    if (*mDSLayout == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create descriptor set layout.");
+        return;
+    }
 
     vk::PipelineLayoutCreateInfo pipeLayoutCreateInfo{};
     pipeLayoutCreateInfo.setLayoutCount = 1;
     pipeLayoutCreateInfo.pSetLayouts    = &*mDSLayout;
 
     mPipelineLayout = device.createPipelineLayout(pipeLayoutCreateInfo);
+    if (*mPipelineLayout == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create pipeline layout.");
+        return;
+    }
 }
 
 void ExampleA::createDS()
 {
     auto& device = RHIContext::get().device();
 
-    vk::DescriptorPoolSize descriptorPoolSize;
-    descriptorPoolSize.type            = vk::DescriptorType::eUniformBufferDynamic;
-    descriptorPoolSize.descriptorCount = 1;
+    std::array<DescriptorPoolSize, 2> descriptorPoolSizes{
+        DescriptorPoolSize(DescriptorType::eUniformBufferDynamic, 1),
+        DescriptorPoolSize(DescriptorType::eCombinedImageSampler, 1),
+    };
 
     vk::DescriptorPoolCreateInfo dsPoolCreateInfo{};
-    dsPoolCreateInfo.poolSizeCount = 1;
-    dsPoolCreateInfo.pPoolSizes    = &descriptorPoolSize;
+    dsPoolCreateInfo.poolSizeCount = 2;
+    dsPoolCreateInfo.pPoolSizes    = descriptorPoolSizes.data();
     dsPoolCreateInfo.maxSets       = 1;
     dsPoolCreateInfo.flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 
     mDesriptorPool = device.createDescriptorPool(dsPoolCreateInfo);
+    if (*mDesriptorPool == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create descriptor pool.");
+        return;
+    }
 
     vk::DescriptorSetAllocateInfo dsAllocInfo{};
     dsAllocInfo.descriptorPool     = *mDesriptorPool;
@@ -361,19 +381,39 @@ void ExampleA::createDS()
     POLYPASSERT(!sets.empty());
 
     mDescriptorSet = std::move(sets[0]);
+    if (*mDesriptorPool == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create descriptor set.");
+        return;
+    }
 
     vk::DescriptorBufferInfo dsBufferInfo{};
     dsBufferInfo.buffer = *mUniformBuffer;
     dsBufferInfo.range = static_cast<uint32_t>(sizeof(MVP));
 
-    vk::WriteDescriptorSet writeDescriptorSet{};
-    writeDescriptorSet.dstSet          = *mDescriptorSet;
-    writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.descriptorType  = vk::DescriptorType::eUniformBufferDynamic;
-    writeDescriptorSet.pBufferInfo     = &dsBufferInfo;
-    writeDescriptorSet.dstBinding      = 0;
+    vk::WriteDescriptorSet writeDSBuffer{};
+    writeDSBuffer.dstSet          = *mDescriptorSet;
+    writeDSBuffer.descriptorCount = 1;
+    writeDSBuffer.descriptorType  = vk::DescriptorType::eUniformBufferDynamic;
+    writeDSBuffer.pBufferInfo     = &dsBufferInfo;
+    writeDSBuffer.dstBinding      = 0;
 
-    device.updateDescriptorSets({ writeDescriptorSet }, {});
+    DescriptorImageInfo dsImageInfo{};
+    dsImageInfo.imageView   = *mTexture.view;
+    dsImageInfo.sampler     = *mTexture.sampler;
+    dsImageInfo.imageLayout = mTexture.layout;
+
+    vk::WriteDescriptorSet writeDSSampler{};
+    writeDSSampler.dstSet          = *mDescriptorSet;
+    writeDSSampler.descriptorCount = 1;
+    writeDSSampler.descriptorType  = vk::DescriptorType::eCombinedImageSampler;
+    writeDSSampler.pImageInfo      = &dsImageInfo;
+    writeDSSampler.dstBinding      = 1;
+
+    if (*mTexture.sampler == VK_NULL_HANDLE)
+        device.updateDescriptorSets({ writeDSBuffer }, {});
+    else
+        device.updateDescriptorSets({ writeDSBuffer, writeDSSampler }, {});
 }
 
 void ExampleA::createPipeline()
@@ -440,7 +480,7 @@ void ExampleA::createPipeline()
     vertexInputBinding.stride    = sizeof(Vertex);
     vertexInputBinding.inputRate = vk::VertexInputRate::eVertex;
 
-    std::array<vk::VertexInputAttributeDescription, 2> vertexInputAttributs;
+    std::array<vk::VertexInputAttributeDescription, 3> vertexInputAttributs;
     vertexInputAttributs[0].binding  = 0;
     vertexInputAttributs[0].location = 0;
     vertexInputAttributs[0].format   = vk::Format::eR32G32B32Sfloat;
@@ -449,11 +489,15 @@ void ExampleA::createPipeline()
     vertexInputAttributs[1].location = 1;
     vertexInputAttributs[1].format   = vk::Format::eR32G32B32Sfloat;
     vertexInputAttributs[1].offset   = offsetof(Vertex, color);
+    vertexInputAttributs[2].binding  = 0;
+    vertexInputAttributs[2].location = 2;
+    vertexInputAttributs[2].format   = vk::Format::eR32G32Sfloat;
+    vertexInputAttributs[2].offset   = offsetof(Vertex, texCoord);
 
     vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
     vertexInputStateCreateInfo.vertexBindingDescriptionCount   = 1;
     vertexInputStateCreateInfo.pVertexBindingDescriptions      = &vertexInputBinding;
-    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 2;
+    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 3;
     vertexInputStateCreateInfo.pVertexAttributeDescriptions    = vertexInputAttributs.data();
 
     // Shaders

@@ -206,10 +206,13 @@ Swapchain Device::createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) c
     return Swapchain(*this, createInfo);
 }
 
-void Device::init(vk::raii::PhysicalDevice const& gpu)
+void Device::init(const vk::raii::PhysicalDevice& gpu, const DeviceCreateInfo& createInfo)
 {
     if (static_cast<VkDevice>(**this) == VK_NULL_HANDLE)
         return;
+
+    if (createInfo.pEnabledFeatures != nullptr)
+        mFeatures = *createInfo.pEnabledFeatures;
 
     auto* devDispatcher  = getDispatcher();
     auto* instDispatcher = gpu.getDispatcher();

@@ -30,6 +30,7 @@ using PipelineLayout      = vk::raii::PipelineLayout;
 using DescriptorPool      = vk::raii::DescriptorPool;
 using DescriptorSet       = vk::raii::DescriptorSet;
 using ShaderModule        = vk::raii::ShaderModule;
+using Sampler             = vk::raii::Sampler;
 
 class PhysicalDevice;
 class Instance;
@@ -64,7 +65,7 @@ public:
 
     Format getDepthFormatPLP() const;
 
-    vk::SurfaceFormatKHR getColorFormatPLP(const SurfaceKHR& surface) const;
+    SurfaceFormatKHR getColorFormatPLP(const SurfaceKHR& surface) const;
 
     std::string toStringPLP() const;
 };
@@ -99,15 +100,16 @@ public:
            Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::Device(physicalDevice, createInfo, allocator)
     {
-        init(physicalDevice);
+        init(physicalDevice, createInfo);
     }
 
     Device(vk::raii::PhysicalDevice const&     physicalDevice,
            VkDevice                            device,
+           DeviceCreateInfo const&             createInfo,
            Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::Device(physicalDevice, device, allocator)
     {
-        init(physicalDevice);
+        init(physicalDevice, createInfo);
     }
 
     Device(std::nullptr_t ptr) :
@@ -146,10 +148,13 @@ public:
 
     Swapchain createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) const;
 
-private:
-    VmaAllocator mAllocatorVMA = { VK_NULL_HANDLE };
+    const PhysicalDeviceFeatures& getEnabledFeatures() const { return mFeatures; };
 
-    void init(vk::raii::PhysicalDevice const& gpu);
+private:
+    VmaAllocator           mAllocatorVMA = { VK_NULL_HANDLE };
+    PhysicalDeviceFeatures mFeatures     = { };
+
+    void init(const vk::raii::PhysicalDevice& gpu, const DeviceCreateInfo& createInfo);
 };
 
 class Swapchain : public vk::raii::SwapchainKHR
