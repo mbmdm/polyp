@@ -111,7 +111,7 @@ RHIContext::CreateInfo ExampleA::getRHICreateInfo()
 
 void ExampleA::createBuffers(const UploadModelData& data)
 {
-    if (*data.vertex == VK_NULL_HANDLE || *data.index == VK_NULL_HANDLE || data.indexCount == 0)
+    if (data.empty())
     {
         POLYPFATAL("Incorrect model data.");
         return;
@@ -125,11 +125,9 @@ void ExampleA::createBuffers(const UploadModelData& data)
 
     const auto vertUsage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
     const auto indUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
-    const auto unifUsage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer;
+    const auto unifUsage = vk::BufferUsageFlagBits::eUniformBuffer;
 
-    VkMemoryPropertyFlags uniformMemFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-    auto uniformUploadBuffer = utils::createUploadBuffer(uniformBufferSize, unifUsage, uniformMemFlags);
+    auto uniformUploadBuffer = utils::createUploadBuffer(uniformBufferSize, unifUsage);
     if (*uniformUploadBuffer == VK_NULL_HANDLE)
     {
         POLYPFATAL("Failed to create upload buffers.");
@@ -193,9 +191,9 @@ void ExampleA::createBuffers(const UploadModelData& data)
 
 void ExampleA::createTextures(const UploadTextureData& data)
 {
-    if (*data.texture == VK_NULL_HANDLE || data.width * data.height * data.channels == 0)
+    if (data.empty() || data.channels != 3)
     {
-        POLYPDEBUG("No texture data provided.");
+        POLYPDEBUG("Incorrect texture data provided.");
         return;
     }
 
@@ -205,16 +203,8 @@ void ExampleA::createTextures(const UploadTextureData& data)
     mTexture.width  = data.width;
     mTexture.height = data.height;
 
-    vk::Format format = vk::Format::eUndefined;
-    if (data.channels == 3)
-    {
-        format = vk::Format::eR8G8B8Unorm;
-    }
-    else
-    {
-        POLYPFATAL("Unexpected image format.");
-        return;
-    }
+    vk::Format format = (data.channels == 3) ? Format::eR8G8B8Unorm : Format::eUndefined;
+    POLYPASSERT(format != Format::eUndefined);
 
     ImageCreateInfo imCreateInfo{};
     imCreateInfo.imageType   = vk::ImageType::e2D;
@@ -269,13 +259,13 @@ void ExampleA::createTextures(const UploadTextureData& data)
     barriers[0].newLayout           = vk::ImageLayout::eTransferDstOptimal;
 
     mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits{}, {}, {}, barriers);
-    
+
     vk::BufferImageCopy copyRegion{};
     copyRegion.bufferOffset     = 0;
     copyRegion.imageOffset      = vk::Offset3D{0, 0, 0};
     copyRegion.imageExtent      = vk::Extent3D(data.width, data.height, 1);
     copyRegion.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1);
-    
+
     mTransferCmd.copyBufferToImage(*data.texture, *mTexture.image, ImageLayout::eTransferDstOptimal, copyRegion);
 
     barriers[0].srcAccessMask = vk::AccessFlagBits::eTransferWrite;
@@ -503,14 +493,19 @@ void ExampleA::createPipeline()
     // Shaders
     std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages{};
 
-    auto [vertexShader, indexShader] = loadShaders();
+    const auto data = loadShaders();
+    if (data.empty())
+    {
+        POLYPFATAL("Incorrect shader data.");
+        return;
+    }
 
     shaderStages[0].stage  = vk::ShaderStageFlagBits::eVertex;
-    shaderStages[0].module = *vertexShader;
+    shaderStages[0].module = *data.vertex;
     shaderStages[0].pName  = "main";
 
     shaderStages[1].stage  = vk::ShaderStageFlagBits::eFragment;
-    shaderStages[1].module = *indexShader;
+    shaderStages[1].module = *data.fragment;
     shaderStages[1].pName  = "main";
 
     pipeCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());

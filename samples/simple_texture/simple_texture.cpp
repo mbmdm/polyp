@@ -9,18 +9,10 @@ namespace polyp::vulkan {
 
 class SimpleTexture final : public example::ExampleA
 {
-public:
-    SimpleTexture()
-    {
-        mRenderOptions.solid = true;
-    }
-
 protected:
     RHIContext::CreateInfo getRHICreateInfo() override
     {
-        auto info = utils::getCreateInfo<RHIContext::CreateInfo>();
-        info.device.features.fillModeNonSolid = true;
-        return info;
+        return utils::getCreateInfo<RHIContext::CreateInfo>();
     }
 
     ShaderData loadShaders() override

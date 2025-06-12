@@ -31,8 +31,8 @@ private:
     uint32_t               mWidth    = 0;
     uint32_t               mHeight   = 0;
     uint32_t               mChannels = 0;
-    std::vector<std::byte> mData;
-    std::stringstream      mErrors;
+    std::vector<std::byte> mData     = {};
+    std::stringstream      mErrors   = {};
 };
 
 }

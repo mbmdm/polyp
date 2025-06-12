@@ -21,6 +21,8 @@ protected:
     {
         ShaderModule vertex   = { VK_NULL_HANDLE };
         ShaderModule fragment = { VK_NULL_HANDLE };
+
+        bool empty() const { return *vertex == VK_NULL_HANDLE || *fragment == VK_NULL_HANDLE; }
     };
 
     struct UploadModelData
@@ -28,6 +30,8 @@ protected:
         Buffer   vertex     = { VK_NULL_HANDLE };
         Buffer   index      = { VK_NULL_HANDLE };
         uint32_t indexCount = 0;
+
+        bool empty() const { return *vertex == VK_NULL_HANDLE || *index == VK_NULL_HANDLE || indexCount == 0; }
     };
 
     struct UploadTextureData
@@ -36,6 +40,8 @@ protected:
         uint32_t height   = 0;
         uint32_t channels = 0;
         Buffer   texture  = { VK_NULL_HANDLE };
+
+        bool empty() const { return *texture == VK_NULL_HANDLE || width * height * channels == 0; }
     };
 
     struct DepthStencilData

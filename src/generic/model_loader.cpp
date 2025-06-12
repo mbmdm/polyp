@@ -72,7 +72,7 @@ ModelLoader ModelLoader::load(const std::string& path)
                 color.b = attrib.colors[3 * size_t(idx.vertex_index) + 2];
 
                 texCoord.x = attrib.texcoords[2 * size_t(idx.texcoord_index) + 0];
-                texCoord.y = /*1.0f -*/ attrib.texcoords[2 * size_t(idx.texcoord_index) + 1];
+                texCoord.y = attrib.texcoords[2 * size_t(idx.texcoord_index) + 1];
 
                 output.mPositions.push_back(position);
                 output.mIndices.push_back(output.mIndices.size());

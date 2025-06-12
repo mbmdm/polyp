@@ -33,7 +33,7 @@ ImageLoader ImageLoader::load(const std::string& path, uint32_t channels)
     output.mChannels = (channels != 0) ? channels : ch;
     output.mData.resize(w * h * output.mChannels);
 
-    memcpy(output.mData.data(), data, output.mData.size());
+    memcpy_s(output.mData.data(), output.mData.size(), data, w * h * ch);
 
     stbi_image_free((void*)data);
 
