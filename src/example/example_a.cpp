@@ -12,9 +12,13 @@ bool ExampleA::postInit()
 
     POLYPDEBUG("Primary command buffers created successfully");
 
-    std::tie(mVertexData, mIndexData) = loadModel();
+    const auto modelData = loadModel();
+    mDrawIndexCount = modelData.indexCount;
 
-    createBuffers();
+    const auto imageData = loadTexture();
+
+    createBuffers(modelData);
+    createTextures(imageData);
     createLayouts();
     createDS();
     createPipeline();
@@ -105,33 +109,31 @@ RHIContext::CreateInfo ExampleA::getRHICreateInfo()
     return info;
 }
 
-void ExampleA::createBuffers()
+void ExampleA::createBuffers(const UploadModelData& data)
 {
+    if (data.empty())
+    {
+        POLYPFATAL("Incorrect model data.");
+        return;
+    }
+
     auto mvpData = getMVP();
 
-    const VkDeviceSize vertexBufferSize = mVertexData.size() * sizeof(decltype(mVertexData)::value_type);
-    const VkDeviceSize indexBufferSize  = mIndexData.size() * sizeof(decltype(mIndexData)::value_type);
+    const VkDeviceSize vertexBufferSize  = data.vertex.size();
+    const VkDeviceSize indexBufferSize   = data.index.size();
     const VkDeviceSize uniformBufferSize = sizeof(mvpData) * mSwapChainImages.size();
 
     const auto vertUsage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
     const auto indUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
-    const auto uplUsage  = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer;
+    const auto unifUsage = vk::BufferUsageFlagBits::eUniformBuffer;
 
-    VkMemoryPropertyFlags uniformMemFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-    auto vertexUploadBuffer  = utils::createUploadBuffer(vertexBufferSize);
-    auto indexUploadBuffer   = utils::createUploadBuffer(indexBufferSize);
-    auto uniformUploadBuffer = utils::createUploadBuffer(uniformBufferSize, uplUsage, uniformMemFlags);
-
-    if (*vertexUploadBuffer  == VK_NULL_HANDLE ||
-        *indexUploadBuffer   == VK_NULL_HANDLE ||
-        *uniformUploadBuffer == VK_NULL_HANDLE)
+    auto uniformUploadBuffer = utils::createUploadBuffer(uniformBufferSize, unifUsage);
+    if (*uniformUploadBuffer == VK_NULL_HANDLE)
     {
-        throw std::runtime_error("Failed to create upload buffers.");
+        POLYPFATAL("Failed to create upload buffers.");
+        return;
     }
 
-    vertexUploadBuffer.fill(mVertexData);
-    indexUploadBuffer.fill(mIndexData);
     uniformUploadBuffer.fill((void*)&mvpData, uniformBufferSize);
 
     mVertexBuffer  = utils::createDeviceBuffer(vertexBufferSize, vertUsage);
@@ -142,12 +144,9 @@ void ExampleA::createBuffers()
         *mIndexBuffer   == VK_NULL_HANDLE ||
         *mUniformBuffer == VK_NULL_HANDLE)
     {
-        throw std::runtime_error("Failed to create device buffers.");
+        POLYPFATAL("Failed to create device buffers.");
+        return;
     }
-
-    std::array<vk::MemoryBarrier, 1> barriers{};
-    barriers[0].srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-    barriers[0].dstAccessMask = vk::AccessFlagBits::eMemoryRead;
 
     mTransferCmd.reset();
 
@@ -167,13 +166,18 @@ void ExampleA::createBuffers()
     // When an event is used to synchronize host writes and queue executions (submission happens before the host write), such barrier is necessary.
 
     vk::BufferCopy copyRegion{ 0, 0, vertexBufferSize };
-    mTransferCmd.copyBuffer(*vertexUploadBuffer, *mVertexBuffer, { copyRegion });
+    mTransferCmd.copyBuffer(*data.vertex, *mVertexBuffer, { copyRegion });
 
     copyRegion.size = indexBufferSize;
-    mTransferCmd.copyBuffer(*indexUploadBuffer, *mIndexBuffer, { copyRegion });
+    mTransferCmd.copyBuffer(*data.index, *mIndexBuffer, { copyRegion });
 
     // The barriers are useless because of queue idle and added for demonstration
-    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, barriers, {}, {});
+    {
+        std::array<vk::MemoryBarrier, 1> barriers{};
+        barriers[0].srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+        barriers[0].dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+        mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexInput, vk::DependencyFlagBits{}, barriers, {}, {});
+    }
 
     mTransferCmd.end();
 
@@ -185,43 +189,178 @@ void ExampleA::createBuffers()
     mQueue.waitIdle();
 }
 
+void ExampleA::createTextures(const UploadTextureData& data)
+{
+    if (data.empty() || data.channels != 3)
+    {
+        POLYPDEBUG("Incorrect texture data provided.");
+        return;
+    }
+
+    const auto& device = RHIContext::get().device();
+    const auto& gpu    = RHIContext::get().gpu();
+
+    mTexture.width  = data.width;
+    mTexture.height = data.height;
+
+    vk::Format format = (data.channels == 3) ? Format::eR8G8B8Unorm : Format::eUndefined;
+    POLYPASSERT(format != Format::eUndefined);
+
+    ImageCreateInfo imCreateInfo{};
+    imCreateInfo.imageType   = vk::ImageType::e2D;
+    imCreateInfo.format      = format;
+    imCreateInfo.extent      = vk::Extent3D(mTexture.width, mTexture.height, 1);
+    imCreateInfo.mipLevels   = 1;
+    imCreateInfo.arrayLayers = 1;
+    imCreateInfo.samples     = vk::SampleCountFlagBits::e1;
+    imCreateInfo.tiling      = vk::ImageTiling::eOptimal;
+    imCreateInfo.usage       = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+
+    VmaAllocationCreateInfo allocCreateInfo{};
+    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+
+    mTexture.image = device.createImagePLP(imCreateInfo, allocCreateInfo);
+    if (*mTexture.image == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create texture.");
+        return;
+    }
+
+    vk::ImageSubresourceRange subImageRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+
+    vk::ImageViewCreateInfo viewCreateInfo{};
+    viewCreateInfo.viewType         = ImageViewType::e2D;
+    viewCreateInfo.image            = *mTexture.image;
+    viewCreateInfo.format           = imCreateInfo.format;
+    viewCreateInfo.subresourceRange = subImageRange;
+
+    mTexture.view = device.createImageView(viewCreateInfo);
+    if (*mTexture.view == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create image view for texture.");
+        return;
+    }
+
+    mTransferCmd.reset();
+
+    vk::CommandBufferBeginInfo beginInfo{};
+    beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+    mTransferCmd.begin(beginInfo);
+
+    std::array<vk::ImageMemoryBarrier, 1> barriers{};
+    barriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barriers[0].image               = *mTexture.image;
+    barriers[0].subresourceRange    = subImageRange;
+    barriers[0].srcAccessMask       = vk::AccessFlagBits::eNoneKHR;
+    barriers[0].dstAccessMask       = vk::AccessFlagBits::eTransferWrite;
+    barriers[0].oldLayout           = vk::ImageLayout::eUndefined;
+    barriers[0].newLayout           = vk::ImageLayout::eTransferDstOptimal;
+
+    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits{}, {}, {}, barriers);
+
+    vk::BufferImageCopy copyRegion{};
+    copyRegion.bufferOffset     = 0;
+    copyRegion.imageOffset      = vk::Offset3D{0, 0, 0};
+    copyRegion.imageExtent      = vk::Extent3D(data.width, data.height, 1);
+    copyRegion.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1);
+
+    mTransferCmd.copyBufferToImage(*data.texture, *mTexture.image, ImageLayout::eTransferDstOptimal, copyRegion);
+
+    barriers[0].srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+    barriers[0].dstAccessMask = vk::AccessFlagBits::eShaderRead;
+    barriers[0].oldLayout     = vk::ImageLayout::eTransferDstOptimal;
+    barriers[0].newLayout     = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+    mTransferCmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, vk::DependencyFlagBits{}, {}, {}, barriers);
+
+    mTexture.layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+    mTransferCmd.end();
+
+    vk::SubmitInfo submitInfo{};
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &*mTransferCmd;
+
+    mQueue.submit(submitInfo);
+
+    SamplerCreateInfo samplerInfo{};
+    samplerInfo.magFilter  = Filter::eLinear;
+    samplerInfo.minFilter  = Filter::eLinear;
+    samplerInfo.mipmapMode = SamplerMipmapMode::eLinear;
+    samplerInfo.maxLod     = VK_LOD_CLAMP_NONE;
+
+    if (device.getEnabledFeatures().samplerAnisotropy)
+    {
+        POLYPDEBUG("Create sample with anisotropy");
+        samplerInfo.anisotropyEnable = true;
+        samplerInfo.maxAnisotropy = gpu.getProperties().limits.maxSamplerAnisotropy;
+    }
+
+    mTexture.sampler = device.createSampler(samplerInfo);
+    if (*mTexture.sampler == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create texture sampler.");
+        return;
+    }
+
+    mQueue.waitIdle();
+}
+
 void ExampleA::createLayouts()
 {
     auto& device = RHIContext::get().device();
 
-    vk::DescriptorSetLayoutBinding layoutBindingInfo{}; // uniform buffer for vertex shader
-    layoutBindingInfo.descriptorType  = vk::DescriptorType::eUniformBufferDynamic;
-    layoutBindingInfo.descriptorCount = 1;
-    layoutBindingInfo.stageFlags      = vk::ShaderStageFlagBits::eVertex;
+    std::array<DescriptorSetLayoutBinding, 2> bindingInfos {
+        DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBufferDynamic, 1,  vk::ShaderStageFlagBits::eVertex),
+        DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, 1,  vk::ShaderStageFlagBits::eFragment),
+    };
 
     vk::DescriptorSetLayoutCreateInfo dsLayoutCreateInfo{};
-    dsLayoutCreateInfo.bindingCount = 1;
-    dsLayoutCreateInfo.pBindings    = &layoutBindingInfo;
+    dsLayoutCreateInfo.pBindings    = bindingInfos.data();
+    dsLayoutCreateInfo.bindingCount = (*mTexture.sampler != VK_NULL_HANDLE) ? 2 : 1;
 
     mDSLayout = device.createDescriptorSetLayout(dsLayoutCreateInfo);
+    if (*mDSLayout == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create descriptor set layout.");
+        return;
+    }
 
     vk::PipelineLayoutCreateInfo pipeLayoutCreateInfo{};
     pipeLayoutCreateInfo.setLayoutCount = 1;
     pipeLayoutCreateInfo.pSetLayouts    = &*mDSLayout;
 
     mPipelineLayout = device.createPipelineLayout(pipeLayoutCreateInfo);
+    if (*mPipelineLayout == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create pipeline layout.");
+        return;
+    }
 }
 
 void ExampleA::createDS()
 {
     auto& device = RHIContext::get().device();
 
-    vk::DescriptorPoolSize descriptorPoolSize;
-    descriptorPoolSize.type            = vk::DescriptorType::eUniformBufferDynamic;
-    descriptorPoolSize.descriptorCount = 1;
+    std::array<DescriptorPoolSize, 2> descriptorPoolSizes{
+        DescriptorPoolSize(DescriptorType::eUniformBufferDynamic, 1),
+        DescriptorPoolSize(DescriptorType::eCombinedImageSampler, 1),
+    };
 
     vk::DescriptorPoolCreateInfo dsPoolCreateInfo{};
-    dsPoolCreateInfo.poolSizeCount = 1;
-    dsPoolCreateInfo.pPoolSizes    = &descriptorPoolSize;
+    dsPoolCreateInfo.poolSizeCount = 2;
+    dsPoolCreateInfo.pPoolSizes    = descriptorPoolSizes.data();
     dsPoolCreateInfo.maxSets       = 1;
     dsPoolCreateInfo.flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 
     mDesriptorPool = device.createDescriptorPool(dsPoolCreateInfo);
+    if (*mDesriptorPool == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create descriptor pool.");
+        return;
+    }
 
     vk::DescriptorSetAllocateInfo dsAllocInfo{};
     dsAllocInfo.descriptorPool     = *mDesriptorPool;
@@ -232,19 +371,39 @@ void ExampleA::createDS()
     POLYPASSERT(!sets.empty());
 
     mDescriptorSet = std::move(sets[0]);
+    if (*mDesriptorPool == VK_NULL_HANDLE)
+    {
+        POLYPFATAL("Failed to create descriptor set.");
+        return;
+    }
 
     vk::DescriptorBufferInfo dsBufferInfo{};
     dsBufferInfo.buffer = *mUniformBuffer;
     dsBufferInfo.range = static_cast<uint32_t>(sizeof(MVP));
 
-    vk::WriteDescriptorSet writeDescriptorSet{};
-    writeDescriptorSet.dstSet          = *mDescriptorSet;
-    writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.descriptorType  = vk::DescriptorType::eUniformBufferDynamic;
-    writeDescriptorSet.pBufferInfo     = &dsBufferInfo;
-    writeDescriptorSet.dstBinding      = 0;
+    vk::WriteDescriptorSet writeDSBuffer{};
+    writeDSBuffer.dstSet          = *mDescriptorSet;
+    writeDSBuffer.descriptorCount = 1;
+    writeDSBuffer.descriptorType  = vk::DescriptorType::eUniformBufferDynamic;
+    writeDSBuffer.pBufferInfo     = &dsBufferInfo;
+    writeDSBuffer.dstBinding      = 0;
 
-    device.updateDescriptorSets({ writeDescriptorSet }, {});
+    DescriptorImageInfo dsImageInfo{};
+    dsImageInfo.imageView   = *mTexture.view;
+    dsImageInfo.sampler     = *mTexture.sampler;
+    dsImageInfo.imageLayout = mTexture.layout;
+
+    vk::WriteDescriptorSet writeDSSampler{};
+    writeDSSampler.dstSet          = *mDescriptorSet;
+    writeDSSampler.descriptorCount = 1;
+    writeDSSampler.descriptorType  = vk::DescriptorType::eCombinedImageSampler;
+    writeDSSampler.pImageInfo      = &dsImageInfo;
+    writeDSSampler.dstBinding      = 1;
+
+    if (*mTexture.sampler == VK_NULL_HANDLE)
+        device.updateDescriptorSets({ writeDSBuffer }, {});
+    else
+        device.updateDescriptorSets({ writeDSBuffer, writeDSSampler }, {});
 }
 
 void ExampleA::createPipeline()
@@ -311,7 +470,7 @@ void ExampleA::createPipeline()
     vertexInputBinding.stride    = sizeof(Vertex);
     vertexInputBinding.inputRate = vk::VertexInputRate::eVertex;
 
-    std::array<vk::VertexInputAttributeDescription, 2> vertexInputAttributs;
+    std::array<vk::VertexInputAttributeDescription, 3> vertexInputAttributs;
     vertexInputAttributs[0].binding  = 0;
     vertexInputAttributs[0].location = 0;
     vertexInputAttributs[0].format   = vk::Format::eR32G32B32Sfloat;
@@ -320,24 +479,33 @@ void ExampleA::createPipeline()
     vertexInputAttributs[1].location = 1;
     vertexInputAttributs[1].format   = vk::Format::eR32G32B32Sfloat;
     vertexInputAttributs[1].offset   = offsetof(Vertex, color);
+    vertexInputAttributs[2].binding  = 0;
+    vertexInputAttributs[2].location = 2;
+    vertexInputAttributs[2].format   = vk::Format::eR32G32Sfloat;
+    vertexInputAttributs[2].offset   = offsetof(Vertex, texCoord);
 
     vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
     vertexInputStateCreateInfo.vertexBindingDescriptionCount   = 1;
     vertexInputStateCreateInfo.pVertexBindingDescriptions      = &vertexInputBinding;
-    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 2;
+    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 3;
     vertexInputStateCreateInfo.pVertexAttributeDescriptions    = vertexInputAttributs.data();
 
     // Shaders
     std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages{};
 
-    auto [vertexShader, indexShader] = loadShaders();
+    const auto data = loadShaders();
+    if (data.empty())
+    {
+        POLYPFATAL("Incorrect shader data.");
+        return;
+    }
 
     shaderStages[0].stage  = vk::ShaderStageFlagBits::eVertex;
-    shaderStages[0].module = *vertexShader;
+    shaderStages[0].module = *data.vertex;
     shaderStages[0].pName  = "main";
 
     shaderStages[1].stage  = vk::ShaderStageFlagBits::eFragment;
-    shaderStages[1].module = *indexShader;
+    shaderStages[1].module = *data.fragment;
     shaderStages[1].pName  = "main";
 
     pipeCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
@@ -432,7 +600,7 @@ void ExampleA::prepareDrawCommands()
     cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
     cmd.bindVertexBuffers(0, { *mVertexBuffer }, { verBufferOffset });
     cmd.bindIndexBuffer(*mIndexBuffer, 0, vk::IndexType::eUint32);
-    cmd.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
+    cmd.drawIndexed(mDrawIndexCount, 1, 0, 0, 1);
     cmd.endRenderPass();
 
     cmd.end();

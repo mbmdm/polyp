@@ -1,35 +1,26 @@
 #include <example_a.h>
 #include <model_loader.h>
+#include <image_loader.h>
 
 using namespace polyp;
 using namespace polyp::vulkan;
 
-std::string gModelPath = "";
-
 namespace polyp::vulkan {
 
-class LoadObjModel final : public example::ExampleA
+class SimpleTexture final : public example::ExampleA
 {
-public:
-    LoadObjModel()
-    {
-        mRenderOptions.solid = false;
-    }
-
 protected:
     RHIContext::CreateInfo getRHICreateInfo() override
     {
-        auto info = utils::getCreateInfo<RHIContext::CreateInfo>();
-        info.device.features.fillModeNonSolid = true;
-        return info;
+        return utils::getCreateInfo<RHIContext::CreateInfo>();
     }
 
     ShaderData loadShaders() override
     {
         ShaderData output{};
 
-        output.vertex   = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
-        output.fragment = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
+        output.vertex   = utils::loadSPIRV("shaders/simple_texture/simple_texture.vert.spv");
+        output.fragment = utils::loadSPIRV("shaders/simple_texture/simple_texture.frag.spv");
 
         return output;
     }
@@ -38,9 +29,7 @@ protected:
     {
         UploadModelData output{};
 
-        std::string path = gModelPath;
-        if (path.empty())
-            path = std::string(POLYP_ASSETS_LOCATION) + "models/wuson.obj";
+        std::string path = std::string(POLYP_ASSETS_LOCATION) + "models/rock.obj";
 
         auto loader = polyp::ModelLoader::load(path);
 
@@ -53,6 +42,7 @@ protected:
 
         std::vector<glm::vec3> positions = loader.positions();
         std::vector<uint32_t>  indexData = loader.indices();
+        std::vector<glm::vec2> texCoords = loader.texCoords();
 
         std::vector<Vertex> vertexData(positions.size());
 
@@ -60,11 +50,12 @@ protected:
 
         for (size_t i = 0; i < vertexData.size(); ++i)
         {
-            vertexData[i].position[0] = positions[i].x;
-            vertexData[i].position[1] = positions[i].y;
-            vertexData[i].position[2] = positions[i].z;
-            memcpy_s(vertexData[i].color, sizeof(vertexData[i].color),
-                     defaultColor,        sizeof(defaultColor));
+            memcpy_s(vertexData[i].position, sizeof(Vertex::position),
+                     &positions[i],          sizeof(glm::vec3));
+            memcpy_s(vertexData[i].color,    sizeof(Vertex::color),
+                     defaultColor,           sizeof(defaultColor));
+            memcpy_s(vertexData[i].texCoord, sizeof(Vertex::texCoord),
+                     &texCoords[i],          sizeof(glm::vec2));
         }
 
         output.indexCount = indexData.size();
@@ -89,7 +80,25 @@ protected:
 
     UploadTextureData loadTexture() override
     {
-        return {};
+        UploadTextureData output{};
+
+        std::string path = std::string(POLYP_ASSETS_LOCATION) + "textures/rock.png";
+
+        auto loader = polyp::ImageLoader::load(path);
+
+        if (std::string msg; loader.empty() && loader.hasError(msg))
+            POLYPFATAL("%s", msg.c_str());
+        else if (std::string msg; loader.hasError(msg))
+            POLYPWARN("%s", msg.c_str());
+
+        output.width    = loader.width();
+        output.height   = loader.height();
+        output.channels = loader.channels();
+        output.texture  = utils::createUploadBuffer(loader.size());
+
+        output.texture.fill(static_cast<const void*>(loader.data()), loader.size());
+
+        return output;
     }
 };
 
@@ -97,14 +106,7 @@ protected:
 
 int main(int argc, char* argv[])
 {
-    if (argc > 1)
-        gModelPath = argv[1];
-    else
-        POLYPINFO("Sample is able to load any OBJ-format model. "
-                  "Specify the path to the model as a command-line argument.");
-
-
-    RUN_APP_EXAMPLE(LoadObjModel);
+    RUN_APP_EXAMPLE(SimpleTexture);
 
     return EXIT_SUCCESS;
 }

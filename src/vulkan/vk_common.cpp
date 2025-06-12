@@ -198,7 +198,7 @@ Buffer Device::createBufferPLP(const BufferCreateInfo& createInfo, const VmaAllo
     if (res != VK_SUCCESS)
         detail::throwResultException(static_cast<vk::Result>(res), __FUNCTION__);
 
-    return Buffer(*this, *reinterpret_cast<VkBuffer*>(&resource), allocation, allocationInfo);
+    return Buffer(*this, *reinterpret_cast<VkBuffer*>(&resource), createInfo, allocation, allocationInfo);
 }
 
 Swapchain Device::createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) const
@@ -206,10 +206,13 @@ Swapchain Device::createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) c
     return Swapchain(*this, createInfo);
 }
 
-void Device::init(vk::raii::PhysicalDevice const& gpu)
+void Device::init(const vk::raii::PhysicalDevice& gpu, const DeviceCreateInfo& createInfo)
 {
     if (static_cast<VkDevice>(**this) == VK_NULL_HANDLE)
         return;
+
+    if (createInfo.pEnabledFeatures != nullptr)
+        mFeatures = *createInfo.pEnabledFeatures;
 
     auto* devDispatcher  = getDispatcher();
     auto* instDispatcher = gpu.getDispatcher();
@@ -246,7 +249,7 @@ Buffer::~Buffer()
     }
 }
 
-void Buffer::fill(void* data, VkDeviceSize size, VkDeviceSize offset)
+void Buffer::fill(const void* data, VkDeviceSize size, VkDeviceSize offset)
 {
     auto& device = RHIContext::get().device();
     auto allocator = device.vmaAlocator();

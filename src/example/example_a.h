@@ -14,6 +14,55 @@ protected:
     {
         float position[3];
         float color[3];
+        float texCoord[2];
+    };
+
+    struct ShaderData
+    {
+        ShaderModule vertex   = { VK_NULL_HANDLE };
+        ShaderModule fragment = { VK_NULL_HANDLE };
+
+        bool empty() const { return *vertex == VK_NULL_HANDLE || *fragment == VK_NULL_HANDLE; }
+    };
+
+    struct UploadModelData
+    {
+        Buffer   vertex     = { VK_NULL_HANDLE };
+        Buffer   index      = { VK_NULL_HANDLE };
+        uint32_t indexCount = 0;
+
+        bool empty() const { return *vertex == VK_NULL_HANDLE || *index == VK_NULL_HANDLE || indexCount == 0; }
+    };
+
+    struct UploadTextureData
+    {
+        uint32_t width    = 0;
+        uint32_t height   = 0;
+        uint32_t channels = 0;
+        Buffer   texture  = { VK_NULL_HANDLE };
+
+        bool empty() const { return *texture == VK_NULL_HANDLE || width * height * channels == 0; }
+    };
+
+    struct DepthStencilData
+    {
+        vulkan::Image     image = VK_NULL_HANDLE;
+        vulkan::ImageView view  = VK_NULL_HANDLE;
+    };
+
+    struct RenderOptions
+    {
+        bool solid = true;
+    };
+
+    struct Texture
+    {
+        Image           image   = { VK_NULL_HANDLE };
+        ImageView       view    = { VK_NULL_HANDLE };
+        Sampler         sampler = { VK_NULL_HANDLE };
+        vk::ImageLayout layout  = vk::ImageLayout::eUndefined;
+        uint32_t        width   = 0;
+        uint32_t        height  = 0;
     };
 
     void                     draw()             override;
@@ -23,11 +72,9 @@ protected:
 
     void                     updateUniformBuffer();
 
-    using ShadersData = std::tuple<ShaderModule/*vert*/, ShaderModule/*frag*/>;
-    using ModelsData  = std::tuple<std::vector<Vertex>/*vertices*/, std::vector<uint32_t>/*indexes*/>;
-
-    virtual ShadersData      loadShaders() = 0;
-    virtual ModelsData       loadModel()   = 0;
+    virtual ShaderData        loadShaders() = 0;
+    virtual UploadModelData   loadModel()   = 0;
+    virtual UploadTextureData loadTexture() = 0;
 
     CommandBuffer            mTransferCmd    = { VK_NULL_HANDLE };
     Buffer                   mVertexBuffer   = { VK_NULL_HANDLE };
@@ -40,22 +87,14 @@ protected:
     RenderPass               mRenderPass     = { VK_NULL_HANDLE };
     Pipeline                 mPipeline       = { VK_NULL_HANDLE };
     std::vector<Framebuffer> mFrameBuffers   = {};
-    std::vector<Vertex>      mVertexData     = {};
-    std::vector<uint32_t>    mIndexData      = {};
-
-    struct
-    {
-        vulkan::Image    image = VK_NULL_HANDLE;
-        vulkan::ImageView view = VK_NULL_HANDLE;
-    } mDepthStencil;
-
-    struct
-    {
-        bool solid = true;
-    } mRenderOptions;
+    DepthStencilData         mDepthStencil   = {};
+    RenderOptions            mRenderOptions  = {};
+    Texture                  mTexture        = {};
+    uint32_t                 mDrawIndexCount = 0;
 
 private:
-    void createBuffers();
+    void createBuffers(const UploadModelData& data);
+    void createTextures(const UploadTextureData& data);
     void createLayouts();
     void createDS();
     void createPipeline();

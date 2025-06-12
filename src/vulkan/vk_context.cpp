@@ -228,7 +228,7 @@ void RHIContext::init(const CreateInfo::Device& info)
     }
 
     auto device = mGPU.createDevice(deviceCreateInfo).release();
-    mDevice = Device(static_cast<vk::raii::PhysicalDevice&>(mGPU), device);
+    mDevice = Device(static_cast<vk::raii::PhysicalDevice&>(mGPU), device, deviceCreateInfo);
 }
 
 void RHIContext::init(const CreateInfo::SwapChain& info)

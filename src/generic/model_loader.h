@@ -26,6 +26,7 @@ public:
     const std::vector<glm::vec3>& positions() const { return mPositions; }
     const std::vector<uint32_t>&  indices()   const { return mIndices; }
     const std::vector<glm::vec3>& colors()    const { return mColors; }
+    const std::vector<glm::vec2>& texCoords() const { return mTexCoords; }
 
     BoundingBox boundingBox() const { return mBoundingBox; }
 
@@ -42,6 +43,7 @@ private:
 
     std::vector<glm::vec3> mPositions;
     std::vector<glm::vec3> mColors;
+    std::vector<glm::vec2> mTexCoords;
     std::vector<uint32_t>  mIndices;
 
     BoundingBox            mBoundingBox;

@@ -30,6 +30,7 @@ using PipelineLayout      = vk::raii::PipelineLayout;
 using DescriptorPool      = vk::raii::DescriptorPool;
 using DescriptorSet       = vk::raii::DescriptorSet;
 using ShaderModule        = vk::raii::ShaderModule;
+using Sampler             = vk::raii::Sampler;
 
 class PhysicalDevice;
 class Instance;
@@ -64,7 +65,7 @@ public:
 
     Format getDepthFormatPLP() const;
 
-    vk::SurfaceFormatKHR getColorFormatPLP(const SurfaceKHR& surface) const;
+    SurfaceFormatKHR getColorFormatPLP(const SurfaceKHR& surface) const;
 
     std::string toStringPLP() const;
 };
@@ -99,15 +100,16 @@ public:
            Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::Device(physicalDevice, createInfo, allocator)
     {
-        init(physicalDevice);
+        init(physicalDevice, createInfo);
     }
 
     Device(vk::raii::PhysicalDevice const&     physicalDevice,
            VkDevice                            device,
+           DeviceCreateInfo const&             createInfo,
            Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::Device(physicalDevice, device, allocator)
     {
-        init(physicalDevice);
+        init(physicalDevice, createInfo);
     }
 
     Device(std::nullptr_t ptr) :
@@ -146,10 +148,13 @@ public:
 
     Swapchain createSwapchainPLP(SwapchainCreateInfoKHR const& createInfo) const;
 
-private:
-    VmaAllocator mAllocatorVMA = { VK_NULL_HANDLE };
+    const PhysicalDeviceFeatures& getEnabledFeatures() const { return mFeatures; };
 
-    void init(vk::raii::PhysicalDevice const& gpu);
+private:
+    VmaAllocator           mAllocatorVMA = { VK_NULL_HANDLE };
+    PhysicalDeviceFeatures mFeatures     = { };
+
+    void init(const vk::raii::PhysicalDevice& gpu, const DeviceCreateInfo& createInfo);
 };
 
 class Swapchain : public vk::raii::SwapchainKHR
@@ -236,10 +241,10 @@ public:
     }
 
 private:
-    Image(Device const& device,
+    Image(Device const&                       device,
           VkImage                             image,
           VmaAllocation                       vmaAllocation,
-          VmaAllocationInfo const& vmaAllocationInfo,
+          VmaAllocationInfo const&            vmaAllocationInfo,
           Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::Image(device, image, allocator)
     {
@@ -267,6 +272,7 @@ public:
     Buffer(Buffer&& rhv) noexcept :
         vk::raii::Buffer(static_cast<vk::raii::Buffer&&>(rhv))
     {
+        std::swap(mResourceSize,      rhv.mResourceSize);
         std::swap(mAllocationVMA,     rhv.mAllocationVMA);
         std::swap(mAllocationVMAInfo, rhv.mAllocationVMAInfo);
     }
@@ -275,6 +281,7 @@ public:
     {
         vk::raii::Buffer::operator=(static_cast<vk::raii::Buffer&&>(rhv));
 
+        std::swap(mResourceSize,      rhv.mResourceSize);
         std::swap(mAllocationVMA,     rhv.mAllocationVMA);
         std::swap(mAllocationVMAInfo, rhv.mAllocationVMAInfo);
 
@@ -288,27 +295,35 @@ public:
         return vk::raii::Buffer::operator*();
     }
 
-    void fill(void* data, VkDeviceSize size, VkDeviceSize offset = 0);
+    void fill(const void* data, VkDeviceSize size, VkDeviceSize offset = 0);
 
-    template<typename Container>
+    template<typename Container, typename = std::enable_if<!std::is_pointer<Container>::value>::type>
     void fill(const Container& data, VkDeviceSize offset = 0)
     {
         auto size = sizeof(Container::value_type) * data.size();
         fill((void*)data.data(), size, offset);
     }
 
+    VkDeviceSize size() const
+    {
+        return mResourceSize;
+    }
+
 private:
-    Buffer(Device const& device,
+    Buffer(Device const&                       device,
            VkBuffer                            buffer,
+           const BufferCreateInfo&             createInfo,
            VmaAllocation                       vmaAllocation,
-           VmaAllocationInfo const& vmaAllocationInfo,
+           const VmaAllocationInfo&            vmaAllocationInfo,
            Optional<const AllocationCallbacks> allocator = nullptr) :
         vk::raii::Buffer(device, buffer, allocator)
     {
-        mAllocationVMA = vmaAllocation;
+        mResourceSize      = createInfo.size;
+        mAllocationVMA     = vmaAllocation;
         mAllocationVMAInfo = vmaAllocationInfo;
     }
 
+    VkDeviceSize           mResourceSize = 0;
     VmaAllocation         mAllocationVMA = VK_NULL_HANDLE;
     VmaAllocationInfo mAllocationVMAInfo = {};
 };

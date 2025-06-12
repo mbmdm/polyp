@@ -8,7 +8,8 @@ set(sources
             ${CMAKE_CURRENT_SOURCE_DIR}/example/example_a.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/generic/camera.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/generic/application.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/generic/model_loader.cpp)
+            ${CMAKE_CURRENT_SOURCE_DIR}/generic/model_loader.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/generic/image_loader.cpp)
 
 set(includes
              ${CMAKE_CURRENT_SOURCE_DIR}
@@ -25,7 +26,9 @@ set(headers
             ${CMAKE_CURRENT_SOURCE_DIR}/vulkan/vk_context.h
             ${CMAKE_CURRENT_SOURCE_DIR}/generic/os_utils.h
             ${CMAKE_CURRENT_SOURCE_DIR}/generic/fps_counter.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/generic/camera.h)
+            ${CMAKE_CURRENT_SOURCE_DIR}/generic/camera.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/generic/model_loader.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/generic/image_loader.h)
 
 set(sources ${sources}
             ${headers})

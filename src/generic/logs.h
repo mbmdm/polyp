@@ -59,7 +59,7 @@ polyp_direct(type, POLYPLOG_PROJECT, __FILE__, __LINE__, __VA_ARGS__)
 #define POLYPTODO(...)   polyplog(LogType::ToDo,    __VA_ARGS__)
 
 #define POLYPASSERT(...)                     \
-if (!__VA_ARGS__)                            \
+if (!(__VA_ARGS__))                          \
 polyplog(LogType::Warning, #__VA_ARGS__);    \
 assert(__VA_ARGS__);
 

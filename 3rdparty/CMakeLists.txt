@@ -14,3 +14,4 @@ add_subdirectory(vma)
 
 #Ttinyobjloader
 add_subdirectory(tinyobjloader)
+set_target_properties(tinyobjloader PROPERTIES FOLDER "3rdpatry")

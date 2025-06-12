@@ -40,11 +40,14 @@ ModelLoader ModelLoader::load(const std::string& path)
 
         output.mPositions.reserve(mesh.indices.size() + output.mPositions.size());
         output.mIndices.reserve(mesh.indices.size() + output.mIndices.size());
+        output.mTexCoords.reserve(mesh.indices.size() + output.mIndices.size());
 
         size_t indexOffset = 0;
         for (size_t faceIdx = 0; faceIdx < mesh.num_face_vertices.size(); ++faceIdx)
         {
             glm::vec3 position, color;
+            glm::vec2 texCoord;
+
             const size_t verticesCount = size_t(mesh.num_face_vertices[faceIdx]);
 
             for (size_t vertexId = 0; vertexId < verticesCount; ++vertexId)
@@ -64,12 +67,16 @@ ModelLoader ModelLoader::load(const std::string& path)
                 UPDATE_MIN_MAX(y);
                 UPDATE_MIN_MAX(z);
 
-                color.r = attrib.colors[3*size_t(idx.vertex_index) + 0];
-                color.g = attrib.colors[3*size_t(idx.vertex_index) + 1];
-                color.b = attrib.colors[3*size_t(idx.vertex_index) + 2];
+                color.r = attrib.colors[3 * size_t(idx.vertex_index) + 0];
+                color.g = attrib.colors[3 * size_t(idx.vertex_index) + 1];
+                color.b = attrib.colors[3 * size_t(idx.vertex_index) + 2];
+
+                texCoord.x = attrib.texcoords[2 * size_t(idx.texcoord_index) + 0];
+                texCoord.y = attrib.texcoords[2 * size_t(idx.texcoord_index) + 1];
 
                 output.mPositions.push_back(position);
                 output.mIndices.push_back(output.mIndices.size());
+                output.mTexCoords.push_back(texCoord);
             }
 
             indexOffset += verticesCount;

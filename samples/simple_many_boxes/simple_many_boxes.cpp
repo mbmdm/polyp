@@ -21,16 +21,20 @@ protected:
         return utils::getCreateInfo<RHIContext::CreateInfo>();
     }
 
-    ShadersData loadShaders() override
+    ShaderData loadShaders() override
     {
-        auto vert  = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
-        auto index = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
+        ShaderData output{};
 
-        return std::make_tuple(std::move(vert), std::move(index));
+        output.vertex   = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.vert.spv");
+        output.fragment = utils::loadSPIRV("shaders/simple_triangle/simple_triangle.frag.spv");
+
+        return output;
     }
 
-    ModelsData loadModel() override
+    UploadModelData loadModel() override
     {
+        UploadModelData output{};
+
         float vertices[] =
         {
             -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, 0.0f,
@@ -123,7 +127,24 @@ protected:
 
         mCamera.reset(glm::vec3(0.0, 0.0, (mDeviation * 5)), glm::vec3(0.0, 0.0, 0.0));
 
-        return std::make_tuple(std::move(vertexData), std::move(indexData));
+        output.indexCount = indexData.size();
+
+        const VkDeviceSize vertexBufferSize = vertexData.size() * sizeof(decltype(vertexData)::value_type);
+        const VkDeviceSize indexBufferSize  = indexData.size()  * sizeof(decltype(indexData)::value_type);
+
+        output.vertex = utils::createUploadBuffer(vertexBufferSize);
+        output.index  = utils::createUploadBuffer(indexBufferSize);
+
+        if (*output.vertex  == VK_NULL_HANDLE || *output.index   == VK_NULL_HANDLE)
+        {
+            POLYPFATAL("Failed to create upload buffers.");
+            return {};
+        }
+
+        output.vertex.fill(vertexData);
+        output.index.fill(indexData);
+
+        return output;
     }
 
     void draw() override
@@ -183,15 +204,20 @@ protected:
         const size_t boxesCount = mBoxPositions.size();
         for (size_t i = 0; i < boxesCount; i++)
         {
-            VkDeviceSize offset = ((mVertexData.size() / boxesCount) * sizeof(decltype(mVertexData)::value_type)) * i;
+            VkDeviceSize offset = (mVertexBuffer.size() / boxesCount) * i;
             cmd.bindVertexBuffers(0, { *mVertexBuffer }, { offset });
-            cmd.drawIndexed(mIndexData.size(), 1, 0, 0, 1);
+            cmd.drawIndexed(mDrawIndexCount, 1, 0, 0, 1);
         }
 
         cmd.endRenderPass();
         cmd.end();
 
         example::ExampleA::updateUniformBuffer();
+    }
+
+    UploadTextureData loadTexture() override
+    {
+        return {};
     }
 
 private:
